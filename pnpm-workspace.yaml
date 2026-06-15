@@ -2,6 +2,7 @@ packages:
   - "apps/*"
   - "packages/*"
 
-# Aprobar explícitamente los scripts de build permitidos (seguridad de cadena de suministro)
-onlyBuiltDependencies:
-  - esbuild
+# Autorización explícita de scripts de build (pnpm 11): solo esbuild.
+# Sin aprobación interactiva y sin autorizar todos los paquetes.
+allowBuilds:
+  esbuild: true
