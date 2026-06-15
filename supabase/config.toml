@@ -1,0 +1,29 @@
+project_id = "monopoly-multiverso"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[realtime]
+enabled = true
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+# Fase 0: la autenticación anónima es suficiente.
+enable_anonymous_sign_ins = true
+
+[functions.healthcheck]
+verify_jwt = false
+import_map = "./functions/import_map.json"

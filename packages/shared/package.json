@@ -1,0 +1,12 @@
+{
+  "name": "@multiverso/shared",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test:run": "echo \"(shared) sin tests en fase 0\" && exit 0"
+  },
+  "devDependencies": { "typescript": "^5.6.2" }
+}

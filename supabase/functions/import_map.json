@@ -1,0 +1,6 @@
+{
+  "imports": {
+    "@multiverso/engine": "../../packages/engine/src/index.ts",
+    "@multiverso/shared": "../../packages/shared/src/index.ts"
+  }
+}

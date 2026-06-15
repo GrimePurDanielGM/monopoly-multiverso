@@ -1,0 +1,7 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Aprobar explícitamente los scripts de build permitidos (seguridad de cadena de suministro)
+onlyBuiltDependencies:
+  - esbuild
