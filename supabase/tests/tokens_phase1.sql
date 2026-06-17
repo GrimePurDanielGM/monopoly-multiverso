@@ -73,14 +73,17 @@ do $$ declare gid uuid; v_code text; ok9 boolean:=false; ok10 boolean:=false; j 
     (j->'available_tokens')::text not like '%flux_capacitor%' and (j->'available_tokens')::text like '%rider%');
 end $$;
 
--- 5) FK histórica intacta: una ficha ANTIGUA (inactiva) puede seguir asignada (existe la fila)
+-- 5) FK histórica intacta: una ficha ANTIGUA (inactiva) puede seguir ASIGNADA (la fila existe).
+--    Tras 0012 ya no se puede CREAR con una ficha inactiva, así que simulamos una asignación
+--    histórica con un UPDATE admin (la FK sigue válida porque la fila antigua no se borró).
 do $$ declare gid uuid; v_tok text; begin
   perform pg_temp._as_user('f3f3f3f3-0000-0000-0000-0000000000f3');
-  perform create_game_tx('Tokens B','HostB','flux_capacitor','{}','ffffffff-0000-0000-0000-0000000000f2','H','S','A',1); -- antigua, FK válida
+  perform create_game_tx('Tokens B','HostB','penguin','{}','ffffffff-0000-0000-0000-0000000000f2','H','S','A',1); -- ficha válida (0012)
   perform pg_temp._as_admin();
   select id into gid from games where create_request_id='ffffffff-0000-0000-0000-0000000000f2';
+  update players set token_id='flux_capacitor' where game_id=gid and auth_uid='f3f3f3f3-0000-0000-0000-0000000000f3'; -- histórica (FK ok)
   select token_id into v_tok from players where game_id=gid and auth_uid='f3f3f3f3-0000-0000-0000-0000000000f3';
-  perform pg_temp._rec('5) FK histórica: ficha antigua asignada sigue válida', v_tok='flux_capacitor');
+  perform pg_temp._rec('5) FK histórica: ficha antigua (inactiva) sigue asignable', v_tok='flux_capacitor');
 end $$;
 
 do $$ declare fails text; begin
