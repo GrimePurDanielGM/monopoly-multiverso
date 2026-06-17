@@ -22,6 +22,8 @@ import { ConnectionBar, PresenceDot } from '../components/ConnectionBar';
 import { HostControls } from '../components/HostControls';
 import { HostActionError } from '../components/HostActionError';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { RecoveryRequestsTray } from '../components/RecoveryRequestsTray';
+import { ReentryForm } from '../components/ReentryForm';
 
 const STATUS_LABEL: Record<string, string> = {
   lobby: 'En sala de espera',
@@ -152,16 +154,18 @@ export function LobbyScreen() {
     setKickTarget(null);
   }, [game, kickTarget, kickBusy, load]);
 
-  // --- Estado: expulsado ---
+  // --- Estado: expulsado -> puede solicitar reentrada ---
   if (snapshotStatus === 'kicked') {
     return (
-      <section className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-        <h1 className="text-xl font-bold">Has sido expulsado de la sala</h1>
+      <section className="flex flex-col gap-4">
+        <h1 className="text-xl font-bold">Has sido expulsado de esta sala</h1>
+        <p className="text-sm text-slate-400">Puedes solicitar volver a entrar; el anfitrión debe aprobarlo.</p>
+        <ReentryForm code={code} onApproved={() => void load()} />
         <div className="flex gap-2">
           <Link to="/" className="rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold">
             Inicio
           </Link>
-          <Link to="/unirse" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold">
+          <Link to="/unirse" className="rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold">
             Unirse a otra
           </Link>
         </div>
@@ -179,9 +183,9 @@ export function LobbyScreen() {
         <Link to="/unirse" className="rounded-xl bg-indigo-600 px-4 py-3 text-center text-base font-semibold">
           Unirse a la partida
         </Link>
-        <p className="text-xs text-slate-500">
-          Si ya jugabas en esta sala desde otro dispositivo, la recuperación de jugador llegará en un bloque posterior.
-        </p>
+        <Link to={`/sala/${code}/recuperar-jugador`} className="rounded-xl border border-slate-600 px-4 py-3 text-center text-base font-semibold">
+          Recuperar mi jugador
+        </Link>
       </section>
     );
   }
@@ -332,6 +336,7 @@ export function LobbyScreen() {
         </button>
       </div>
 
+      {me.is_host && <RecoveryRequestsTray requests={requests} players={players} reload={load} />}
       {me.is_host && <HostControls game={game} counts={counts} players={players} requests={requests} reload={load} />}
 
       <ConfirmDialog

@@ -5,6 +5,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { messageForError } from './errors';
 import { parseSnapshot, type LobbySnapshot } from './snapshot';
+import type { RequestKind, RequestStatus } from './requestState';
 
 export type ApiOk<T> = { ok: true; data: T };
 export type ApiErr = { ok: false; code: string; message: string };
@@ -159,6 +160,78 @@ export async function getMyStatus(gameId: string): Promise<ApiResult<'active' | 
   const { data, error } = await supabase.rpc('my_status', { p_game: gameId });
   if (error) return fail(error.message);
   return { ok: true, data: data as 'active' | 'kicked' | 'not_member' };
+}
+
+// ---- Recuperaciones (Bloque 5) ----
+export interface RequestRefResult {
+  request_ref: string;
+  status: RequestStatus;
+}
+
+/** Solicita recuperar una identidad ACTIVA (por public_ref) desde otro dispositivo. */
+export async function requestRecovery(code: string, playerRef: string, device: string | null): Promise<ApiResult<RequestRefResult>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { data, error } = await supabase.rpc('request_recovery', { p_code: code, p_player_ref: playerRef, p_device: device });
+  if (error) return fail(error.message);
+  return { ok: true, data: data as RequestRefResult };
+}
+
+/** Solicita reentrada (sesión expulsada) con un nombre nuevo. */
+export async function requestReentry(code: string, name: string, device: string | null): Promise<ApiResult<RequestRefResult>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { data, error } = await supabase.rpc('request_reentry', { p_code: code, p_name: name, p_device: device });
+  if (error) return fail(error.message);
+  return { ok: true, data: data as RequestRefResult };
+}
+
+/** Anfitrión: aprueba/rechaza una solicitud de recuperación. */
+export async function resolveRecovery(requestRef: string, accept: boolean): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('resolve_recovery', { p_request_ref: requestRef, p_accept: accept });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Anfitrión: aprueba/rechaza una solicitud de reentrada. */
+export async function resolveReentry(requestRef: string, accept: boolean): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('resolve_reentry', { p_request_ref: requestRef, p_accept: accept });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Sondeo del estado de una solicitud (sin uid). */
+export async function getRequestStatus(requestRef: string): Promise<ApiResult<{ kind: RequestKind; status: RequestStatus }>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { data, error } = await supabase.rpc('get_request_status', { p_request_ref: requestRef });
+  if (error) return fail(error.message);
+  return { ok: true, data: data as { kind: RequestKind; status: RequestStatus } };
+}
+
+export type RecoverHostResult =
+  | { ok: true }
+  | { ok: false; code: string; message: string; lockedUntil?: string; failedAttempts?: number };
+
+/** Recuperación del rol de anfitrión por código + PIN (Edge; el PIN nunca toca la BD). */
+export async function recoverHost(code: string, pin: string): Promise<RecoverHostResult> {
+  if (!supabase) return { ok: false, code: 'UNCONFIGURED', message: messageForError('UNCONFIGURED') };
+  const { data, error } = await supabase.functions.invoke<{ ok?: boolean }>('recover_host', { body: { code, pin } });
+  if (!error && data?.ok) return { ok: true };
+  let body: { error?: string; locked_until?: string; failed_attempts?: number } = {};
+  if (error instanceof FunctionsHttpError) {
+    try {
+      body = (await error.context.json()) as typeof body;
+    } catch {
+      return { ok: false, code: 'NETWORK', message: messageForError('NETWORK') };
+    }
+  } else if (error) {
+    return { ok: false, code: 'NETWORK', message: messageForError('NETWORK') };
+  }
+  const code2 = body.error ?? 'UNKNOWN';
+  const res: RecoverHostResult = { ok: false, code: code2, message: messageForError(code2) };
+  if (body.locked_until) res.lockedUntil = body.locked_until;
+  if (typeof body.failed_attempts === 'number') res.failedAttempts = body.failed_attempts;
+  return res;
 }
 
 /** Crea una partida vía Edge Function `create_game` (hashea el PIN con el pepper en el Edge). */

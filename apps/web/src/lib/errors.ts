@@ -34,6 +34,16 @@ const MESSAGES: Record<string, string> = {
   NOT_ENOUGH_PLAYERS: 'Faltan jugadores para empezar.',
   PLAYERS_INCOMPLETE: 'Todos deben tener ficha y estar preparados.',
   PENDING_RECOVERIES: 'Hay solicitudes pendientes por resolver.',
+  // Recuperaciones (Bloque 5)
+  NO_RECOVERY: 'Esta sala no tiene recuperación de anfitrión configurada.',
+  INVALID_PIN: 'PIN incorrecto.',
+  LOCKED: 'Demasiados intentos. Inténtalo de nuevo más tarde.',
+  SESSION_HAS_ACTIVE_PLAYER: 'Esta sesión ya controla un jugador en esta sala.',
+  NOT_KICKED: 'No constas como expulsado de esta sala.',
+  KICKED_USE_REENTRY: 'Fuiste expulsado; solicita la reentrada.',
+  TARGET_NOT_ACTIVE: 'Esa identidad ya no está activa.',
+  REQUEST_NOT_FOUND: 'La solicitud ya no existe.',
+  BAD_REQUEST: 'Datos no válidos.',
 };
 
 /** Mensaje legible para un código de error conocido (o genérico si no lo es). */
