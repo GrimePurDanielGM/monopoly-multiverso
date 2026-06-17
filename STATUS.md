@@ -159,19 +159,23 @@
 - [x] **Segundo plano y reconexión** (validados con anterioridad).
 
 **Defectos detectados el 2026-06-18 y CORREGIDOS (pendiente de revalidación manual por el responsable):**
-- [~] **Accesibilidad por teclado y diálogos.** En Safari el `Tab` no recorría los controles: se
-      distinguió el ajuste de macOS "Full Keyboard Access" (comportamiento del navegador, no de la app)
-      del *focus-trap* de los diálogos. Corregido con un hook común (`useDialogA11y`) que gestiona el
-      `Tab` por completo (no depende del orden de tabulación nativo, válido en WebKit), foco inicial,
-      Escape, retorno de foco al disparador (vía teclado) y botón visible Cerrar/Cancelar en todos los
-      diálogos (`ConfirmDialog` — expulsión/cancelación/inicio —, QR ampliado y escáner QR). **Validado
-      con Playwright en Chromium y WebKit** (6/6). Sin forzar `tabIndex` en controles nativos.
-- [~] **Acceso a recuperación de anfitrión.** No había acción visible en la pantalla inicial. Añadida
+- [~] **Accesibilidad de diálogos CORREGIDA y validada automáticamente en Chromium/WebKit.** En Safari
+      el `Tab` no recorría los controles: se distinguió el ajuste de macOS "Full Keyboard Access"
+      (comportamiento del navegador, no de la app) del *focus-trap* de los diálogos. Corregido con un
+      hook común (`useDialogA11y`) que gestiona el `Tab` por completo (no depende del orden de tabulación
+      nativo, válido en WebKit), foco inicial, Escape, retorno de foco al disparador (vía teclado) y
+      botón visible Cerrar/Cancelar en todos los diálogos (`ConfirmDialog` — expulsión/cancelación/inicio
+      —, QR ampliado y escáner QR). Sin forzar `tabIndex` en controles nativos. **Validado con Playwright
+      en Chromium y WebKit, en local y contra el despliegue remoto** (6/6 por entorno). **Pendiente de
+      revalidación manual por el responsable.**
+- [~] **Acceso visible a la recuperación del anfitrión CORREGIDO.** La pantalla inicial añade
       "Recuperar partida como anfitrión" → `/recuperar`, con texto que pide código + PIN, no sugiere
-      crear partida nueva ni confundir con recuperar un jugador. **El backend permite recuperar tanto
-      en `lobby` como en `active`** (`host_recovery_success` sin restricción de estado; verificado en
-      integración: nuevo dispositivo `is_host`, el anterior pierde el rol). Validado con Playwright
-      (Chromium+WebKit) y prueba de integración local.
+      crear partida nueva ni confundir con recuperar un jugador. **Recuperación funcional validada en
+      `lobby` y en `active`** (el backend lo permite — `host_recovery_success` sin restricción de estado;
+      no se cambió la regla): el nuevo dispositivo queda `is_host = true` y el anterior pierde el rol
+      (`NOT_ACTIVE_MEMBER`). **Validado con Playwright (Chromium+WebKit) e integración, en local y en
+      remoto** (lobby por navegador; active por integración remota). **Pendiente de revalidación manual
+      por el responsable.**
 
 **Pendiente de validación manual** (NO validado todavía):
 - [ ] **Escanear QR** con cámara física en condiciones límite: cámara denegada / sin cámara / QR de otra app.
