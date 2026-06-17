@@ -1,13 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { engineFingerprint } from '@multiverso/engine';
 import { App } from './App';
 
-describe('App (fase 0)', () => {
-  it('renderiza y muestra el fingerprint del motor compartido', () => {
+describe('App', () => {
+  it('renderiza la pantalla inicial con las acciones principales', async () => {
     render(<App />);
-    const fp = engineFingerprint();
-    expect(screen.getByText(/Monopoly: El Multiverso/)).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(String(fp.checksum)))).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /crear partida/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /unirse/i })).toBeInTheDocument();
   });
 });
