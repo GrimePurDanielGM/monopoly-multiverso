@@ -32,32 +32,41 @@ do $$ begin
   raise notice 'PREFLIGHT OK: auth.uid() simulado = %', auth.uid();
 end $$;
 
--- A,B) Miembro de G1 ve su partida (1) y solo activos (6)
-do $$ declare ng int; np int; begin
+-- NUEVO MODELO (0008): el cliente NO accede directo a players/games; visibilidad por get_lobby_snapshot.
+-- A,B) Miembro de G1: acceso directo REVOCADO (42501) + ve 6 activos por snapshot, es host.
+do $$ declare gid uuid; okp boolean:=false; okg boolean:=false; snap jsonb; begin
+  gid := (select id from games where create_request_id='aaaaaaaa-0000-0000-0000-000000000001');
   perform pg_temp._as_user('11111111-1111-1111-1111-111111111111');
-  select count(*) into ng from games; select count(*) into np from players;
+  begin perform 1 from players; exception when insufficient_privilege then okp:=true; end;
+  begin perform 1 from games;   exception when insufficient_privilege then okg:=true; end;
+  snap := get_lobby_snapshot(gid);
   perform pg_temp._as_admin();
-  perform pg_temp._rec('A) miembro ve su partida (games=1)', ng=1);
-  perform pg_temp._rec('B) miembro ve solo activos (players=6)', np=6);
+  perform pg_temp._rec('A) authenticated NO lee players directo (42501)', okp);
+  perform pg_temp._rec('B) authenticated NO lee games directo (42501)', okg);
+  perform pg_temp._rec('B2) miembro ve 6 activos por snapshot', jsonb_array_length(snap->'players')=6);
+  perform pg_temp._rec('B3) snapshot.me.is_host del anfitrión', (snap->'me'->>'is_host')='true');
 end $$;
 
--- F,G) Miembro de G2 (cc... = Ana): 2 activos, 0 expulsados
-do $$ declare np int; nk int; begin
+-- F,G) Miembro de G2 (cc... = Ana): snapshot 2 activos, sin exponer expulsados.
+do $$ declare gid uuid; snap jsonb; nk int; begin
+  gid := (select id from games where create_request_id='bbbbbbbb-0000-0000-0000-000000000002');
   perform pg_temp._as_user('cc000000-0000-0000-0000-0000000000c1');
-  select count(*) into np from players;
-  select count(*) filter (where kicked_at is not null) into nk from players;
+  snap := get_lobby_snapshot(gid);
   perform pg_temp._as_admin();
-  perform pg_temp._rec('F) miembro G2 ve activos (players=2)', np=2);
-  perform pg_temp._rec('G) expulsados invisibles (kicked=0)', nk=0);
+  perform pg_temp._rec('F) miembro G2 ve activos por snapshot (players=2)', jsonb_array_length(snap->'players')=2);
+  select count(*) into nk from jsonb_array_elements(snap->'players') e where (e ? 'kicked');
+  perform pg_temp._rec('G) snapshot no expone expulsados', nk=0);
 end $$;
 
--- H,I) No-miembro ve 0
-do $$ declare ng int; np int; begin
+-- H,I) No-miembro: acceso directo denegado y snapshot -> NOT_ACTIVE_MEMBER.
+do $$ declare gid uuid; okg boolean:=false; oks boolean:=false; begin
+  gid := (select id from games where create_request_id='aaaaaaaa-0000-0000-0000-000000000001');
   perform pg_temp._as_user('f0000000-0000-0000-0000-0000000000ff');
-  select count(*) into ng from games; select count(*) into np from players;
+  begin perform 1 from games; exception when insufficient_privilege then okg:=true; end;
+  begin perform get_lobby_snapshot(gid); exception when others then oks := (sqlerrm='NOT_ACTIVE_MEMBER'); end;
   perform pg_temp._as_admin();
-  perform pg_temp._rec('H) no-miembro: games=0', ng=0);
-  perform pg_temp._rec('I) no-miembro: players=0', np=0);
+  perform pg_temp._rec('H) no-miembro: games directo denegado (42501)', okg);
+  perform pg_temp._rec('I) no-miembro: get_lobby_snapshot=NOT_ACTIVE_MEMBER', oks);
 end $$;
 
 -- C,D,E) deny-all (EXCEPTION aislada; no aborta la batería)

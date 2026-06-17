@@ -122,7 +122,9 @@ do $$ declare gid uuid; ok boolean:=false; v int; begin
   select id,version into gid,v from games where create_request_id='cccccccc-0000-0000-0000-000000000003';
   perform pg_temp._as_user('dd000000-0000-0000-0000-0000000000d1');
   perform choose_token(gid,'delorean'); perform set_ready(gid,true);
-  begin perform start_game(gid,(select version from games where id=gid)); exception when others then ok := (sqlerrm='NOT_ENOUGH_PLAYERS'); end;
+  -- 0008: el cliente ya NO lee games directo; usamos la version capturada como admin
+  -- (choose_token/set_ready no alteran games.version).
+  begin perform start_game(gid, v); exception when others then ok := (sqlerrm='NOT_ENOUGH_PLAYERS'); end;
   perform pg_temp._as_admin();
   perform pg_temp._rec('7b) start con <6 bloqueado (NOT_ENOUGH_PLAYERS)', ok);
 end $$;
