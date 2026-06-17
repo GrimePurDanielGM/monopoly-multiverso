@@ -62,7 +62,7 @@ end $$;
 
 -- 3) 6 jugadores: unión + ficha + ready (cada uno con su JWT)
 do $$ declare uids text[]:=array['22222222-2222-2222-2222-222222222222','33333333-3333-3333-3333-333333333333','44444444-4444-4444-4444-444444444444','55555555-5555-5555-5555-555555555555','66666666-6666-6666-6666-666666666666'];
-  names text[]:=array['Marty','Doc','Biff','Jennifer','Lorraine']; toks text[]:=array['hoverboard','flux_capacitor','plutonium_case','clock_tower','sports_almanac'];
+  names text[]:=array['Marty','Doc','Biff','Jennifer','Lorraine']; toks text[]:=array['hoverboard','einstein_dog','self_lacing_shoe','clock_tower','cowboy_hat'];
   v_code text; gid uuid; i int; n int; begin
   gid:=pg_temp._g1(); select code into v_code from games where id=gid;   -- lookup privilegiado
   for i in 1..5 loop
@@ -90,7 +90,7 @@ end $$;
 do $$ declare ok boolean:=false; gid uuid; begin
   gid:=pg_temp._g1();
   perform pg_temp._as_user('22222222-2222-2222-2222-222222222222');
-  begin perform choose_token(gid,'flux_capacitor'); exception when others then ok := (sqlerrm='TOKEN_TAKEN'); end;
+  begin perform choose_token(gid,'einstein_dog'); exception when others then ok := (sqlerrm='TOKEN_TAKEN'); end;
   perform pg_temp._as_admin();
   perform pg_temp._rec('5) colisión de ficha (TOKEN_TAKEN)', ok);
 end $$;

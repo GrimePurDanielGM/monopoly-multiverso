@@ -83,7 +83,7 @@ describe.skipIf(!enabled)('Controles del anfitrión — integración local real'
     const s1 = await H.c.rpc('start_game', { p_game: H.gid, p_expected_version: 0 });
     expect(s1.error?.message).toBe('NOT_ENOUGH_PLAYERS');
 
-    const toks = ['hoverboard', 'flux_capacitor', 'plutonium_case', 'clock_tower', 'sports_almanac'];
+    const toks = ['hoverboard', 'einstein_dog', 'self_lacing_shoe', 'clock_tower', 'cowboy_hat'];
     for (let i = 0; i < 5; i++) {
       const J = await authed();
       await J.rpc('join_game', { p_code: H.code, p_name: 'J' + i, p_request_id: crypto.randomUUID() });

@@ -25,7 +25,7 @@ begin insert into _t values (p_name,p_ok) on conflict (name) do update set ok=ex
 -- ===================== FIXTURES =====================
 -- Game SA: host + 5 jugadores, todos ready (6) -> se inicia. Luego un extraño pide recovery.
 do $$ declare uids text[]:=array['e2000000-0000-0000-0000-0000000000a2','e3000000-0000-0000-0000-0000000000a3','e4000000-0000-0000-0000-0000000000a4','e5000000-0000-0000-0000-0000000000a5','e6000000-0000-0000-0000-0000000000a6'];
-  names text[]:=array['SJ2','SJ3','SJ4','SJ5','SJ6']; toks text[]:=array['hoverboard','flux_capacitor','plutonium_case','clock_tower','sports_almanac'];
+  names text[]:=array['SJ2','SJ3','SJ4','SJ5','SJ6']; toks text[]:=array['hoverboard','einstein_dog','self_lacing_shoe','clock_tower','cowboy_hat'];
   gid uuid; v_code text; i int; v int; begin
   perform pg_temp._as_user('e1000000-0000-0000-0000-0000000000a1');
   perform create_game_tx('Senal SA','SHost','delorean','{}','eeeeeeee-0000-0000-0000-0000000000a1','H','S','A',1);
