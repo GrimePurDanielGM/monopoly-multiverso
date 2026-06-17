@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeCode, isValidCode } from './codes';
+import { normalizeCode, isValidCode, roomTopic } from './codes';
 
 describe('codes', () => {
   it('normaliza a mayúsculas y sin espacios', () => {
@@ -11,5 +11,9 @@ describe('codes', () => {
     expect(isValidCode('ABC23')).toBe(false); // demasiado corto
     expect(isValidCode('ABC23O')).toBe(false); // O no pertenece al alfabeto
     expect(isValidCode('ABC231')).toBe(false); // 1 no pertenece al alfabeto
+  });
+  it('roomTopic usa el código normalizado', () => {
+    expect(roomTopic('  ab c12 ')).toBe('room:ABC12');
+    expect(roomTopic('abc234')).toBe('room:ABC234');
   });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   chooseToken,
@@ -10,8 +10,12 @@ import {
 import { ensureAnonSession } from '../lib/session';
 import { normalizeCode } from '../lib/codes';
 import { useLobbyStore } from '../store/lobby';
+import { useRealtimeStore } from '../store/realtime';
 import { canSetReady, isMe, takenTokenIds } from '../lib/lobbySelectors';
+import { playerPresenceStatus } from '../lib/connState';
+import { useLobbyRealtime } from '../hooks/useLobbyRealtime';
 import { TokenPicker } from '../components/TokenPicker';
+import { ConnectionBar, PresenceDot } from '../components/ConnectionBar';
 
 const STATUS_LABEL: Record<string, string> = {
   lobby: 'En sala de espera',
@@ -19,7 +23,7 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: 'Cancelada',
 };
 
-/** Sala sincronizada (Bloque 2): snapshot autoritativo por código, fichas y preparado. */
+/** Sala sincronizada (Bloque 3): snapshot autoritativo + Realtime (broadcast/presence/heartbeat). */
 export function LobbyScreen() {
   const { code: codeParam = '' } = useParams();
   const code = normalizeCode(codeParam);
@@ -34,10 +38,14 @@ export function LobbyScreen() {
   const setStatus = useLobbyStore((s) => s.setStatus);
   const setError = useLobbyStore((s) => s.setError);
 
+  const channelStatus = useRealtimeStore((s) => s.channelStatus);
+  const presentPublicRefs = useRealtimeStore((s) => s.presentPublicRefs);
+
   const [tokens, setTokens] = useState<PublicToken[]>([]);
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // Carga "ruidosa" (inicial / manual): muestra estado de carga.
   const load = useCallback(async () => {
     setStatus('loading');
     setActionError(null);
@@ -56,9 +64,29 @@ export function LobbyScreen() {
     if (tk.ok) setTokens(tk.data);
   }, [code, replaceSnapshot, setStatus, setError]);
 
+  // Resync "silencioso" (disparado por eventos Realtime / foreground): sin parpadeo de carga.
+  // Errores transitorios NO borran el snapshot; solo NOT_ACTIVE_MEMBER cambia el estado.
+  const resync = useCallback(async () => {
+    const r = await getLobbySnapshotByCode(code);
+    if (r.ok) replaceSnapshot(r.data, Date.now());
+    else if (r.code === 'NOT_ACTIVE_MEMBER') setError('not_member', r.message);
+  }, [code, replaceSnapshot, setError]);
+
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Limpieza del estado de transporte al salir de la sala.
+  useEffect(() => () => useRealtimeStore.getState().reset(), []);
+
+  const knownRefs = useMemo(() => new Set(players.map((p) => p.public_ref)), [players]);
+  const { reconnect } = useLobbyRealtime({
+    code,
+    gameId: game?.id ?? null,
+    myPublicRef: me?.public_ref ?? null,
+    knownRefs,
+    resync,
+  });
 
   const onChoose = useCallback(
     async (tokenId: string) => {
@@ -66,8 +94,8 @@ export function LobbyScreen() {
       setActionBusy(true);
       setActionError(null);
       const r = await chooseToken(game.id, tokenId);
-      await load(); // siempre recargamos el snapshot autoritativo (también tras TOKEN_TAKEN)
-      if (!r.ok) setActionError(r.message); // el error se fija DESPUÉS de la recarga para que persista
+      await load();
+      if (!r.ok) setActionError(r.message);
       setActionBusy(false);
     },
     [game, actionBusy, load],
@@ -155,7 +183,9 @@ export function LobbyScreen() {
   const readyDisabled = actionBusy || !canSetReady(me, !meIsReady);
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-3">
+      <ConnectionBar status={channelStatus} onRetry={reconnect} />
+
       <header className="rounded-xl border border-slate-700 p-4">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold">{game.name}</h1>
@@ -189,11 +219,13 @@ export function LobbyScreen() {
           const tk = tokens.find((t) => t.id === p.token_id);
           const host = p.public_ref === game.host_public_ref;
           const mine = isMe(p, me);
+          const presence = playerPresenceStatus(channelStatus, presentPublicRefs.includes(p.public_ref));
           return (
             <li
               key={p.public_ref}
               className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${mine ? 'border-indigo-500 bg-indigo-950/40' : 'border-slate-700'}`}
             >
+              <PresenceDot status={presence} />
               <span aria-hidden className="text-2xl leading-none">
                 {tk ? tk.icon : '·'}
               </span>

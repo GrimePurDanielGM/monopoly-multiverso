@@ -103,6 +103,14 @@ export async function setReady(gameId: string, ready: boolean): Promise<ApiResul
   return { ok: true, data: true };
 }
 
+/** Latido de presencia/liveness en servidor (actualiza last_seen_at). Idempotente y barato. */
+export async function heartbeat(gameId: string): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('heartbeat', { p_game: gameId });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
 /** Crea una partida vía Edge Function `create_game` (hashea el PIN con el pepper en el Edge). */
 export async function createGame(input: CreateGameInput): Promise<ApiResult<CreateGameResult>> {
   if (!supabase) return fail('UNCONFIGURED');

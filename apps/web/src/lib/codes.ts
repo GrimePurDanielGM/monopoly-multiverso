@@ -9,6 +9,11 @@ export function normalizeCode(raw: string): string {
   return raw.toUpperCase().replace(/\s+/g, '');
 }
 
+/** Topic privado de Realtime para una sala, con el código normalizado. */
+export function roomTopic(rawCode: string): string {
+  return `room:${normalizeCode(rawCode)}`;
+}
+
 /** Guard de UX (no autoritativo): longitud correcta y solo caracteres del alfabeto. */
 export function isValidCode(raw: string): boolean {
   const c = normalizeCode(raw);

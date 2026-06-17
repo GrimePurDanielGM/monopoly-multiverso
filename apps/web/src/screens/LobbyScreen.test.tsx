@@ -20,6 +20,7 @@ vi.mock('../lib/api', () => ({
   setReady: readyMock,
 }));
 vi.mock('../lib/session', () => ({ ensureAnonSession: () => Promise.resolve('ready') }));
+vi.mock('../hooks/useLobbyRealtime', () => ({ useLobbyRealtime: () => ({ reconnect: () => {} }) }));
 
 import { LobbyScreen } from './LobbyScreen';
 import { useLobbyStore } from '../store/lobby';
