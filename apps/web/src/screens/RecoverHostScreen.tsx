@@ -45,6 +45,13 @@ export function RecoverHostScreen() {
   return (
     <section className="flex flex-col gap-4 lg:mx-auto lg:w-full lg:max-w-md">
       <h1 className="text-xl font-bold">Recuperar control de anfitrión</h1>
+      <p className="text-sm text-slate-400">
+        ¿Eras el anfitrión y cambiaste de dispositivo o perdiste la sesión? Introduce el{' '}
+        <span className="font-semibold text-slate-200">código de la sala</span> y tu{' '}
+        <span className="font-semibold text-slate-200">PIN de anfitrión</span> para recuperar el control aquí. No crea una
+        partida nueva ni sirve para volver como jugador normal. Funciona tanto en la sala de espera como con la partida ya
+        iniciada.
+      </p>
       <form className="flex flex-col gap-3" onSubmit={submit} noValidate>
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-slate-300">Código de la sala</span>

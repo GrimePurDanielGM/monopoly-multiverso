@@ -146,29 +146,37 @@
 ### Checklist de validación manual en dispositivos reales (PARCIALMENTE VALIDADO — 2026-06-18)
 > Requisito: nada de esto se marca como validado sin pruebas físicas. iPhone (Safari), Android (Chrome) y Mac.
 
-**Validado manualmente el 2026-06-18** (partida real con varios dispositivos y navegadores; todos
-los clientes transicionaron a `active` y muestran "La partida ha comenzado" — placeholder previsto
-de fin de Fase 1, no un error):
-- [x] **Creación de partida** (flujo real desde el navegador).
-- [x] **Unión desde varios dispositivos/navegadores**.
-- [x] **Sincronización del lobby** (todos los clientes ven el mismo estado en vivo).
-- [x] **Selección de fichas**.
-- [x] **Estado "preparado"**.
-- [x] **Inicio por el anfitrión**.
-- [x] **Transición sincronizada de todos los clientes a `active`** ("La partida ha comenzado").
+**Validado manualmente** (varios dispositivos/navegadores; todos los clientes transicionaron a
+`active` y muestran "La partida ha comenzado" — placeholder previsto de fin de Fase 1, no un error):
+- [x] **Flujo principal multiusuario** (2026-06-18): creación, unión multidispositivo, sincronización
+      del lobby, selección de fichas, estado "preparado", inicio por el anfitrión y transición
+      sincronizada de todos los clientes a `active`.
+- [x] **Pérdida y recuperación de red** (2026-06-18).
+- [x] **Compartir** código, enlace y menú nativo (2026-06-18).
+- [x] **Instalación y apertura como PWA** (2026-06-18).
+- [x] **Responsive** en ventana estrecha y ancha (2026-06-18).
+- [x] **QR y cámara** (validados con anterioridad).
+- [x] **Segundo plano y reconexión** (validados con anterioridad).
+
+**Defectos detectados el 2026-06-18 y CORREGIDOS (pendiente de revalidación manual por el responsable):**
+- [~] **Accesibilidad por teclado y diálogos.** En Safari el `Tab` no recorría los controles: se
+      distinguió el ajuste de macOS "Full Keyboard Access" (comportamiento del navegador, no de la app)
+      del *focus-trap* de los diálogos. Corregido con un hook común (`useDialogA11y`) que gestiona el
+      `Tab` por completo (no depende del orden de tabulación nativo, válido en WebKit), foco inicial,
+      Escape, retorno de foco al disparador (vía teclado) y botón visible Cerrar/Cancelar en todos los
+      diálogos (`ConfirmDialog` — expulsión/cancelación/inicio —, QR ampliado y escáner QR). **Validado
+      con Playwright en Chromium y WebKit** (6/6). Sin forzar `tabIndex` en controles nativos.
+- [~] **Acceso a recuperación de anfitrión.** No había acción visible en la pantalla inicial. Añadida
+      "Recuperar partida como anfitrión" → `/recuperar`, con texto que pide código + PIN, no sugiere
+      crear partida nueva ni confundir con recuperar un jugador. **El backend permite recuperar tanto
+      en `lobby` como en `active`** (`host_recovery_success` sin restricción de estado; verificado en
+      integración: nuevo dispositivo `is_host`, el anterior pierde el rol). Validado con Playwright
+      (Chromium+WebKit) y prueba de integración local.
 
 **Pendiente de validación manual** (NO validado todavía):
-- [ ] **Compartir**: copiar código, copiar enlace, botón Compartir (hoja nativa) en iOS y Android.
-- [ ] **QR**: se ve con buen contraste/margen; ampliarlo; alt presente para lector de pantalla.
-- [ ] **Escanear QR** con cámara física (iPhone y Android): permiso explícito, lectura, normalización,
-      y **la luz/indicador de cámara se apaga** al detectar/cancelar/cerrar/cambiar de app.
-- [ ] **Cámara denegada / sin cámara / QR de otra app**: mensajes claros y *fallback* manual operativo.
-- [ ] **Responsive**: 320–360 px sin scroll horizontal; objetivos táctiles cómodos; sin zoom al enfocar inputs (iOS);
-      dos columnas en iPad/Mac.
-- [ ] **Accesibilidad**: navegación con teclado, foco visible, diálogos atrapan el foco y cierran con Escape;
-      `prefers-reduced-motion` desactiva animaciones.
-- [ ] **PWA**: instalar en iOS y Android; abrir en *standalone*; recibir aviso de actualización; abrir enlace
-      `/j/{CODE}` directo desde fuera de la app.
-- [ ] **Conexión**: cortar red → aviso discreto; recuperar → reconexión y resync sin pantalla en blanco.
-- [ ] **Recuperación**: jugador en otro dispositivo; anfitrión con PIN; reentrada tras expulsión.
+- [ ] **Escanear QR** con cámara física en condiciones límite: cámara denegada / sin cámara / QR de otra app.
+- [ ] **Accesibilidad por teclado en dispositivo real** tras la corrección (revalidación del responsable).
+- [ ] **Recuperación de anfitrión por la nueva acción visible en dispositivo real** (revalidación del responsable).
+- [ ] **Android + botón Atrás**: PENDIENTE por falta de dispositivo Android (no es fallo ni validado).
+- [ ] **Recuperación de jugador** en otro dispositivo y reentrada tras expulsión (en dispositivo real).
 - (Sin secretos: no se anotan `HOST_PIN_PEPPER`, service-role key, JWT ni `project-ref`.)

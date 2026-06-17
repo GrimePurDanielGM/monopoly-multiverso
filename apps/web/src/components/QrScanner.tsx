@@ -4,6 +4,7 @@ import type { IScannerControls } from '@zxing/browser';
 import { parseScannedCode } from '../lib/qr';
 import { PUBLIC_BASE_URL } from '../lib/config';
 import { isValidCode, normalizeCode } from '../lib/codes';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 type ScanError = 'denied' | 'no-camera' | null;
 
@@ -21,6 +22,8 @@ export function QrScanner({ open, onDetected, onClose }: { open: boolean; onDete
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | undefined>(undefined);
   const zxingRef = useRef<IScannerControls | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<ScanError>(null);
   const [invalid, setInvalid] = useState(false);
@@ -121,6 +124,14 @@ export function QrScanner({ open, onDetected, onClose }: { open: boolean; onDete
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [stopCamera]);
 
+  const close = useCallback(() => {
+    stopCamera();
+    onClose();
+  }, [stopCamera, onClose]);
+
+  // Foco inicial en Cerrar, focus-trap, Escape (cierra y libera cámara) y retorno de foco.
+  useDialogA11y(open, dialogRef, { onEscape: close, initialFocusRef: closeBtnRef });
+
   if (!open) return null;
 
   const submitManual = () => {
@@ -134,10 +145,10 @@ export function QrScanner({ open, onDetected, onClose }: { open: boolean; onDete
   };
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Escanear QR" className="fixed inset-0 z-50 flex flex-col bg-slate-950 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Escanear QR" className="fixed inset-0 z-50 flex flex-col bg-slate-950 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold">Escanear QR</h2>
-        <button type="button" onClick={() => { stopCamera(); onClose(); }} className="min-h-[44px] rounded-lg px-3 text-sm">
+        <button ref={closeBtnRef} type="button" onClick={close} className="min-h-[44px] rounded-lg px-3 text-sm">
           Cerrar
         </button>
       </div>

@@ -1,14 +1,18 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { joinLink } from '../lib/config';
 import { copyToClipboard, shareOrCopy } from '../lib/share';
 import { QrCode } from './QrCode';
 import { LiveRegion } from './LiveRegion';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 /** Compartir la sala: código, enlace, QR, copiar y compartir. El QR solo contiene la URL. */
 export function SharePanel({ code }: { code: string }) {
   const link = joinLink(code);
   const [msg, setMsg] = useState('');
   const [zoom, setZoom] = useState(false);
+  const zoomRef = useRef<HTMLDivElement>(null);
+  const zoomCloseRef = useRef<HTMLButtonElement>(null);
+  useDialogA11y(zoom, zoomRef, { onEscape: () => setZoom(false), initialFocusRef: zoomCloseRef });
 
   const announce = (m: string) => {
     setMsg(m);
@@ -64,14 +68,27 @@ export function SharePanel({ code }: { code: string }) {
 
       {zoom && (
         <div
+          ref={zoomRef}
           role="dialog"
+          aria-modal="true"
           aria-label="Código QR ampliado"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-black/80 p-6"
           onClick={() => setZoom(false)}
         >
           <div className="rounded-2xl bg-white p-4" onClick={(e) => e.stopPropagation()}>
             <QrCode url={link} size={280} />
           </div>
+          <button
+            ref={zoomCloseRef}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setZoom(false);
+            }}
+            className="min-h-[44px] rounded-xl bg-white/10 px-5 text-sm font-semibold text-white"
+          >
+            Cerrar
+          </button>
         </div>
       )}
     </section>

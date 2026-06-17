@@ -124,6 +124,33 @@ describe.skipIf(!enabled)('Recuperaciones — integración local real', () => {
     expect(snap.data.me.is_host).toBe(true);
   }, 30000);
 
+  it('recuperación de host en partida ACTIVE: nuevo dispositivo es host, el antiguo lo pierde', async () => {
+    const H = await makeHost('482915'); // host con ficha delorean
+    const tokens = ['penguin', 'cat', 'boot', 'thimble', 'top_hat'];
+    for (let i = 0; i < 5; i++) {
+      const c = await authed();
+      await c.rpc('join_game', { p_code: H.code, p_name: 'P' + i, p_request_id: crypto.randomUUID() });
+      await c.rpc('choose_token', { p_game: H.gid, p_token: tokens[i] });
+      await c.rpc('set_ready', { p_game: H.gid, p_ready: true });
+    }
+    await H.c.rpc('set_ready', { p_game: H.gid, p_ready: true });
+
+    const pre = await H.c.rpc('get_lobby_snapshot_by_code', { p_code: H.code });
+    const start = await H.c.rpc('start_game', { p_game: H.gid, p_expected_version: pre.data.game.version });
+    expect(start.error).toBeNull();
+    const act = await H.c.rpc('get_lobby_snapshot_by_code', { p_code: H.code });
+    expect(act.data.game.status).toBe('active'); // el backend permite recuperar sobre 'active'
+
+    const D = await authed(); // nuevo dispositivo del anfitrión
+    const r = await recover(D, H.code, '482915');
+    expect(r.ok).toBe(true);
+    const dSnap = await D.rpc('get_lobby_snapshot_by_code', { p_code: H.code });
+    expect(dSnap.data.me.is_host).toBe(true); // (5) nuevo dispositivo es anfitrión
+
+    const hAfter = await H.c.rpc('get_lobby_snapshot_by_code', { p_code: H.code }); // (6) el antiguo pierde el rol
+    expect(hAfter.error?.message === 'NOT_ACTIVE_MEMBER' || hAfter.data?.me?.is_host === false).toBe(true);
+  }, 60000);
+
   it('PIN incorrecto y bloqueo tras 5 intentos', async () => {
     const H = await makeHost('482915');
     const D = await authed();

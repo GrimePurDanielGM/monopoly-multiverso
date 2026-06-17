@@ -24,6 +24,13 @@ export function HomeScreen() {
         >
           Unirse con un código
         </button>
+        <button
+          type="button"
+          onClick={() => navigate('/recuperar')}
+          className="rounded-xl border border-slate-600 px-4 py-3 text-base font-semibold active:bg-slate-800"
+        >
+          Recuperar partida como anfitrión
+        </button>
       </div>
     </section>
   );
