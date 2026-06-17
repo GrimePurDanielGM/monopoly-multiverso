@@ -1,0 +1,13 @@
+-- Fase 1 — GRANT de lectura a service_role para la Edge Function recover_host.
+--
+-- Motivo: recover_host (Edge) usa el cliente service_role para leer public.games y
+-- public.host_recovery por PostgREST directo (admin.from(...).select(...)). service_role
+-- salta RLS (rolbypassrls=t) pero IGUAL necesita el GRANT de tabla. Las tablas de Fase 1
+-- se crean con el rol 'postgres', cuyas default privileges en public solo conceden
+-- TRUNCATE/REFERENCES/TRIGGER a service_role (no SELECT/INSERT/UPDATE/DELETE), y ninguna
+-- migración previa concede SELECT a service_role. Sin esto, recover_host devuelve
+-- 42501 insufficient_privilege (LOOKUP_FAILED) para cualquier código.
+--
+-- Mínimo privilegio: solo SELECT, y solo sobre las dos tablas que recover_host lee.
+-- Las escrituras siguen por RPC SECURITY DEFINER (host_recovery_fail/_success, 0006).
+grant select on public.games, public.host_recovery to service_role;
