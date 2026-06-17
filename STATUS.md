@@ -41,9 +41,13 @@
 - **Frontend (lobby): COMPLETADO** (Bloques 1–6, detalle más abajo).
 - **Fase 1 en conjunto: `PENDIENTE ÚNICAMENTE DE VALIDACIÓN MANUAL EN DISPOSITIVOS REALES`**
   (iPhone/Safari, Android/Chrome y Mac). Código, pruebas automáticas (unitarias, de
-  componente, de integración local real y E2E multiusuario) y build: en verde. **No se
-  declara validada en dispositivos hasta que el responsable complete la checklist manual
-  de más abajo.**
+  componente, de integración local real y E2E multiusuario) y build: en verde.
+  **Validación manual PARCIAL (2026-06-18):** el flujo central multijugador está validado a mano
+  con varios dispositivos/navegadores — creación, unión, sincronización del lobby, fichas, estado
+  "preparado", inicio por el anfitrión y transición sincronizada de todos los clientes a `active`.
+  **Queda pendiente** de validación manual: QR, cámara/escáner, PWA, segundo plano y reconexión
+  (más Compartir, responsive y accesibilidad). **No se declara la validación manual completa
+  hasta cubrir esos puntos** (checklist detallada más abajo).
 
 ## Pendiente para fases siguientes (no en Fase 0/1)
 - Datos reales de tableros, títulos, precios, alquileres, hipotecas, stock físico.
@@ -88,7 +92,7 @@
   - Datos del juego (tableros, precios, cartas, etc.) aún por aportar; bloquean fases ≥4, no Fase 1.
 - (Sin secretos: no se anotan `HOST_PIN_PEPPER`, service-role key, JWT ni `project-ref`.)
 
-## Fase 1 — Frontend (lobby) · **COMPLETADO** (pendiente de validación manual)
+## Fase 1 — Frontend (lobby) · **COMPLETADO** (validación manual parcial — 2026-06-18)
 - **Estado:** `COMPLETADO` en código y pruebas automáticas. **Validación en dispositivos: PENDIENTE.**
 - **Fecha de cierre de implementación:** 2026-06-17
 - **Bloques entregados:**
@@ -139,16 +143,26 @@
   - Las pruebas de integración Realtime son sensibles al arranque del contenedor tras `db reset`
     (si fallan por 0 eventos, reintentar con Realtime ya "healthy"; no es un defecto del producto).
 
-### Checklist de validación manual en dispositivos reales (PENDIENTE — la rellena el responsable)
+### Checklist de validación manual en dispositivos reales (PARCIALMENTE VALIDADO — 2026-06-18)
 > Requisito: nada de esto se marca como validado sin pruebas físicas. iPhone (Safari), Android (Chrome) y Mac.
-- [ ] **Crear partida** en cada dispositivo: nombre, ficha, PIN de 6 dígitos → entra a la sala.
+
+**Validado manualmente el 2026-06-18** (partida real con varios dispositivos y navegadores; todos
+los clientes transicionaron a `active` y muestran "La partida ha comenzado" — placeholder previsto
+de fin de Fase 1, no un error):
+- [x] **Creación de partida** (flujo real desde el navegador).
+- [x] **Unión desde varios dispositivos/navegadores**.
+- [x] **Sincronización del lobby** (todos los clientes ven el mismo estado en vivo).
+- [x] **Selección de fichas**.
+- [x] **Estado "preparado"**.
+- [x] **Inicio por el anfitrión**.
+- [x] **Transición sincronizada de todos los clientes a `active`** ("La partida ha comenzado").
+
+**Pendiente de validación manual** (NO validado todavía):
 - [ ] **Compartir**: copiar código, copiar enlace, botón Compartir (hoja nativa) en iOS y Android.
 - [ ] **QR**: se ve con buen contraste/margen; ampliarlo; alt presente para lector de pantalla.
 - [ ] **Escanear QR** con cámara física (iPhone y Android): permiso explícito, lectura, normalización,
       y **la luz/indicador de cámara se apaga** al detectar/cancelar/cerrar/cambiar de app.
 - [ ] **Cámara denegada / sin cámara / QR de otra app**: mensajes claros y *fallback* manual operativo.
-- [ ] **Unión multiusuario real** (6–16 personas o varios navegadores): todos aparecen, presencia en vivo,
-      todos "preparados", el anfitrión inicia y **todos** ven "La partida ha comenzado".
 - [ ] **Responsive**: 320–360 px sin scroll horizontal; objetivos táctiles cómodos; sin zoom al enfocar inputs (iOS);
       dos columnas en iPad/Mac.
 - [ ] **Accesibilidad**: navegación con teclado, foco visible, diálogos atrapan el foco y cierran con Escape;
