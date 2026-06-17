@@ -36,18 +36,21 @@
 - Datos del juego (tableros, precios, alquileres, hipotecas, stock físico, catálogo de cartas) aún por aportar; bloquean fases ≥4, no la Fase 1.
 - Límites de plan de Supabase/Vercel en partidas largas: a vigilar, sin impacto en Fase 0/1.
 
-## Fase 1 — Sala, jugadores y anfitrión
+## Fase 1 — Sala, jugadores y anfitrión · **`Fase 1: COMPLETADA`**
 - **Backend: COMPLETADO Y VALIDADO** (detalle más abajo).
 - **Frontend (lobby): COMPLETADO** (Bloques 1–6, detalle más abajo).
-- **Fase 1 en conjunto: `PENDIENTE ÚNICAMENTE DE VALIDACIÓN MANUAL EN DISPOSITIVOS REALES`**
-  (iPhone/Safari, Android/Chrome y Mac). Código, pruebas automáticas (unitarias, de
-  componente, de integración local real y E2E multiusuario) y build: en verde.
-  **Validación manual PARCIAL (2026-06-18):** el flujo central multijugador está validado a mano
-  con varios dispositivos/navegadores — creación, unión, sincronización del lobby, fichas, estado
-  "preparado", inicio por el anfitrión y transición sincronizada de todos los clientes a `active`.
-  **Queda pendiente** de validación manual: QR, cámara/escáner, PWA, segundo plano y reconexión
-  (más Compartir, responsive y accesibilidad). **No se declara la validación manual completa
-  hasta cubrir esos puntos** (checklist detallada más abajo).
+- **Fase 1 en conjunto: `COMPLETADA`** (cierre 2026-06-18).
+  - **Implementación local y remota completada** (web en Vercel + Supabase/Edge en el proyecto dev).
+  - **Validación manual COMPLETADA** en los dispositivos y navegadores disponibles: creación de
+    partida, unión desde varios dispositivos/navegadores, selección de fichas, preparado/no
+    preparado, sincronización Realtime, inicio simultáneo, QR, cámara y escáner, segundo plano y
+    retorno, pérdida y recuperación de red, compartir código y enlace, instalación PWA, responsive,
+    recuperación del anfitrión, recuperación del puesto de jugador desde varios dispositivos, y
+    diálogos + acceso visible a recuperación tras las correcciones.
+  - **Android: pendiente como validación adicional NO bloqueante** (no hay dispositivo Android
+    disponible ahora mismo; sin fallo conocido de Android).
+  - **Sin defectos bloqueantes conocidos.**
+  - Último commit funcional de correcciones: `9e44699`. Último commit de estado previo al cierre: `8488a48`.
 
 ## Pendiente para fases siguientes (no en Fase 0/1)
 - Datos reales de tableros, títulos, precios, alquileres, hipotecas, stock físico.
