@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { joinGame, peekGame, type PeekGameResult } from '../lib/api';
 import { ensureAnonSession } from '../lib/session';
 import { isValidCode, normalizeCode } from '../lib/codes';
+import { QrScanner } from '../components/QrScanner';
 
 /** Unirse por código o por enlace /j/:code. La ficha se elige luego, en la sala. */
 export function JoinScreen() {
@@ -17,6 +18,7 @@ export function JoinScreen() {
   const [requestId] = useState<string>(() => crypto.randomUUID());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [scanOpen, setScanOpen] = useState(false);
 
   const runPeek = useCallback(async (raw: string) => {
     const c = normalizeCode(raw);
@@ -62,7 +64,7 @@ export function JoinScreen() {
   }
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-4 lg:mx-auto lg:w-full lg:max-w-md">
       <h1 className="text-xl font-bold">Unirse a una partida</h1>
 
       {!peek && (
@@ -98,8 +100,25 @@ export function JoinScreen() {
           >
             {busy ? 'Buscando…' : 'Buscar sala'}
           </button>
+          <button
+            type="button"
+            onClick={() => setScanOpen(true)}
+            className="min-h-[44px] rounded-xl border border-slate-600 px-4 text-base font-semibold active:bg-slate-800"
+          >
+            Escanear QR
+          </button>
         </form>
       )}
+
+      <QrScanner
+        open={scanOpen}
+        onDetected={(c) => {
+          setScanOpen(false);
+          setCode(c);
+          void runPeek(c);
+        }}
+        onClose={() => setScanOpen(false)}
+      />
 
       {peek && (
         <div className="flex flex-col gap-4">

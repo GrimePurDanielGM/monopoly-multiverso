@@ -38,7 +38,12 @@
 
 ## Fase 1 — Sala, jugadores y anfitrión
 - **Backend: COMPLETADO Y VALIDADO** (detalle más abajo).
-- **Frontend (lobby): EN PLANIFICACIÓN** (plan técnico entregado; sin código aún).
+- **Frontend (lobby): COMPLETADO** (Bloques 1–6, detalle más abajo).
+- **Fase 1 en conjunto: `PENDIENTE ÚNICAMENTE DE VALIDACIÓN MANUAL EN DISPOSITIVOS REALES`**
+  (iPhone/Safari, Android/Chrome y Mac). Código, pruebas automáticas (unitarias, de
+  componente, de integración local real y E2E multiusuario) y build: en verde. **No se
+  declara validada en dispositivos hasta que el responsable complete la checklist manual
+  de más abajo.**
 
 ## Pendiente para fases siguientes (no en Fase 0/1)
 - Datos reales de tableros, títulos, precios, alquileres, hipotecas, stock físico.
@@ -74,4 +79,75 @@
     pendiente de confirmación (borrado condicionado por el guard append-only de `audit_events`).
   - Límites de plan de Supabase/Vercel en partidas largas: a vigilar.
   - Datos del juego (tableros, precios, cartas, etc.) aún por aportar; bloquean fases ≥4, no Fase 1.
+- (Sin secretos: no se anotan `HOST_PIN_PEPPER`, service-role key, JWT ni `project-ref`.)
+
+## Fase 1 — Frontend (lobby) · **COMPLETADO** (pendiente de validación manual)
+- **Estado:** `COMPLETADO` en código y pruebas automáticas. **Validación en dispositivos: PENDIENTE.**
+- **Fecha de cierre de implementación:** 2026-06-17
+- **Bloques entregados:**
+  - **B1** Inicio · crear (con ficha obligatoria + PIN) · unirse por código/enlace `/j/:code`.
+  - **B2** Sala sincronizada: snapshot autoritativo (`get_lobby_snapshot_by_code`), fichas, "preparado".
+  - **B3** Realtime privado (`room:{CODE}`), Presence (solo `public_ref`), heartbeat y reconexión.
+  - **B4** Controles del anfitrión: expulsión (por `public_ref`), configuración, cancelación, inicio
+    (concurrencia optimista `p_expected_version`).
+  - **B5** Recuperación de jugador, reentrada tras expulsión y recuperación de anfitrión (PIN).
+  - **B6** Compartir (código/enlace/QR) · escáner QR · responsive · accesibilidad · PWA · E2E final.
+- **Bloque 6 — detalle:**
+  - **Compartir:** código de 6 caracteres, enlace `{VITE_PUBLIC_BASE_URL}/j/{CODE}`, **QR generado en local**
+    (`qrcode`, sin servicio externo), `Copiar código`, `Copiar enlace`, `Compartir` (Web Share API con
+    *fallback* a portapapeles). El QR/compartir **solo** llevan el enlace público: nunca JWT, PIN, IDs internos.
+  - **Escáner QR:** acción explícita antes de pedir cámara · `BarcodeDetector` con *fallback* `@zxing/browser`
+    · validación de dominio permitido y código · normalización (trim+mayúsculas) · **liberación de cámara**
+    en detección/cancelar/cerrar/desmontar/segundo plano · *fallback* manual permanente (código o enlace).
+  - **Responsive:** móvil 320–360 px sin scroll horizontal, *safe-area*, objetivos táctiles ≥44 px,
+    `font-size:16px` en inputs (sin zoom iOS); lobby a dos columnas en tablet/escritorio.
+  - **Accesibilidad:** foco visible (`:focus-visible`), `role="alert"`/`aria-live` para conexión/estado/copias/
+    errores, diálogos con foco inicial + *focus-trap* + Escape + retorno de foco, alt del QR,
+    `prefers-reduced-motion`.
+  - **PWA:** banners discretos de instalación y de actualización (`useRegisterSW`); **no** se promete offline
+    completo (aviso de "sin conexión" + reintento al volver).
+- **Pruebas automáticas (en verde):**
+  - Unitarias + componente (web): **127 pasan, 11 omitidas** (las omitidas son integración con red, ver abajo).
+  - Motor: **15/15**. `verify:engine`: misma fuente única (checksum reproducible).
+  - Integración local real (gated `SB_URL`/`SB_ANON`): **11/11** (host, realtime, recuperación).
+  - **E2E Playwright multiusuario (Supabase local real)** sobre **iPhone 13 (Safari/WebKit)** y
+    **Pixel 7 (Chrome/Chromium)**, **4/4 por dispositivo (8 en total)**:
+    escenario principal (anfitrión crea, comparte, **5 se unen en contextos independientes**, todos eligen
+    ficha distinta y marcan preparado → **6/6**, el anfitrión inicia → **todos ven "La partida ha comenzado"**),
+    código inexistente, unión por enlace `/j/:code`, y aviso offline sin pantalla en blanco.
+  - `typecheck` y `lint`: limpios. `build`: correcto.
+- **Seguridad verificada (guards automáticos):**
+  - **Bundle de producción (`apps/web/dist`) sin secretos:** 0 coincidencias de
+    `SUPABASE_SERVICE_ROLE_KEY`, `HOST_PIN_PEPPER`, `sb_secret_`, `service_role` ni del JWT de service-role.
+    (La clave **anon** sí está, por diseño: es pública y RLS protege el estado.)
+  - Test de fuente `no-secrets-source`: el código cliente no contiene esos secretos.
+  - Tests existentes que siguen pasando: sin IDs internos en el snapshot (`no-internal-id`),
+    sin *broadcast* emitido desde el cliente (`no-broadcast-emit`), Presence solo con `public_ref`.
+  - El PIN nunca sale del estado local del formulario (no a store, localStorage, logs ni URL).
+- **Riesgos / límites conocidos (NO bloqueantes):**
+  - **Cámara/QR real**: el escáner se prueba en unidad (mock de `@zxing/browser` y `getUserMedia`) — el flujo
+    con cámara física **solo se puede validar a mano** (entra en la checklist).
+  - iOS PWA: el websocket de Realtime muere en segundo plano; mitigado con resync al volver a primer plano.
+  - Build con aviso de *chunk* > 500 kB (un único bundle); no afecta a la funcionalidad. Optimización futura.
+  - Las pruebas de integración Realtime son sensibles al arranque del contenedor tras `db reset`
+    (si fallan por 0 eventos, reintentar con Realtime ya "healthy"; no es un defecto del producto).
+
+### Checklist de validación manual en dispositivos reales (PENDIENTE — la rellena el responsable)
+> Requisito: nada de esto se marca como validado sin pruebas físicas. iPhone (Safari), Android (Chrome) y Mac.
+- [ ] **Crear partida** en cada dispositivo: nombre, ficha, PIN de 6 dígitos → entra a la sala.
+- [ ] **Compartir**: copiar código, copiar enlace, botón Compartir (hoja nativa) en iOS y Android.
+- [ ] **QR**: se ve con buen contraste/margen; ampliarlo; alt presente para lector de pantalla.
+- [ ] **Escanear QR** con cámara física (iPhone y Android): permiso explícito, lectura, normalización,
+      y **la luz/indicador de cámara se apaga** al detectar/cancelar/cerrar/cambiar de app.
+- [ ] **Cámara denegada / sin cámara / QR de otra app**: mensajes claros y *fallback* manual operativo.
+- [ ] **Unión multiusuario real** (6–16 personas o varios navegadores): todos aparecen, presencia en vivo,
+      todos "preparados", el anfitrión inicia y **todos** ven "La partida ha comenzado".
+- [ ] **Responsive**: 320–360 px sin scroll horizontal; objetivos táctiles cómodos; sin zoom al enfocar inputs (iOS);
+      dos columnas en iPad/Mac.
+- [ ] **Accesibilidad**: navegación con teclado, foco visible, diálogos atrapan el foco y cierran con Escape;
+      `prefers-reduced-motion` desactiva animaciones.
+- [ ] **PWA**: instalar en iOS y Android; abrir en *standalone*; recibir aviso de actualización; abrir enlace
+      `/j/{CODE}` directo desde fuera de la app.
+- [ ] **Conexión**: cortar red → aviso discreto; recuperar → reconexión y resync sin pantalla en blanco.
+- [ ] **Recuperación**: jugador en otro dispositivo; anfitrión con PIN; reentrada tras expulsión.
 - (Sin secretos: no se anotan `HOST_PIN_PEPPER`, service-role key, JWT ni `project-ref`.)

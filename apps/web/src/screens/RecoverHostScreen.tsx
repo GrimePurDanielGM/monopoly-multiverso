@@ -43,7 +43,7 @@ export function RecoverHostScreen() {
   }
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-4 lg:mx-auto lg:w-full lg:max-w-md">
       <h1 className="text-xl font-bold">Recuperar control de anfitrión</h1>
       <form className="flex flex-col gap-3" onSubmit={submit} noValidate>
         <label className="flex flex-col gap-1 text-sm">

@@ -71,7 +71,7 @@ export function CreateGameScreen() {
   }
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-4 lg:mx-auto lg:w-full lg:max-w-md">
       <h1 className="text-xl font-bold">Crear partida</h1>
       <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
         <label className="flex flex-col gap-1 text-sm">

@@ -59,7 +59,7 @@ export function RecoveryScreen() {
   }
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-4 lg:mx-auto lg:w-full lg:max-w-md">
       <h1 className="text-xl font-bold">Recuperar mi jugador</h1>
       <p className="text-sm text-slate-400">Sala {code}</p>
       {status ? (

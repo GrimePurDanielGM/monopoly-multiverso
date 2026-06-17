@@ -24,6 +24,7 @@ import { HostActionError } from '../components/HostActionError';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { RecoveryRequestsTray } from '../components/RecoveryRequestsTray';
 import { ReentryForm } from '../components/ReentryForm';
+import { SharePanel } from '../components/SharePanel';
 
 const STATUS_LABEL: Record<string, string> = {
   lobby: 'En sala de espera',
@@ -255,6 +256,8 @@ export function LobbyScreen() {
         </p>
       </header>
 
+      <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-5">
+        <div className="flex flex-col gap-3">
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="rounded-lg bg-slate-800 p-2">
           <p className="text-lg font-bold">{counts.player_count}/{counts.max_players}</p>
@@ -309,6 +312,10 @@ export function LobbyScreen() {
           );
         })}
       </ul>
+        </div>
+
+        <div className="mt-3 flex flex-col gap-3 lg:mt-0">
+          <SharePanel code={game.code} />
 
       <div className="flex flex-col gap-3 rounded-xl border border-slate-700 p-4">
         <p className="text-sm font-medium text-slate-300">Tu ficha</p>
@@ -338,6 +345,8 @@ export function LobbyScreen() {
 
       {me.is_host && <RecoveryRequestsTray requests={requests} players={players} reload={load} />}
       {me.is_host && <HostControls game={game} counts={counts} players={players} requests={requests} reload={load} />}
+        </div>
+      </div>
 
       <ConfirmDialog
         open={kickTarget !== null}

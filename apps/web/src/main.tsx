@@ -1,17 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { registerSW } from 'virtual:pwa-register';
 import { App } from './app/App';
 import './styles/index.css';
 
-// Actualización controlada: cuando hay versión nueva, preguntamos al usuario.
-registerSW({
-  onNeedRefresh() {
-    if (window.confirm('Hay una versión nueva. ¿Actualizar ahora?')) {
-      window.location.reload();
-    }
-  },
-});
+// El service worker se registra y su actualización se gestiona en <PwaPrompts/>
+// (registerType: 'prompt'): UI discreta en lugar de window.confirm.
 
 const el = document.getElementById('root');
 if (!el) throw new Error('Falta #root');
