@@ -27,3 +27,15 @@ enable_anonymous_sign_ins = true
 [functions.healthcheck]
 verify_jwt = false
 import_map = "./functions/import_map.json"
+
+# verify_jwt=false desactiva SOLO la verificación previa de la plataforma (que devolvía
+# 401 al preflight OPTIONS sin Authorization y bloqueaba CORS en el navegador). La
+# autenticación sigue siendo OBLIGATORIA dentro del código: cada función exige y valida
+# el JWT con Supabase Auth (getUser) y responde 401 NOT_AUTHENTICATED si falta/inválido.
+[functions.create_game]
+verify_jwt = false
+import_map = "./functions/import_map.json"
+
+[functions.recover_host]
+verify_jwt = false
+import_map = "./functions/import_map.json"

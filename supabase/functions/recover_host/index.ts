@@ -1,15 +1,18 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { verifyPin } from '../_shared/pbkdf2.ts';
+import { jsonCors, preflight } from '../_shared/cors.ts';
 
 // Log seguro: nunca imprime JWT, PIN, pepper, hashes ni claves.
 function logSafe(stage: string, detail: Record<string, unknown> = {}) {
   console.log(`[recover_host] ${stage} ${JSON.stringify(detail)}`);
 }
-function json(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
-}
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('Origin');
+  // Preflight CORS: responder ANTES de cualquier otra lógica.
+  if (req.method === 'OPTIONS') return preflight(origin);
+  // Cierre sobre `origin`: todas las respuestas (incluidos errores) llevan CORS.
+  const json = (body: unknown, status: number) => jsonCors(body, status, origin);
   try {
     // 1) Entorno disponible en el runtime (sin exponer valores).
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');

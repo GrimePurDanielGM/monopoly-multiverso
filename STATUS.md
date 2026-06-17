@@ -64,7 +64,14 @@
   `recover_host` las lee por PostgREST directo; `service_role` salta RLS pero igual
   necesita el grant de tabla — sin él devolvía `42501 insufficient_privilege`.
 - **Pruebas SQL (Supabase local real):** Integración **14/14**. RLS **11/11**. Exit 0.
-- **Edge Functions desplegadas en dev:** `create_game` y `recover_host` (ambas `verify_jwt: true`).
+- **Edge Functions desplegadas en dev:** `create_game` y `recover_host`. Desde el arreglo CORS
+  usan `verify_jwt = false` en `config.toml` (solo desactiva la verificación PREVIA de la
+  plataforma, que rechazaba con 401 el preflight `OPTIONS` y bloqueaba CORS en el navegador);
+  la autenticación sigue siendo OBLIGATORIA **dentro** del código (validan el JWT con Supabase
+  Auth y responden `401 NOT_AUTHENTICATED` si falta/inválido). CORS por allowlist de orígenes
+  (`vercel.app`, `localhost:5173`, `127.0.0.1:5173`) con reflejo dinámico + `Vary: Origin`, sin
+  `*` ni credenciales de navegador. PBKDF2, pepper, service-role, RLS, RPC, bloqueo de PIN,
+  auditoría y validación de fichas: intactos.
 - **PBKDF2:** **600.000 iteraciones** (PBKDF2-HMAC-SHA256 con pepper de Edge; tiempo constante).
 - **Benchmark remoto del Edge desplegado (Deno WebCrypto, 25 muestras):**
   **p50 90,8 ms · p95 91,0 ms · p99 91,3 ms** → holgadamente bajo el umbral orientativo de 300 ms.
