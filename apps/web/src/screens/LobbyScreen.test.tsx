@@ -18,6 +18,12 @@ vi.mock('../lib/api', () => ({
   listActiveTokens: tokensMock,
   chooseToken: chooseMock,
   setReady: readyMock,
+  // host/kick: no se ejercitan en estos tests; presentes para evitar undefined al renderizar host
+  getMyStatus: () => Promise.resolve({ ok: true, data: 'active' }),
+  kickPlayer: () => Promise.resolve({ ok: true, data: true }),
+  updateConfig: () => Promise.resolve({ ok: true, data: true }),
+  startGame: () => Promise.resolve({ ok: true, data: true }),
+  cancelGame: () => Promise.resolve({ ok: true, data: true }),
 }));
 vi.mock('../lib/session', () => ({ ensureAnonSession: () => Promise.resolve('ready') }));
 vi.mock('../hooks/useLobbyRealtime', () => ({ useLobbyRealtime: () => ({ reconnect: () => {} }) }));

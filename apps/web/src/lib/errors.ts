@@ -24,6 +24,16 @@ const MESSAGES: Record<string, string> = {
   INCOMPLETE_PLAYER: 'Elige una ficha antes de marcarte como preparado.',
   INVALID_SNAPSHOT: 'No se pudo leer el estado de la sala. Vuelve a intentarlo.',
   NETWORK: 'Problema de red. Comprueba tu conexión e inténtalo de nuevo.',
+  // Acciones del anfitrión
+  NOT_HOST: 'Solo el anfitrión puede hacer esto.',
+  VERSION_CONFLICT: 'Otro cambio se aplicó antes. Se ha recargado la sala; revísala e inténtalo de nuevo.',
+  INVALID_PLAYER_LIMITS: 'Límites de jugadores no válidos.',
+  MAX_EXCEEDS_TOKENS: 'El máximo supera el número de fichas disponibles.',
+  TARGET_NOT_FOUND: 'Ese jugador ya no está en la sala.',
+  CANNOT_KICK_HOST: 'No se puede expulsar al anfitrión.',
+  NOT_ENOUGH_PLAYERS: 'Faltan jugadores para empezar.',
+  PLAYERS_INCOMPLETE: 'Todos deben tener ficha y estar preparados.',
+  PENDING_RECOVERIES: 'Hay solicitudes pendientes por resolver.',
 };
 
 /** Mensaje legible para un código de error conocido (o genérico si no lo es). */

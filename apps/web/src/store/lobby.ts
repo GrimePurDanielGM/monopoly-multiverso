@@ -4,7 +4,7 @@
 import { create } from 'zustand';
 import type { LobbySnapshot, SnapGame, SnapPlayer, SnapMe, SnapRequest, SnapCounts } from '../lib/snapshot';
 
-export type SnapshotStatus = 'idle' | 'loading' | 'ready' | 'not_member' | 'error';
+export type SnapshotStatus = 'idle' | 'loading' | 'ready' | 'not_member' | 'kicked' | 'error';
 
 interface LobbyState {
   game: SnapGame | null;

@@ -111,6 +111,56 @@ export async function heartbeat(gameId: string): Promise<ApiResult<true>> {
   return { ok: true, data: true };
 }
 
+// ---- Acciones del anfitrión (el backend valida NOT_HOST; la UI solo decide visibilidad) ----
+
+/** Cambia la configuración del lobby con control de versión (concurrencia optimista). */
+export async function updateConfig(
+  gameId: string,
+  patch: Record<string, unknown>,
+  expectedVersion: number,
+): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('update_config', {
+    p_game: gameId,
+    p_patch: patch,
+    p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Expulsa a un jugador por su public_ref (nunca por id interno). */
+export async function kickPlayer(gameId: string, targetRef: string): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('kick_player', { p_game: gameId, p_target_ref: targetRef });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Cancela la sala (idempotente). No es borrado físico. */
+export async function cancelGame(gameId: string): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('cancel_game', { p_game: gameId });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Inicia la partida con control de versión. turn_order (ids internos) se DESCARTA. */
+export async function startGame(gameId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('start_game', { p_game: gameId, p_expected_version: expectedVersion });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Estado del llamante en la partida: 'active' | 'kicked' | 'not_member'. */
+export async function getMyStatus(gameId: string): Promise<ApiResult<'active' | 'kicked' | 'not_member'>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { data, error } = await supabase.rpc('my_status', { p_game: gameId });
+  if (error) return fail(error.message);
+  return { ok: true, data: data as 'active' | 'kicked' | 'not_member' };
+}
+
 /** Crea una partida vía Edge Function `create_game` (hashea el PIN con el pepper en el Edge). */
 export async function createGame(input: CreateGameInput): Promise<ApiResult<CreateGameResult>> {
   if (!supabase) return fail('UNCONFIGURED');
