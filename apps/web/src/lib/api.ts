@@ -4,6 +4,7 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { messageForError } from './errors';
+import { parseSnapshot, type LobbySnapshot } from './snapshot';
 
 export type ApiOk<T> = { ok: true; data: T };
 export type ApiErr = { ok: false; code: string; message: string };
@@ -63,17 +64,43 @@ export interface CreateGameInput {
   request_id: string;
 }
 
-/** Catálogo provisional de fichas activas (lectura directa permitida; token_catalog es público). */
-export async function listActiveTokens(): Promise<ApiResult<PublicToken[]>> {
+/** Catálogo de fichas activas de la versión indicada (lectura directa permitida; token_catalog es público). */
+export async function listActiveTokens(catalogVersion = 0): Promise<ApiResult<PublicToken[]>> {
   if (!supabase) return fail('UNCONFIGURED');
   const { data, error } = await supabase
     .from('token_catalog')
     .select('id,label,icon')
     .eq('active', true)
-    .eq('catalog_version', 0)
+    .eq('catalog_version', catalogVersion)
     .order('sort_order', { ascending: true });
   if (error) return fail(error.message);
   return { ok: true, data: (data ?? []) as PublicToken[] };
+}
+
+/** Carga la sala por código (resuelve game_id de forma segura y devuelve el snapshot saneado). */
+export async function getLobbySnapshotByCode(code: string): Promise<ApiResult<LobbySnapshot>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { data, error } = await supabase.rpc('get_lobby_snapshot_by_code', { p_code: code });
+  if (error) return fail(error.message);
+  const parsed = parseSnapshot(data);
+  if (!parsed.ok) return fail('INVALID_SNAPSHOT');
+  return { ok: true, data: parsed.data };
+}
+
+/** Elige/cambia ficha (solo en lobby). El servidor valida; el cliente recarga el snapshot tras éxito. */
+export async function chooseToken(gameId: string, tokenId: string): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('choose_token', { p_game: gameId, p_token: tokenId });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Marca preparado/no preparado. El servidor valida (INCOMPLETE_PLAYER, etc.). */
+export async function setReady(gameId: string, ready: boolean): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('set_ready', { p_game: gameId, p_ready: ready });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
 }
 
 /** Crea una partida vía Edge Function `create_game` (hashea el PIN con el pepper en el Edge). */

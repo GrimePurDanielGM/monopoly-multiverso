@@ -16,6 +16,14 @@ const MESSAGES: Record<string, string> = {
   GAME_CANCELLED: 'Esta partida fue cancelada.',
   GAME_NOT_JOINABLE: 'Esta partida ya no admite nuevas entradas.',
   KICKED_NEEDS_REENTRY: 'Fuiste expulsado de esta sala; usa la opción de reentrada.',
+  // Sala / fichas / preparado
+  NOT_ACTIVE_MEMBER: 'No formas parte de esta sala.',
+  NOT_IN_LOBBY: 'La partida ya no está en la sala de espera.',
+  TOKEN_INVALID: 'Esa ficha no está disponible.',
+  TOKEN_TAKEN: 'Otra persona acaba de coger esa ficha.',
+  INCOMPLETE_PLAYER: 'Elige una ficha antes de marcarte como preparado.',
+  INVALID_SNAPSHOT: 'No se pudo leer el estado de la sala. Vuelve a intentarlo.',
+  NETWORK: 'Problema de red. Comprueba tu conexión e inténtalo de nuevo.',
 };
 
 /** Mensaje legible para un código de error conocido (o genérico si no lo es). */
