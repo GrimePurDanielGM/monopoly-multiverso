@@ -17,6 +17,7 @@ vi.mock('react-router-dom', () => ({
 vi.mock('../lib/api', () => ({
   getLobbySnapshotByCode: snapMock,
   getActiveSnapshotByCode: activeMock,
+  peekGame: () => Promise.resolve({ ok: true, data: { status: 'lobby', player_count: 3, max_players: 16, accepts_entries: true, name: 'x', open_slots: 13, available_tokens: [], players: [] } }),
   listActiveTokens: tokensMock,
   chooseToken: chooseMock,
   setReady: readyMock,

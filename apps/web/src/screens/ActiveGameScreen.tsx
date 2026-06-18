@@ -5,6 +5,8 @@ import {
 } from '../lib/api';
 import { useActiveStore } from '../store/active';
 import { useRealtimeStore } from '../store/realtime';
+import { useLobbyStore } from '../store/lobby';
+import { RecoveryRequestsTray } from '../components/RecoveryRequestsTray';
 import { isMyTurn, isHost, newRequestId } from '../lib/activeSelectors';
 import { ConnectionBar } from '../components/ConnectionBar';
 import { LiveRegion } from '../components/LiveRegion';
@@ -32,6 +34,10 @@ export function ActiveGameScreen({
   const snap = useActiveStore((s) => s.snap);
   const replaceActive = useActiveStore((s) => s.replaceActive);
   const channelStatus = useRealtimeStore((s) => s.channelStatus);
+  // Solicitudes de recuperación: vienen del snapshot de lobby (sigue cargado en activa)
+  // para que el anfitrión pueda aprobarlas también durante la partida.
+  const requests = useLobbyStore((s) => s.requests);
+  const lobbyPlayers = useLobbyStore((s) => s.players);
 
   const [icons, setIcons] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -105,6 +111,7 @@ export function ActiveGameScreen({
         </div>
 
         <div className="mt-3 flex flex-col gap-3 lg:mt-0">
+          {host && <RecoveryRequestsTray requests={requests} players={lobbyPlayers} reload={onReload} />}
           <PlayerTransferForm snap={snap} busy={busy} onTransfer={(to, amt) => void run(() => playerTransfer(gameId, to, amt, newRequestId(), ver))} />
           {host && (
             <BankPanel snap={snap} busy={busy}

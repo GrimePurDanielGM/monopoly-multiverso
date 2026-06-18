@@ -104,4 +104,41 @@ describe.skipIf(!enabled)('Partida activa — integración local real', () => {
     // Reanudación: una sesión nueva del host (recover) ve el estado activo correcto.
     await member.removeAllChannels();
   }, 60000);
+
+  it('reanudación de jugador normal en partida activa: misma sesión y recuperación', async () => {
+    const { host, joiners, code } = await startedGame();
+    const J = joiners[0]!; // jugador normal
+    const s0 = await J.rpc('get_active_snapshot_by_code', { p_code: code });
+    const ref0 = s0.data.me.public_ref as string;
+    const bal0 = s0.data.me.balance as number;
+    const order0 = JSON.stringify(s0.data.turn.order);
+    const ver0 = s0.data.runtime_version as number;
+
+    // (4) Misma sesión: vuelve a pedir el snapshot -> sigue dentro, mismo ref y saldo.
+    const same = await J.rpc('get_active_snapshot_by_code', { p_code: code });
+    expect(same.data.me.public_ref).toBe(ref0);
+    expect(same.data.me.balance).toBe(bal0);
+
+    // (5-7) Sesión nueva (otro dispositivo) solicita recuperar la identidad activa; host aprueba.
+    const D = await authed();
+    const rr = await D.rpc('request_recovery', { p_code: code, p_player_ref: ref0, p_device: 'iPad' });
+    expect(rr.error).toBeNull();
+    const res = await host.rpc('resolve_recovery', { p_request_ref: rr.data.request_ref, p_accept: true });
+    expect(res.error).toBeNull();
+
+    // (8) La sesión nueva carga el snapshot activo y es el MISMO jugador (no uno nuevo).
+    const dSnap = await D.rpc('get_active_snapshot_by_code', { p_code: code });
+    expect(dSnap.data.me.public_ref).toBe(ref0);
+    expect(dSnap.data.me.is_host).toBe(false);
+    // (10-11) Sin fila nueva, mismo saldo, mismo orden.
+    expect(dSnap.data.players.length).toBe(6);
+    expect(dSnap.data.players.find((p: { public_ref: string }) => p.public_ref === ref0).balance).toBe(bal0);
+    expect(JSON.stringify(dSnap.data.turn.order)).toBe(order0);
+    // (13) runtime_version no cambia por la recuperación (no es una operación económica/turno).
+    expect(dSnap.data.runtime_version).toBe(ver0);
+
+    // (9) La sesión antigua pierde el control.
+    const old = await J.rpc('get_active_snapshot_by_code', { p_code: code });
+    expect(old.error?.message).toBe('NOT_ACTIVE_MEMBER');
+  }, 60000);
 });

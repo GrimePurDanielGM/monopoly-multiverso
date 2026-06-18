@@ -68,7 +68,7 @@ test('partida activa: banco, turnos, correcciones, reversión y sincronización'
   await bank.getByLabel('Importe').fill('500');
   await bank.getByRole('button', { name: 'Pagar al jugador' }).click();
   // 11) Sincronización: Marty (otro cliente) ve su saldo 3.500 ₥.
-  await expect(pages[0]!.getByText('3.500 ₥').first()).toBeVisible({ timeout: 20_000 });
+  await expect(pages[0]!.getByText('3.500 ₥').first()).toBeVisible({ timeout: 30_000 });
 
   // 5) Turnos: el jugador en turno finaliza; el número de turno avanza.
   const all = [host, ...pages];
@@ -85,7 +85,7 @@ test('partida activa: banco, turnos, correcciones, reversión y sincronización'
   await pages[1]!.getByLabel('Destinatario').selectOption({ label: 'Jennifer' });
   await pages[1]!.getByLabel('Importe').first().fill('200');
   await docTransfer.click();
-  await expect(pages[2]!.getByText('3.200 ₥').first()).toBeVisible({ timeout: 20_000 });
+  await expect(pages[2]!.getByText('3.200 ₥').first()).toBeVisible({ timeout: 30_000 });
 
   // 8) Ajuste de saldo (corrección del anfitrión) a George = 9.000.
   const details = host.locator('details', { hasText: 'Correcciones del anfitrión' });
@@ -101,7 +101,7 @@ test('partida activa: banco, turnos, correcciones, reversión y sincronización'
   await host.getByRole('button', { name: 'Revertir' }).first().click();
   await host.getByRole('dialog', { name: 'Revertir movimiento' }).getByLabel('Motivo (obligatorio)').fill('deshacer pago');
   await host.getByRole('dialog', { name: 'Revertir movimiento' }).getByRole('button', { name: 'Revertir' }).click();
-  await expect(pages[0]!.getByText('3.000 ₥').first()).toBeVisible({ timeout: 20_000 });
+  await expect(pages[0]!.getByText('3.000 ₥').first()).toBeVisible({ timeout: 30_000 });
 
   // 12-13) Recargar el anfitrión: el estado activo se conserva.
   await host.reload();

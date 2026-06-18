@@ -7,6 +7,7 @@ import {
   getMyStatus,
   kickPlayer,
   listActiveTokens,
+  peekGame,
   setReady,
   type PublicToken,
 } from '../lib/api';
@@ -71,6 +72,7 @@ export function LobbyScreen() {
   const [kickTarget, setKickTarget] = useState<SnapPlayer | null>(null);
   const [kickBusy, setKickBusy] = useState(false);
   const [kickError, setKickError] = useState<string | null>(null);
+  const [roomStatus, setRoomStatus] = useState<string | null>(null); // estado de la sala para no-miembros
 
   // Distingue expulsado de no-miembro consultando my_status con el game_id previo.
   const applyNotMember = useCallback(
@@ -82,9 +84,12 @@ export function LobbyScreen() {
           return;
         }
       }
+      // Para no-miembros, el estado de la sala decide las acciones (unirse vs recuperar).
+      const pk = await peekGame(code);
+      setRoomStatus(pk.ok ? pk.data.status : null);
       setError('not_member', 'No formas parte de esta sala.');
     },
-    [setError],
+    [code, setError],
   );
 
   const load = useCallback(async () => {
@@ -192,18 +197,26 @@ export function LobbyScreen() {
   }
 
   if (snapshotStatus === 'not_member') {
+    const active = roomStatus === 'active';
     return (
       <section className="flex flex-col gap-4">
         <h1 className="text-xl font-bold">Sala {code}</h1>
         <p role="alert" className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-200">
-          {error ?? 'No formas parte de esta sala.'}
+          {active ? 'Esta partida ya ha comenzado. Si ya formabas parte, recupera tu jugador.' : (error ?? 'No formas parte de esta sala.')}
         </p>
-        <Link to="/unirse" className="rounded-xl bg-indigo-600 px-4 py-3 text-center text-base font-semibold">
-          Unirse a la partida
-        </Link>
-        <Link to={`/sala/${code}/recuperar-jugador`} className="rounded-xl border border-slate-600 px-4 py-3 text-center text-base font-semibold">
+        {/* En partida activa no se puede unir: la vía es recuperar el jugador existente. */}
+        <Link to={`/sala/${code}/recuperar-jugador`} className="rounded-xl bg-indigo-600 px-4 py-3 text-center text-base font-semibold">
           Recuperar mi jugador
         </Link>
+        {active ? (
+          <Link to="/recuperar" className="rounded-xl border border-slate-600 px-4 py-3 text-center text-base font-semibold">
+            Recuperar partida como anfitrión
+          </Link>
+        ) : (
+          <Link to="/unirse" className="rounded-xl border border-slate-600 px-4 py-3 text-center text-base font-semibold">
+            Unirse a la partida
+          </Link>
+        )}
       </section>
     );
   }

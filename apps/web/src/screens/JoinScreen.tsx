@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { joinGame, peekGame, type PeekGameResult } from '../lib/api';
+import { getLobbySnapshotByCode, joinGame, peekGame, type PeekGameResult } from '../lib/api';
 import { ensureAnonSession } from '../lib/session';
 import { isValidCode, normalizeCode } from '../lib/codes';
 import { QrScanner } from '../components/QrScanner';
@@ -34,6 +34,14 @@ export function JoinScreen() {
       setBusy(false);
       return;
     }
+    // 1) ¿Esta sesión ya controla un jugador en la sala? -> reanudar (lobby o activa),
+    //    sin volver a unirse ni elegir ficha. La autoridad es el snapshot (auth.uid).
+    const mine = await getLobbySnapshotByCode(c);
+    if (mine.ok) {
+      navigate(`/sala/${c}`);
+      return;
+    }
+    // 2) No soy miembro: el estado decide el flujo (unirse en lobby; recuperar en activa).
     const result = await peekGame(c);
     if (result.ok) {
       setCode(c);
@@ -42,7 +50,7 @@ export function JoinScreen() {
       setError(result.message);
     }
     setBusy(false);
-  }, []);
+  }, [navigate]);
 
   // Si llegamos por enlace /j/:code, hacemos la vista previa automáticamente.
   useEffect(() => {
@@ -130,7 +138,7 @@ export function JoinScreen() {
             </p>
           </div>
 
-          {peek.accepts_entries ? (
+          {peek.status === 'lobby' && peek.accepts_entries && (
             <form className="flex flex-col gap-3" onSubmit={onJoin} noValidate>
               <label className="flex flex-col gap-1 text-sm">
                 <span className="text-slate-300">Tu nombre</span>
@@ -156,9 +164,40 @@ export function JoinScreen() {
                 {busy ? 'Entrando…' : 'Unirme'}
               </button>
             </form>
-          ) : (
+          )}
+
+          {peek.status === 'lobby' && !peek.accepts_entries && (
             <p role="status" className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-300">
-              Esta sala no admite nuevas entradas ahora mismo.
+              Esta sala está llena y no admite nuevas entradas ahora mismo.
+            </p>
+          )}
+
+          {/* Partida en curso: no se puede unir. Si ya jugabas, recupera tu jugador. */}
+          {peek.status === 'active' && (
+            <div className="flex flex-col gap-2">
+              <p role="status" className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-300">
+                Esta partida ya ha comenzado. Si ya formabas parte, recupera tu jugador.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate(`/sala/${code}/recuperar-jugador`)}
+                className="min-h-[44px] rounded-xl bg-indigo-600 px-4 text-base font-semibold active:bg-indigo-700"
+              >
+                Recuperar mi jugador
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/recuperar')}
+                className="min-h-[44px] rounded-xl border border-slate-600 px-4 text-base font-semibold active:bg-slate-800"
+              >
+                Recuperar partida como anfitrión
+              </button>
+            </div>
+          )}
+
+          {peek.status === 'cancelled' && (
+            <p role="status" className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-300">
+              Esta partida fue cancelada.
             </p>
           )}
 

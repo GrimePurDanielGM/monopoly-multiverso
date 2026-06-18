@@ -26,6 +26,13 @@ export function HomeScreen() {
         </button>
         <button
           type="button"
+          onClick={() => navigate('/unirse')}
+          className="rounded-xl border border-slate-600 px-4 py-3 text-base font-semibold active:bg-slate-800"
+        >
+          Recuperar mi jugador
+        </button>
+        <button
+          type="button"
           onClick={() => navigate('/recuperar')}
           className="rounded-xl border border-slate-600 px-4 py-3 text-base font-semibold active:bg-slate-800"
         >
