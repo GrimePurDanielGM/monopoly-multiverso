@@ -1,5 +1,8 @@
 // Lógica pura de la partida activa: turnos, importes, permisos y formato. Sin estado ni red.
-import type { ActiveSnapshot, ActivePlayer, ActiveProperty, LedgerEntry, LedgerKind } from './activeSnapshot';
+import type {
+  ActiveSnapshot, ActivePlayer, ActiveProperty, LedgerEntry, LedgerKind,
+  BoardKey, BoardSpace, PlayerPosition, SpaceType,
+} from './activeSnapshot';
 
 export const MAX_AMOUNT = 10_000_000; // tope por operación (espejo del backend)
 export const MAX_BALANCE = 1_000_000_000_000;
@@ -96,6 +99,7 @@ const KIND_LABEL: Record<LedgerKind, string> = {
   property_auction_purchase: 'Compra en subasta',
   bankruptcy_cash_to_bank: 'Bancarrota: efectivo a la banca',
   bankruptcy_cash_to_player: 'Bancarrota: efectivo al acreedor',
+  pass_start_bonus: 'Bonus por pasar por salida',
 };
 export function kindLabel(kind: LedgerKind): string {
   return KIND_LABEL[kind];
@@ -191,6 +195,70 @@ export const BOARD_LABEL: Record<string, string> = {
   classic: 'Clásico',
   back_to_the_future: 'Regreso al futuro',
 };
+
+// ── Movimiento y tablero (Fase 4) ────────────────────────────────────────────────
+export const SPACE_TYPE_LABEL: Record<SpaceType, string> = {
+  start: 'Salida', property: 'Propiedad', tax: 'Impuesto', card: 'Carta',
+  jail: 'Cárcel', go_to_jail: 'Ir a la cárcel', parking: 'Parking', special: 'Especial',
+};
+export function spaceTypeLabel(t: SpaceType): string {
+  return SPACE_TYPE_LABEL[t] ?? t;
+}
+
+/** ¿Puedo tirar los dados / mover ahora? (en curso, mi turno, no espectador). */
+export function canRoll(snap: ActiveSnapshot): boolean {
+  return canActAsMe(snap) && snap.me.is_current;
+}
+/** El anfitrión puede corregir posiciones mientras la partida está en curso. */
+export function canHostSetPosition(snap: ActiveSnapshot): boolean {
+  return snap.me.is_host && isRunning(snap);
+}
+
+/** Tamaño del anillo de un tablero (según el snapshot). */
+export function ringSize(snap: ActiveSnapshot, board: BoardKey): number {
+  return snap.boards.find((b) => b.board_key === board)?.ring_size
+    ?? snap.spaces.filter((s) => s.board_key === board).length;
+}
+
+/** Casilla resultante de avanzar `steps` desde `from` en un anillo de tamaño `ring` (espejo del backend). */
+export function nextSpaceIndex(from: number, steps: number, ring: number): number {
+  if (ring <= 0) return from;
+  return (((from + steps) % ring) + ring) % ring;
+}
+
+/** ¿Se cruza (o se cae en) la salida al avanzar `steps` desde `from`? (espejo del backend, steps≥1). */
+export function passesStart(from: number, steps: number, ring: number): boolean {
+  return ring > 0 && steps > 0 && from + steps >= ring;
+}
+
+/** Posición (ficha) de un jugador, si la tiene. */
+export function positionOf(snap: ActiveSnapshot, ref: string): PlayerPosition | undefined {
+  return snap.positions.find((p) => p.player_ref === ref);
+}
+
+/** public_ref de los jugadores cuya ficha está en una casilla concreta. */
+export function playersAtSpace(snap: ActiveSnapshot, board: BoardKey, index: number): string[] {
+  return snap.positions.filter((p) => p.board_key === board && p.space_index === index).map((p) => p.player_ref);
+}
+
+/** Casillas de un tablero ordenadas por índice. */
+export function spacesOfBoard(snap: ActiveSnapshot, board: BoardKey): BoardSpace[] {
+  return snap.spaces.filter((s) => s.board_key === board).sort((a, b) => a.space_index - b.space_index);
+}
+
+/** Casillas agrupadas por tablero (orden de anillo). */
+export function spacesByBoard(snap: ActiveSnapshot): { board: BoardKey; label: string; items: BoardSpace[] }[] {
+  const order: BoardKey[] = [];
+  for (const s of snap.spaces) if (!order.includes(s.board_key)) order.push(s.board_key);
+  return order.map((board) => ({ board, label: BOARD_LABEL[board] ?? board, items: spacesOfBoard(snap, board) }));
+}
+
+/** La propiedad sobre la que está la ficha del jugador local (o null si la casilla no es propiedad). */
+export function currentSpaceProperty(snap: ActiveSnapshot): ActiveProperty | null {
+  const ref = snap.current_space?.property_ref;
+  if (!ref) return null;
+  return snap.properties.find((p) => p.property_ref === ref) ?? null;
+}
 
 /** Propiedades agrupadas por tablero, preservando el orden del snapshot. */
 export function propertiesByBoard(snap: ActiveSnapshot): { board: string; label: string; items: ActiveProperty[] }[] {

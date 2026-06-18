@@ -1,5 +1,55 @@
 # Estado del proyecto — lista viva
 
+## Fase 4 — Movimiento y tablero (base) · **`Fase 4: COMPLETADA` (pendiente validación manual)**
+- **Estado:** backend local + **dev remoto aplicado**, frontend, SQL Fases 1–4, integración local, E2E
+  Chromium+WebKit y build verdes; desplegado en Vercel. Cierre 2026-06-19. **No se avanza a Fase 5.**
+- **Alcance:** sistema base de posiciones y movimiento que conecta el núcleo económico con la posición
+  real. Catálogo de casillas, posición por jugador, mover manual, tirar dados, paso por salida (cobro),
+  caer en propiedad (disponible/mía/de otro/no comprable), visualización de tablero, auditoría e
+  historial, sincronización multiusuario. **Fuera de alcance (diferido):** cartas, cárcel, parking,
+  guardianes, ruleta, casas, hoteles, hipotecas, intersecciones de dos tableros.
+- **Modelo de tablero (`0025`):** tabla `board_spaces` (catálogo global, deny-all) **derivada del catálogo
+  real** sin inventar topología: anillo por tablero = 1 casilla `start` (Salida, índice 0) + 1 casilla
+  `property` por propiedad del catálogo en orden de `sort_order` (Clásico 29, RdF 29; **58 casillas**). El
+  enum `space_type` admite start/property/tax/card/jail/go_to_jail/parking/special; en Fase 4 solo se
+  generan start y property. **Las casillas no-propiedad (impuestos/suerte/cárcel/parking) quedan diferidas**
+  hasta confirmar la topología física (evita inventar posiciones). Cada `property` apunta a un
+  `property_ref` real (FK); las no comprables no tendrían `property_ref`.
+- **Posiciones (`0025`):** tabla `player_positions` (deny-all, una por jugador/partida, conserva historial,
+  no se borra). Siembra en la salida del tablero inicial (`classic`) en `start_game` y en `resolve_late_join`
+  (misma transacción); helper idempotente `_p4_ensure_positions` + backfill de partidas ya activas. Saliente/
+  expulsado/bancarrota conserva su última posición; deja de poder mover.
+- **RPC (`0026`):** `move_player` (jugador actual, activo, running; 1–12; avanza en su tablero; al superar el
+  final vuelve a la salida y cobra el bonus), `roll_and_move` (dos dados 1–6, mueve la suma, registra la
+  tirada), `host_set_player_position` (anfitrión, motivo obligatorio; coloca la ficha **sin** cobrar salida
+  ni disparar compra/alquiler). Patrón Fase 2 íntegro: idempotencia (con guard pausa/finalización) → lock
+  `game_runtime FOR UPDATE` → permisos → `runtime_version` → efecto → ledger/auditoría → **1 Broadcast**.
+- **Ledger/auditoría:** nuevo ledger monetario **`pass_start_bonus`** (banca→jugador, reconciliable; suena
+  el efecto de "dinero recibido"); eventos de dominio `player_moved`, `passed_start`, `player_rolled`,
+  `host_set_position`. El movimiento sin dinero NO crea ledger falso (solo auditoría).
+- **Snapshot (`0027`):** añade `boards` (anillo + bonus), `spaces`, `positions`, `my_position`,
+  `current_space`, `last_roll`, `last_move`, y `config.start_bonus` (def. 200). Saneado: sin ids internos,
+  `auth_uid`, `game_id` ni tablas directas (verificado por test).
+- **UI:** bloque **"Movimiento"** en la pantalla principal (turno, tablero/casilla actuales, última tirada y
+  resultado, **Tirar dados**, **Mover manualmente**, avisos de turno/pausa/finalización/espectador) con
+  acciones **desde el contexto de la casilla** (solicitar compra / pagar alquiler, reutilizando los flujos de
+  Fase 3, sin compra directa). Vista dedicada **"Ver tablero"** (`BoardModal`, modal a pantalla completa con
+  scroll propio): recorrido por tablero (Clásico/RdF), nombre/tipo/precio/propietario, **fichas** de los
+  jugadores (resalta mi posición y el jugador actual) y **corrección de posición del anfitrión** (motivo
+  obligatorio). Responsive móvil (acordeones, sin hover).
+- **Integración:** alquiler/compra/subasta/bancarrota/abandono/expulsión/pausa/finalización/espectador y
+  Broadcast como invalidación, intactos. El turno NO avanza automáticamente (se pulsa "Finalizar turno").
+- **Migraciones:** `0025_phase4_board`, `0026_phase4_movement`, `0027_phase4_snapshot` (no destructivas).
+- **Pruebas:** SQL Fase 4 **30** (board 6, movement 7, start_bonus 4, position_corrections 5, rls 5,
+  reconcile 3); SQL Fases 1–3 sin regresión. Unit **246** (movement: matemática del anillo, selectores,
+  permisos; componentes `MovementPanel`/`BoardModal`). E2E `movement.spec` (posición inicial, dados, ver
+  tablero+fichas, corrección de posición, compra/alquiler por casilla, paso por salida, persistencia) en
+  Chromium y WebKit; **36/36 E2E** verdes. typecheck/lint/build limpios.
+- **Supabase dev:** `xazuytlseobprxqkdpjy` (monopoly-multiverso-dev) con `0025`–`0027` aplicadas (Management
+  API; el pooler cuelga `db push`) e historial registrado; smoke backend OK (58 casillas, ring 29, 3 RPC).
+- **Riesgos restantes (no bloqueantes):** las casillas no-propiedad (impuestos/cartas/cárcel/parking) y el
+  segundo tablero por intersecciones se implementarán en fases posteriores con la topología confirmada.
+
 ## Fase 0 — Esqueleto · **COMPLETADA Y VALIDADA**
 - **Estado:** `COMPLETADA`
 - **Fecha de cierre:** 2026-06-15

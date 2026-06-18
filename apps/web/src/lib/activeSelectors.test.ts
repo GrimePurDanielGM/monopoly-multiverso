@@ -16,7 +16,7 @@ const players: ActivePlayer[] = [
   { public_ref: 'P-BBBB', display_name: 'Beto', token_id: 'boot', balance: 1000, is_current: false, status: 'active' },
 ];
 const snap: ActiveSnapshot = {
-  game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 6, max_players: 16, allow_late_join: false } },
+  game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 6, max_players: 16, allow_late_join: false, start_bonus: 200 } },
   me: { public_ref: 'P-BBBB', is_host: true, balance: 1000, is_current: false, is_spectator: false },
   turn: { turn_number: 5, current_player_ref: 'P-AAAA', order: ['P-AAAA', 'P-BBBB'] },
   players,
@@ -27,6 +27,7 @@ const snap: ActiveSnapshot = {
   leave_requests: [],
   bankruptcy_requests: [],
   late_join_requests: [],
+    boards: [], spaces: [], positions: [], my_position: null, current_space: null, last_roll: null, last_move: null,
   runtime_status: 'running',
   control: { paused_by_ref: null, finished_by_ref: null, reason: null },
   runtime_version: 7,

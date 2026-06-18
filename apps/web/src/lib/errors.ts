@@ -90,6 +90,12 @@ const MESSAGES: Record<string, string> = {
   HOST_CANNOT_BANKRUPT: 'El anfitrión no puede declararse en bancarrota.',
   INVALID_CREDITOR: 'El acreedor no es válido.',
   INVALID_BANKRUPTCY_KIND: 'Tipo de bancarrota no válido.',
+  // Fase 4 — movimiento y tablero
+  INVALID_STEPS: 'El número de casillas debe estar entre 1 y 12.',
+  NO_POSITION: 'Ese jugador todavía no tiene posición en el tablero.',
+  INVALID_SPACE: 'Esa casilla no existe en el tablero.',
+  INVALID_BOARD: 'Ese tablero no es válido.',
+  BOARD_NOT_FOUND: 'No se encontró el tablero.',
 };
 
 /** Mensaje legible para un código de error conocido (o genérico si no lo es). */

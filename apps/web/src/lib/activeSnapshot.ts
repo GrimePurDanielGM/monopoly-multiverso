@@ -7,9 +7,11 @@ export type LedgerKind =
   | 'host_player_transfer' | 'host_adjust' | 'host_revert'
   | 'player_exit_to_bank' | 'player_exit_distribution' | 'player_exit_remainder_to_bank'
   | 'property_purchase' | 'rent_payment' | 'property_auction_purchase'
-  | 'bankruptcy_cash_to_bank' | 'bankruptcy_cash_to_player';
+  | 'bankruptcy_cash_to_bank' | 'bankruptcy_cash_to_player'
+  | 'pass_start_bonus';
 
 export type BoardKey = 'classic' | 'back_to_the_future';
+export type SpaceType = 'start' | 'property' | 'tax' | 'card' | 'jail' | 'go_to_jail' | 'parking' | 'special';
 export type PropertyKind = 'street' | 'station' | 'transport' | 'utility' | 'special';
 export interface ActiveProperty {
   property_ref: string;
@@ -61,6 +63,61 @@ export interface ActiveConfig {
   min_players: number;
   max_players: number;
   allow_late_join: boolean;
+  start_bonus: number;
+}
+
+// ── Fase 4: tablero, casillas y posiciones ────────────────────────────────────────
+export interface BoardInfo {
+  board_key: BoardKey;
+  ring_size: number;
+  start_bonus: number;
+}
+export interface BoardSpace {
+  space_ref: string;
+  board_key: BoardKey;
+  space_index: number;
+  name: string;
+  space_type: SpaceType;
+  property_ref: string | null;
+  is_start: boolean;
+}
+export interface PlayerPosition {
+  player_ref: string;
+  board_key: BoardKey;
+  space_index: number;
+}
+export interface MyPosition {
+  board_key: BoardKey;
+  space_index: number;
+}
+export interface CurrentSpace {
+  space_ref: string;
+  board_key: BoardKey;
+  space_index: number;
+  name: string;
+  space_type: SpaceType;
+  property_ref: string | null;
+  is_start: boolean;
+}
+export interface LastRoll {
+  d1: number;
+  d2: number;
+  total: number;
+  player_ref: string;
+}
+export interface LastMove {
+  player_ref: string;
+  board: BoardKey;
+  from: number;
+  to: number;
+  steps: number;
+  method: string;
+  passed_start: boolean;
+  bonus: number;
+  space_ref: string;
+  space_name: string;
+  space_type: SpaceType;
+  property_ref: string | null;
 }
 export interface LateJoinRequest {
   request_ref: string;
@@ -126,6 +183,13 @@ export interface ActiveSnapshot {
   leave_requests: LeaveRequest[];
   bankruptcy_requests: BankruptcyRequest[];
   late_join_requests: LateJoinRequest[];
+  boards: BoardInfo[];
+  spaces: BoardSpace[];
+  positions: PlayerPosition[];
+  my_position: MyPosition | null;
+  current_space: CurrentSpace | null;
+  last_roll: LastRoll | null;
+  last_move: LastMove | null;
   runtime_status: RuntimeStatus;
   control: ActiveControl;
   runtime_version: number;
@@ -144,9 +208,23 @@ const KINDS: ReadonlySet<string> = new Set([
   'seed', 'late_join_seed', 'bank_to_player', 'player_to_bank', 'player_to_player', 'host_player_transfer', 'host_adjust', 'host_revert',
   'player_exit_to_bank', 'player_exit_distribution', 'player_exit_remainder_to_bank',
   'property_purchase', 'rent_payment', 'property_auction_purchase', 'bankruptcy_cash_to_bank', 'bankruptcy_cash_to_player',
+  'pass_start_bonus',
 ]);
 const BOARDS: ReadonlySet<string> = new Set(['classic', 'back_to_the_future']);
 const PKINDS: ReadonlySet<string> = new Set(['street', 'station', 'transport', 'utility', 'special']);
+const SPACE_TYPES: ReadonlySet<string> = new Set(['start', 'property', 'tax', 'card', 'jail', 'go_to_jail', 'parking', 'special']);
+const isBoard = (v: unknown): v is BoardKey => v === 'classic' || v === 'back_to_the_future';
+
+function parseSpaceLike(s: Record<string, unknown>): BoardSpace | null {
+  if (!isStr(s.space_ref) || !isBoard(s.board_key) || !isNum(s.space_index) || !isStr(s.name) ||
+      !isStr(s.space_type) || !SPACE_TYPES.has(s.space_type) || !isStrOrNull(s.property_ref) || !isBool(s.is_start)) {
+    return null;
+  }
+  return {
+    space_ref: s.space_ref, board_key: s.board_key, space_index: s.space_index, name: s.name,
+    space_type: s.space_type as SpaceType, property_ref: s.property_ref, is_start: s.is_start,
+  };
+}
 
 export type ParseActiveResult = { ok: true; data: ActiveSnapshot } | { ok: false; reason: string };
 const bad = (reason: string): { ok: false; reason: string } => ({ ok: false, reason });
@@ -257,6 +335,64 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
     }
     late.push({ request_ref: l.request_ref, name: l.name, token: l.token, device_label: l.device_label });
   }
+
+  // ── Fase 4: tablero / casillas / posiciones (tolerante: ausencia => vacío/null) ──
+  const boards: BoardInfo[] = [];
+  if (Array.isArray(raw.boards)) {
+    for (const b of raw.boards) {
+      if (!isObj(b) || !isBoard(b.board_key) || !isNum(b.ring_size) || !isNum(b.start_bonus)) return bad('board inválido');
+      boards.push({ board_key: b.board_key, ring_size: b.ring_size, start_bonus: b.start_bonus });
+    }
+  }
+  const spaces: BoardSpace[] = [];
+  if (Array.isArray(raw.spaces)) {
+    for (const s of raw.spaces) {
+      if (!isObj(s)) return bad('space inválido');
+      const sp = parseSpaceLike(s);
+      if (!sp) return bad('space inválido');
+      spaces.push(sp);
+    }
+  }
+  const positions: PlayerPosition[] = [];
+  if (Array.isArray(raw.positions)) {
+    for (const p of raw.positions) {
+      if (!isObj(p) || !isStr(p.player_ref) || !isBoard(p.board_key) || !isNum(p.space_index)) return bad('position inválida');
+      positions.push({ player_ref: p.player_ref, board_key: p.board_key, space_index: p.space_index });
+    }
+  }
+  let myPosition: MyPosition | null = null;
+  if (isObj(raw.my_position)) {
+    const mp = raw.my_position;
+    if (!isBoard(mp.board_key) || !isNum(mp.space_index)) return bad('my_position inválida');
+    myPosition = { board_key: mp.board_key, space_index: mp.space_index };
+  }
+  let currentSpace: CurrentSpace | null = null;
+  if (isObj(raw.current_space)) {
+    const cs = parseSpaceLike(raw.current_space);
+    if (!cs) return bad('current_space inválido');
+    currentSpace = cs;
+  }
+  let lastRoll: LastRoll | null = null;
+  if (isObj(raw.last_roll)) {
+    const lr = raw.last_roll;
+    if (!isNum(lr.d1) || !isNum(lr.d2) || !isNum(lr.total) || !isStr(lr.player_ref)) return bad('last_roll inválido');
+    lastRoll = { d1: lr.d1, d2: lr.d2, total: lr.total, player_ref: lr.player_ref };
+  }
+  let lastMove: LastMove | null = null;
+  if (isObj(raw.last_move)) {
+    const lm = raw.last_move;
+    if (!isStr(lm.player_ref) || !isBoard(lm.board) || !isNum(lm.from) || !isNum(lm.to) || !isNum(lm.steps) ||
+        !isStr(lm.method) || !isBool(lm.passed_start) || !isNum(lm.bonus) || !isStr(lm.space_ref) ||
+        !isStr(lm.space_name) || !isStr(lm.space_type) || !SPACE_TYPES.has(lm.space_type) || !isStrOrNull(lm.property_ref)) {
+      return bad('last_move inválido');
+    }
+    lastMove = {
+      player_ref: lm.player_ref, board: lm.board, from: lm.from, to: lm.to, steps: lm.steps, method: lm.method,
+      passed_start: lm.passed_start, bonus: lm.bonus, space_ref: lm.space_ref, space_name: lm.space_name,
+      space_type: lm.space_type as SpaceType, property_ref: lm.property_ref,
+    };
+  }
+
   if (!isNum(raw.runtime_version)) return bad('runtime_version inválido');
   const rs = raw.runtime_status;
   if (rs !== 'running' && rs !== 'paused' && rs !== 'finished') return bad('runtime_status inválido');
@@ -268,7 +404,7 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
   return {
     ok: true,
     data: {
-      game: { code: g.code, status: 'active', config: { initial_money: cfg.initial_money, min_players: cfg.min_players, max_players: cfg.max_players, allow_late_join: cfg.allow_late_join } },
+      game: { code: g.code, status: 'active', config: { initial_money: cfg.initial_money, min_players: cfg.min_players, max_players: cfg.max_players, allow_late_join: cfg.allow_late_join, start_bonus: isNum(cfg.start_bonus) ? cfg.start_bonus : 200 } },
       me: { public_ref: m.public_ref, is_host: m.is_host, balance: m.balance, is_current: m.is_current, is_spectator: m.is_spectator },
       turn: { turn_number: t.turn_number, current_player_ref: t.current_player_ref, order: t.order as string[] },
       players,
@@ -279,6 +415,13 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
       leave_requests: leaves,
       bankruptcy_requests: bankruptcies,
       late_join_requests: late,
+      boards,
+      spaces,
+      positions,
+      my_position: myPosition,
+      current_space: currentSpace,
+      last_roll: lastRoll,
+      last_move: lastMove,
       runtime_status: rs,
       control: { paused_by_ref: ctl.paused_by_ref, finished_by_ref: ctl.finished_by_ref, reason: ctl.reason },
       runtime_version: raw.runtime_version,

@@ -1,0 +1,120 @@
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import type { ActiveSnapshot, BoardSpace, PlayerPosition } from '../../lib/activeSnapshot';
+import { MovementPanel } from './MovementPanel';
+import { BoardModal } from './BoardModal';
+
+function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
+  const spaces: BoardSpace[] = [
+    { space_ref: 'cl-0', board_key: 'classic', space_index: 0, name: 'Salida', space_type: 'start', property_ref: null, is_start: true },
+    { space_ref: 'cl-1', board_key: 'classic', space_index: 1, name: 'Mediterráneo', space_type: 'property', property_ref: 'cl-1', is_start: false },
+    { space_ref: 'bf-0', board_key: 'back_to_the_future', space_index: 0, name: 'Salida', space_type: 'start', property_ref: null, is_start: true },
+  ];
+  const positions: PlayerPosition[] = [{ player_ref: 'P-1', board_key: 'classic', space_index: 1 }];
+  return {
+    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200 } },
+    me: { public_ref: 'P-1', is_host: false, balance: 3000, is_current: true, is_spectator: false },
+    turn: { turn_number: 1, current_player_ref: 'P-1', order: ['P-1', 'P-2'] },
+    players: [
+      { public_ref: 'P-1', display_name: 'Ana', token_id: 'cat', balance: 3000, is_current: true, status: 'active' },
+      { public_ref: 'P-2', display_name: 'Beto', token_id: 'boot', balance: 3000, is_current: false, status: 'active' },
+    ],
+    ledger_recent: [],
+    properties: [
+      { property_ref: 'cl-1', board_key: 'classic', group_key: 'marron', name: 'Mediterráneo', kind: 'street', price: 60, base_rent: 2, is_buyable: true, sort_order: 1, owner_ref: null, in_auction: false },
+    ],
+    auctions: [], purchase_requests: [], leave_requests: [], bankruptcy_requests: [], late_join_requests: [],
+    boards: [{ board_key: 'classic', ring_size: 2, start_bonus: 200 }, { board_key: 'back_to_the_future', ring_size: 1, start_bonus: 200 }],
+    spaces, positions,
+    my_position: { board_key: 'classic', space_index: 1 },
+    current_space: { space_ref: 'cl-1', board_key: 'classic', space_index: 1, name: 'Mediterráneo', space_type: 'property', property_ref: 'cl-1', is_start: false },
+    last_roll: { d1: 2, d2: 3, total: 5, player_ref: 'P-1' },
+    last_move: { player_ref: 'P-1', board: 'classic', from: 0, to: 1, steps: 1, method: 'roll', passed_start: false, bonus: 0, space_ref: 'cl-1', space_name: 'Mediterráneo', space_type: 'property', property_ref: 'cl-1' },
+    runtime_status: 'running',
+    control: { paused_by_ref: null, finished_by_ref: null, reason: null },
+    runtime_version: 1,
+    ...over,
+  };
+}
+
+describe('MovementPanel', () => {
+  const cbs = () => ({ onRoll: vi.fn(), onMoveManual: vi.fn(), onOpenBoard: vi.fn(), onRequestPurchase: vi.fn(), onPayRent: vi.fn() });
+
+  it('mi turno: "Tirar dados" llama onRoll y muestra la última tirada', () => {
+    const c = cbs();
+    render(<MovementPanel snap={snap()} busy={false} {...c} />);
+    expect(screen.getByText(/Última tirada/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Tirar dados/ }));
+    expect(c.onRoll).toHaveBeenCalledTimes(1);
+  });
+
+  it('mover manualmente llama onMoveManual con el número de casillas', () => {
+    const c = cbs();
+    render(<MovementPanel snap={snap()} busy={false} {...c} />);
+    fireEvent.change(screen.getByLabelText('Casillas a mover'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Mover' }));
+    expect(c.onMoveManual).toHaveBeenCalledWith(4);
+  });
+
+  it('al caer en propiedad disponible ofrece "Solicitar compra" desde el contexto', () => {
+    const c = cbs();
+    render(<MovementPanel snap={snap()} busy={false} {...c} />);
+    expect(screen.getByText(/Has caído en/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Solicitar compra' }));
+    expect(c.onRequestPurchase).toHaveBeenCalledTimes(1);
+  });
+
+  it('al caer en propiedad de otro ofrece "Pagar alquiler"', () => {
+    const c = cbs();
+    const s = snap({
+      properties: [{ property_ref: 'cl-1', board_key: 'classic', group_key: 'marron', name: 'Mediterráneo', kind: 'street', price: 60, base_rent: 2, is_buyable: true, sort_order: 1, owner_ref: 'P-2', in_auction: false }],
+    });
+    render(<MovementPanel snap={s} busy={false} {...c} />);
+    fireEvent.click(screen.getByRole('button', { name: /Pagar alquiler/ }));
+    expect(c.onPayRent).toHaveBeenCalledTimes(1);
+  });
+
+  it('si no es mi turno no muestra "Tirar dados" y avisa', () => {
+    const c = cbs();
+    render(<MovementPanel snap={snap({ me: { public_ref: 'P-1', is_host: false, balance: 1, is_current: false, is_spectator: false }, turn: { turn_number: 1, current_player_ref: 'P-2', order: ['P-1', 'P-2'] } })} busy={false} {...c} />);
+    expect(screen.queryByRole('button', { name: /Tirar dados/ })).toBeNull();
+    expect(screen.getByText(/No es tu turno/)).toBeInTheDocument();
+  });
+
+  it('"Ver tablero" llama onOpenBoard', () => {
+    const c = cbs();
+    render(<MovementPanel snap={snap()} busy={false} {...c} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Ver tablero' }));
+    expect(c.onOpenBoard).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('BoardModal', () => {
+  const icons = { cat: '🐱', boot: '🥾' };
+
+  it('agrupa por tablero y muestra la ficha del jugador en su casilla', () => {
+    render(<BoardModal snap={snap()} icons={icons} busy={false} onClose={vi.fn()} onSetPosition={vi.fn()} />);
+    expect(screen.getByText('Clásico')).toBeInTheDocument();
+    expect(screen.getByText('Regreso al futuro')).toBeInTheDocument();
+    // La ficha de Ana (🐱) aparece en su casilla.
+    expect(screen.getByTitle('Ana')).toHaveTextContent('🐱');
+  });
+
+  it('no anfitrión: no ve el formulario de corrección; "Cerrar" cierra', () => {
+    const onClose = vi.fn();
+    render(<BoardModal snap={snap()} icons={icons} busy={false} onClose={onClose} onSetPosition={vi.fn()} />);
+    expect(screen.queryByText(/Corregir posición \(anfitrión\)/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('anfitrión: corrige posición con motivo (llama onSetPosition)', () => {
+    const onSet = vi.fn();
+    const s = snap({ me: { public_ref: 'P-1', is_host: true, balance: 3000, is_current: true, is_spectator: false } });
+    render(<BoardModal snap={s} icons={icons} busy={false} onClose={vi.fn()} onSetPosition={onSet} />);
+    fireEvent.change(screen.getByLabelText(/Casilla/), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText('Motivo (obligatorio)'), { target: { value: 'recolocar ficha' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Corregir posición' }));
+    expect(onSet).toHaveBeenCalledWith('P-1', 'classic', 1, 'recolocar ficha');
+  });
+});

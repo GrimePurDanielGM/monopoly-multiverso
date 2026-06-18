@@ -7,6 +7,7 @@ import {
   requestPropertyPurchase, resolvePropertyPurchase, payRent,
   startPropertyAuction, placePropertyBid, closePropertyAuction, cancelPropertyAuction,
   requestBankruptcy, resolveBankruptcy,
+  movePlayer, rollAndMove, hostSetPlayerPosition,
   type ApiResult, type ExitResolution, type BankruptcyKind,
 } from '../lib/api';
 import { useActiveStore } from '../store/active';
@@ -29,6 +30,9 @@ import { FinishedView } from '../components/active/FinishedView';
 import { LateJoinTray } from '../components/active/LateJoinTray';
 import { PropertiesSummary } from '../components/active/PropertiesSummary';
 import { PropertyBoardModal } from '../components/active/PropertyBoardModal';
+import { MovementPanel } from '../components/active/MovementPanel';
+import { BoardModal } from '../components/active/BoardModal';
+import type { BoardKey } from '../lib/activeSnapshot';
 import { PurchaseRequestsTray, LeaveRequestsTray, BankruptcyRequestsTray } from '../components/active/HostRequestTrays';
 import { BankruptcyDialog } from '../components/active/BankruptcyDialog';
 import { formatMoney, ownerName } from '../lib/activeSelectors';
@@ -72,6 +76,7 @@ export function ActiveGameScreen({
   const [rentTarget, setRentTarget] = useState<ActiveProperty | null>(null);
   const [bankruptcyOpen, setBankruptcyOpen] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
+  const [boardViewOpen, setBoardViewOpen] = useState(false);
   const [soundOn, setSoundOn] = useState<boolean>(() => isCashSoundEnabled());
 
   // Efecto "dinero recibido": suena + flash cuando MI saldo aumenta (no en el primer snapshot).
@@ -192,6 +197,17 @@ export function ActiveGameScreen({
     void run(() => payRent(gameId, p.property_ref, newRequestId(), snap?.runtime_version ?? 0)).then(() => setRentTarget(null));
   }, [rentTarget, gameId, snap?.runtime_version, run]);
 
+  // Movimiento (Fase 4): tirar dados / mover manualmente (jugador actual) y corregir posición (anfitrión).
+  const doRoll = useCallback(() => {
+    void run(() => rollAndMove(gameId, newRequestId(), snap?.runtime_version ?? 0));
+  }, [gameId, snap?.runtime_version, run]);
+  const doMoveManual = useCallback((steps: number) => {
+    void run(() => movePlayer(gameId, steps, newRequestId(), snap?.runtime_version ?? 0));
+  }, [gameId, snap?.runtime_version, run]);
+  const doSetPosition = useCallback((ref: string, board: BoardKey, index: number, reason: string) => {
+    void run(() => hostSetPlayerPosition(gameId, ref, board, index, reason, newRequestId(), snap?.runtime_version ?? 0));
+  }, [gameId, snap?.runtime_version, run]);
+
   const ver = snap?.runtime_version ?? 0;
   const host = useMemo(() => (snap ? isHost(snap) : false), [snap]);
 
@@ -263,6 +279,15 @@ export function ActiveGameScreen({
             </button>
           )}
           {error && <p role="alert" className="rounded-lg bg-rose-950/60 px-3 py-2 text-sm text-rose-200">{error}</p>}
+          <MovementPanel
+            snap={snap}
+            busy={busy}
+            onRoll={doRoll}
+            onMoveManual={doMoveManual}
+            onOpenBoard={() => setBoardViewOpen(true)}
+            onRequestPurchase={(p) => setBuyTarget(p)}
+            onPayRent={(p) => setRentTarget(p)}
+          />
           <PropertiesSummary snap={snap} onOpenBoard={() => setBoardOpen(true)} />
         </div>
 
@@ -460,6 +485,16 @@ export function ActiveGameScreen({
           onBid={(a, amount) => void run(() => placePropertyBid(gameId, a.auction_ref, amount, newRequestId(), ver))}
           onCloseAuction={(a) => void run(() => closePropertyAuction(gameId, a.auction_ref, newRequestId(), ver))}
           onCancelAuction={(a) => void run(() => cancelPropertyAuction(gameId, a.auction_ref, '', newRequestId(), ver))}
+        />
+      )}
+
+      {boardViewOpen && (
+        <BoardModal
+          snap={snap}
+          icons={icons}
+          busy={busy}
+          onClose={() => setBoardViewOpen(false)}
+          onSetPosition={doSetPosition}
         />
       )}
     </section>

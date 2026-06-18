@@ -538,3 +538,38 @@ export async function payRent(gameId: string, propertyRef: string, requestId: st
   if (error) return fail(error.message);
   return { ok: true, data: true };
 }
+
+// ── Movimiento (Fase 4) ────────────────────────────────────────────────────────────
+/** Mueve manualmente al jugador actual N casillas (1..12). El resultado autoritativo llega por snapshot. */
+export async function movePlayer(gameId: string, steps: number, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('move_player', {
+    p_game: gameId, p_steps: steps, p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Tira dos dados (1-6) y mueve la suma. La tirada y el movimiento llegan por snapshot (last_roll/last_move). */
+export async function rollAndMove(gameId: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('roll_and_move', {
+    p_game: gameId, p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** El anfitrión corrige la posición de un jugador (motivo obligatorio; no cobra salida ni dispara acciones). */
+export async function hostSetPlayerPosition(
+  gameId: string, playerRef: string, boardKey: string, spaceIndex: number,
+  reason: string, requestId: string, expectedVersion: number,
+): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('host_set_player_position', {
+    p_game: gameId, p_player_ref: playerRef, p_board_key: boardKey, p_space_index: spaceIndex,
+    p_reason: reason, p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
