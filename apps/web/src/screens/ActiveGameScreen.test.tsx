@@ -30,6 +30,14 @@ vi.mock('../lib/api', () => {
   };
 });
 
+// Silenciar el audio real (jsdom no implementa HTMLMediaElement.play/load) sin perder el cableado.
+vi.mock('../lib/cashSound', () => ({
+  isCashSoundEnabled: () => true,
+  setCashSoundEnabled: vi.fn(),
+  primeCashSound: vi.fn(),
+  playCashSound: vi.fn(),
+}));
+
 const PROP = (over: Partial<ActiveProperty> = {}): ActiveProperty => ({
   property_ref: 'cl-marron-1', board_key: 'classic', group_key: 'marron', name: 'Mediterráneo',
   kind: 'street', price: 60, base_rent: 2, is_buyable: true, sort_order: 10, owner_ref: null, in_auction: false, ...over,
@@ -176,6 +184,7 @@ describe('ActiveGameScreen — abandonar/expulsar', () => {
 describe('ActiveGameScreen — propiedades', () => {
   it('solicitar compra abre confirmación; confirmar llama requestPropertyPurchase una vez', async () => {
     renderScreen(snap({ properties: [PROP({ price: 60 })] }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ver tablero de propiedades' }));
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar compra' }));
     const dlg = screen.getByRole('dialog', { name: 'Solicitar compra' });
     expect(dlg).toBeInTheDocument();
@@ -189,6 +198,7 @@ describe('ActiveGameScreen — propiedades', () => {
 
   it('cancelar la solicitud no llama a la RPC', () => {
     renderScreen(snap({ properties: [PROP({ price: 60 })] }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ver tablero de propiedades' }));
     fireEvent.click(screen.getByRole('button', { name: 'Solicitar compra' }));
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Solicitar compra' })).getByRole('button', { name: 'Cancelar' }));
     expect(buyMock).not.toHaveBeenCalled();
@@ -197,6 +207,7 @@ describe('ActiveGameScreen — propiedades', () => {
   it('pagar alquiler abre confirmación; confirmar llama payRent una vez', async () => {
     // me = P-1 (host); la propiedad es de P-2.
     renderScreen(snap({ properties: [PROP({ owner_ref: 'P-2', base_rent: 25 })] }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ver tablero de propiedades' }));
     fireEvent.click(screen.getByRole('button', { name: 'Pagar alquiler' }));
     const dlg = screen.getByRole('dialog', { name: 'Pagar alquiler' });
     expect(dlg).toBeInTheDocument();

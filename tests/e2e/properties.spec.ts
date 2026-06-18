@@ -28,8 +28,25 @@ async function pickAndReady(page: Page, tokenIndex: number) {
   await expect(ready).toBeEnabled({ timeout: 10_000 });
   await ready.click();
 }
-function propRow(page: Page, name: string) {
-  return page.getByRole('region', { name: 'Propiedades' }).getByRole('listitem').filter({ hasText: name });
+// Resumen ligero de la pantalla principal (Mis propiedades / por jugador).
+function summary(page: Page) {
+  return page.getByRole('region', { name: 'Propiedades' });
+}
+// Vista dedicada "Tablero de propiedades" (modal): aquí viven las acciones de compra/subasta/alquiler.
+function board(page: Page) {
+  return page.getByRole('dialog', { name: 'Tablero de propiedades' });
+}
+async function openBoard(page: Page) {
+  await summary(page).getByRole('button', { name: 'Ver tablero de propiedades' }).click();
+  await expect(board(page)).toBeVisible({ timeout: 20_000 });
+}
+function boardCard(page: Page, name: string) {
+  return board(page).getByRole('listitem').filter({ hasText: name });
+}
+async function requestPurchase(page: Page, name: string) {
+  await openBoard(page);
+  await boardCard(page, name).getByRole('button', { name: 'Solicitar compra' }).click();
+  await page.getByRole('dialog', { name: 'Solicitar compra' }).getByRole('button', { name: 'Solicitar compra' }).click();
 }
 const ESTACION = 'Estación del Norte';
 const PRADO = 'Paseo del Prado';
@@ -55,34 +72,38 @@ test('propiedades: compra con aprobación, subasta, bancarrota y espectador', as
   await host.getByRole('button', { name: 'Iniciar', exact: true }).click();
   await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
 
-  // ── B solicita comprar la estación; el anfitrión la aprueba.
-  await propRow(B, ESTACION).getByRole('button', { name: 'Solicitar compra' }).click();
-  await B.getByRole('dialog', { name: 'Solicitar compra' }).getByRole('button', { name: 'Solicitar compra' }).click();
+  // ── B abre el tablero, solicita comprar la estación; el anfitrión la aprueba.
+  await requestPurchase(B, ESTACION);
   await host.reload();
   await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
   await expect(host.getByText('Solicitudes de compra')).toBeVisible({ timeout: 20_000 });
   await host.getByRole('region', { name: 'Solicitudes de compra' }).getByRole('button', { name: 'Aprobar' }).click();
+  // Aparece en "Mis propiedades" (resumen) y figura como "Tuya" en el tablero.
   await B.reload();
-  await expect(propRow(B, ESTACION).getByText('Tuya')).toBeVisible({ timeout: 20_000 });
+  await expect(summary(B).getByText(ESTACION)).toBeVisible({ timeout: 20_000 });
+  await openBoard(B);
+  await expect(boardCard(B, ESTACION).getByText('Tuya')).toBeVisible({ timeout: 20_000 });
 
   // ── B solicita Paseo del Prado; el anfitrión inicia subasta en vez de aprobar.
-  await propRow(B, PRADO).getByRole('button', { name: 'Solicitar compra' }).click();
-  await B.getByRole('dialog', { name: 'Solicitar compra' }).getByRole('button', { name: 'Solicitar compra' }).click();
+  await B.reload();
+  await requestPurchase(B, PRADO);
   await host.reload();
   await expect(host.getByText('Solicitudes de compra')).toBeVisible({ timeout: 20_000 });
   await host.getByRole('region', { name: 'Solicitudes de compra' }).getByRole('button', { name: 'Subastar' }).click();
-  await expect(host.getByText('Subastas activas')).toBeVisible({ timeout: 20_000 });
 
-  // ── B puja; el anfitrión cierra y se adjudica (B único postor).
+  // ── B puja desde el tablero; el anfitrión cierra y se adjudica (B único postor).
   await B.reload();
-  await expect(B.getByText('Subastas activas')).toBeVisible({ timeout: 20_000 });
-  await B.getByRole('region', { name: 'Subastas activas' }).getByLabel('Tu puja').fill('100');
-  await B.getByRole('region', { name: 'Subastas activas' }).getByRole('button', { name: 'Pujar' }).click();
+  await openBoard(B);
+  const bAuctions = board(B).getByRole('region', { name: 'Subastas activas' });
+  await expect(bAuctions).toBeVisible({ timeout: 20_000 });
+  await bAuctions.getByLabel('Tu puja').fill('100');
+  await bAuctions.getByRole('button', { name: 'Pujar' }).click();
   await host.reload();
-  await expect(host.getByText(/Puja: 100/)).toBeVisible({ timeout: 20_000 });
-  await host.getByRole('region', { name: 'Subastas activas' }).getByRole('button', { name: 'Cerrar subasta' }).click();
+  await openBoard(host);
+  await expect(board(host).getByText(/Puja: 100/)).toBeVisible({ timeout: 20_000 });
+  await board(host).getByRole('region', { name: 'Subastas activas' }).getByRole('button', { name: 'Cerrar subasta' }).click();
   await B.reload();
-  await expect(propRow(B, PRADO).getByText('Tuya')).toBeVisible({ timeout: 20_000 });
+  await expect(summary(B).getByText(PRADO)).toBeVisible({ timeout: 20_000 });
 
   // ── B se declara en bancarrota frente al anfitrión; el anfitrión aprueba.
   await B.getByRole('button', { name: 'Declararme en bancarrota' }).click();
@@ -101,8 +122,13 @@ test('propiedades: compra con aprobación, subasta, bancarrota y espectador', as
   await expect(B.getByRole('button', { name: 'Declararme en bancarrota' })).toHaveCount(0);
   await host.reload();
   await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
-  await expect(propRow(host, ESTACION).getByText('Tuya')).toBeVisible({ timeout: 20_000 }); // de B al anfitrión
-  await expect(propRow(host, PRADO).getByText('Tuya')).toBeVisible({ timeout: 20_000 });
+  // Las propiedades de B pasaron al anfitrión: aparecen en su resumen y como "Tuya" en el tablero.
+  await expect(summary(host).getByText(ESTACION)).toBeVisible({ timeout: 20_000 });
+  await expect(summary(host).getByText(PRADO)).toBeVisible({ timeout: 20_000 });
+  await openBoard(host);
+  await expect(boardCard(host, ESTACION).getByText('Tuya')).toBeVisible({ timeout: 20_000 });
+  await expect(boardCard(host, PRADO).getByText('Tuya')).toBeVisible({ timeout: 20_000 });
+  await board(host).getByRole('button', { name: 'Cerrar' }).click();
   await expect(host.getByText('Marty').first()).toBeVisible();
   await expect(host.getByText('En bancarrota').first()).toBeVisible({ timeout: 20_000 });
 

@@ -202,3 +202,54 @@ export function propertiesByBoard(snap: ActiveSnapshot): { board: string; label:
   }
   return order.map((board) => ({ board, label: BOARD_LABEL[board] ?? board, items: map.get(board)! }));
 }
+
+/** Metadatos de cada grupo de color/tipo: etiqueta legible y color de la franja (swatch). */
+export const GROUP_META: Record<string, { label: string; swatch: string }> = {
+  marron: { label: 'Marrón', swatch: '#7c4a13' },
+  celeste: { label: 'Celeste', swatch: '#5cc8e6' },
+  rosa: { label: 'Rosa', swatch: '#d6489b' },
+  naranja: { label: 'Naranja', swatch: '#e3811f' },
+  rojo: { label: 'Rojo', swatch: '#d23b34' },
+  amarillo: { label: 'Amarillo', swatch: '#e8c83c' },
+  verde: { label: 'Verde', swatch: '#2f9e5a' },
+  azul: { label: 'Azul', swatch: '#2f5fd0' },
+  estaciones: { label: 'Estaciones', swatch: '#94a3b8' },
+  transportes: { label: 'Transportes', swatch: '#94a3b8' },
+  servicios: { label: 'Servicios', swatch: '#a78bda' },
+};
+export function groupLabel(groupKey: string): string {
+  return GROUP_META[groupKey]?.label ?? groupKey;
+}
+export function groupSwatch(groupKey: string): string {
+  return GROUP_META[groupKey]?.swatch ?? '#64748b';
+}
+
+export interface PropertyGroup { group: string; label: string; swatch: string; items: ActiveProperty[] }
+export interface PropertyBoardGroups { board: string; label: string; groups: PropertyGroup[] }
+
+/** Propiedades agrupadas por tablero y, dentro, por grupo/color; ambos en orden de tablero
+ *  (sort_order). Estructura para la vista "Tablero de propiedades". */
+export function propertyGroupsByBoard(snap: ActiveSnapshot): PropertyBoardGroups[] {
+  const sorted = [...snap.properties].sort((a, b) => a.sort_order - b.sort_order);
+  const boardOrder: string[] = [];
+  const byBoard = new Map<string, ActiveProperty[]>();
+  for (const p of sorted) {
+    if (!byBoard.has(p.board_key)) { byBoard.set(p.board_key, []); boardOrder.push(p.board_key); }
+    byBoard.get(p.board_key)!.push(p);
+  }
+  return boardOrder.map((board) => {
+    const groupOrder: string[] = [];
+    const byGroup = new Map<string, ActiveProperty[]>();
+    for (const p of byBoard.get(board)!) {
+      if (!byGroup.has(p.group_key)) { byGroup.set(p.group_key, []); groupOrder.push(p.group_key); }
+      byGroup.get(p.group_key)!.push(p);
+    }
+    return {
+      board,
+      label: BOARD_LABEL[board] ?? board,
+      groups: groupOrder.map((group) => ({
+        group, label: groupLabel(group), swatch: groupSwatch(group), items: byGroup.get(group)!,
+      })),
+    };
+  });
+}

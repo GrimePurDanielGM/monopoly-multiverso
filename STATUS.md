@@ -230,12 +230,29 @@ snapshot ampliado) + frontend completo. Aplicado a `monopoly-multiverso-dev` (v�
 cuelgue del pooler), desplegado en Vercel (`2e0c38c` → bundle `index-BknBW7A4.js`, UI nueva, backend dev),
 **smoke remota de navegador OK** (compra con aprobación → subasta → bancarrota a jugador → espectador).
 Commit `2e0c38c`, árbol limpio.
-- **Feedback sonoro "dinero recibido" (solo frontend):** efecto tipo caja registradora (Web Audio
-  sintetizado, sin asset) + flash "+X recibidos" cuando **MI** saldo aumenta entre snapshots. NO suena en
-  el primer snapshot, ni al bajar/no cambiar el saldo, ni por el saldo de otro, ni dos veces por el mismo
-  `runtime_version`, ni para espectadores. Preferencia local "Sonido al recibir dinero" (default on,
-  `localStorage`); autoplay desbloqueado tras la 1ª interacción; falla en silencio. Sin tocar backend.
-  Tests: `receiveMoney` (lógica pura, 7 casos) + `useReceiveMoney` (hook). Unit total **219**.
+- **Feedback sonoro "dinero recibido" (solo frontend):** flash "+X recibidos" + sonido cuando **MI**
+  saldo aumenta entre snapshots. NO suena en el primer snapshot, ni al bajar/no cambiar el saldo, ni por el
+  saldo de otro, ni dos veces por el mismo `runtime_version`, ni para espectadores. Preferencia local
+  "Sonido al recibir dinero" (default on, `localStorage`); falla en silencio. Lógica: `receiveMoney` +
+  `useReceiveMoney`.
+- **Audio fiable en iPhone (solo frontend):** se sustituyó Web Audio sintetizado por **`HTMLAudioElement`
+  + asset WAV** (`public/sounds/cash-register.wav`, sintetizado/libre de derechos, sonido "ding-cling" de
+  caja registradora más audible en móvil). **Desbloqueo robusto iOS**: en la 1ª interacción real
+  (`pointerdown`/`touchend`/`click`) se reproduce el asset en silencio dentro del gesto (`primeCashSound`,
+  idempotente); si el navegador rechaza `play()` no se marca desbloqueado y un nuevo gesto reintenta. El
+  modo silencioso físico del iPhone puede silenciarlo (no se sortea, documentado). Tests: `cashSound`
+  (desbloqueo, reproducción, fallback iOS/Safari, sin `Audio`, preferencia).
+- **Rediseño de propiedades (solo frontend):** la pantalla principal solo muestra un **resumen ligero**
+  (`PropertiesSummary`: "Mis propiedades" + recuento por jugador desplegable + botón **Ver tablero de
+  propiedades**), sin catálogo completo ni acciones. Las acciones viven en una vista dedicada
+  **Tablero de propiedades** (`PropertyBoardModal`, modal a pantalla completa con scroll propio): agrupa
+  por tablero (Clásico / Regreso al futuro) y por grupo de color/tipo (acordeones `<details>`, sin depender
+  de hover), tarjetas compactas con estado claro (Libre/Tuya/Ocupada/En subasta/No comprable), precio,
+  alquiler y propietario; aquí se solicita compra, se puja, se ve la subasta y se paga alquiler. Flujos de
+  Fase 3 intactos (aprobación del host, subastas, alquiler, bancarrota, espectador). Eliminado
+  `PropertiesPanel`. Responsive móvil (grid 1→2 col, botones ≥40px, footer "Volver" sticky).
+- **Validación:** typecheck/lint/build limpios; **unit 229** (43 ficheros); **E2E 34/34** en Chromium
+  (`android-chrome`) + WebKit (`iphone-safari`), incluido `properties.spec` reescrito para el tablero modal.
 - **Catálogo real (`0021`):** 56 propiedades extraídas de las fotos (28 Classic + 28 RdF), sustituye al de
   prueba. Tipos street/station/transport/utility. **Precio CONFIRMADO con la foto del tablero (IMG_4979):**
   `price_source='board'`, `= 2×hipoteca` (anclas verificadas Estación 200, Castellana 350, Prado 400; RdF

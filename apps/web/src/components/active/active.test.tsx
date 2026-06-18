@@ -9,7 +9,8 @@ import { HostCorrections } from './HostCorrections';
 import { LedgerList } from './LedgerList';
 import { RevertDialog } from './RevertDialog';
 import { LateJoinTray } from './LateJoinTray';
-import { PropertiesPanel } from './PropertiesPanel';
+import { PropertiesSummary } from './PropertiesSummary';
+import { PropertyBoardModal } from './PropertyBoardModal';
 import { AuctionsPanel } from './AuctionsPanel';
 import { PurchaseRequestsTray, LeaveRequestsTray, BankruptcyRequestsTray } from './HostRequestTrays';
 import { BankruptcyDialog } from './BankruptcyDialog';
@@ -184,61 +185,118 @@ describe('LateJoinTray', () => {
   });
 });
 
-describe('PropertiesPanel', () => {
-  const prop = (over: Partial<ActiveProperty> = {}): ActiveProperty => ({
-    property_ref: 'cl-marron-1', board_key: 'classic', group_key: 'marron', name: 'Mediterráneo',
-    kind: 'street', price: 60, base_rent: 2, is_buyable: true, sort_order: 10, owner_ref: null, in_auction: false, ...over,
+const prop = (over: Partial<ActiveProperty> = {}): ActiveProperty => ({
+  property_ref: 'cl-marron-1', board_key: 'classic', group_key: 'marron', name: 'Mediterráneo',
+  kind: 'street', price: 60, base_rent: 2, is_buyable: true, sort_order: 10, owner_ref: null, in_auction: false, ...over,
+});
+
+describe('PropertiesSummary (pantalla principal: resumen ligero)', () => {
+  // me = P-BBBB (host) en makeSnap.
+  it('muestra "Mis propiedades" y el botón abre el tablero (onOpenBoard)', () => {
+    const onOpen = vi.fn();
+    const s = makeSnap({ properties: [prop({ owner_ref: 'P-BBBB', name: 'Gran Vía' })] });
+    render(<PropertiesSummary snap={s} onOpenBoard={onOpen} />);
+    expect(screen.getByText(/Mis propiedades: 1/)).toBeInTheDocument();
+    expect(screen.getByText('Gran Vía')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Ver tablero de propiedades' }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
-  // me = P-BBBB (host, saldo 1000 en makeSnap).
+
+  it('NO renderiza el catálogo completo: una propiedad libre no aparece en el resumen', () => {
+    const s = makeSnap({ properties: [prop({ name: 'Mediterráneo', owner_ref: null })] });
+    render(<PropertiesSummary snap={s} onOpenBoard={vi.fn()} />);
+    expect(screen.queryByText('Mediterráneo')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Solicitar compra' })).toBeNull();
+  });
+
+  it('muestra el resumen por jugador (nombre + recuento) sin acciones de compra', () => {
+    const s = makeSnap({ properties: [prop({ owner_ref: 'P-AAAA', name: 'Atocha' })] });
+    render(<PropertiesSummary snap={s} onOpenBoard={vi.fn()} />);
+    expect(screen.getByText('Ana')).toBeInTheDocument();
+    expect(screen.getByText(/1 propiedades/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Pagar alquiler' })).toBeNull();
+  });
+});
+
+describe('PropertyBoardModal (tablero de propiedades)', () => {
+  const onClose = vi.fn();
+  const render0 = (s: ActiveSnapshot, over: Record<string, unknown> = {}) =>
+    render(
+      <PropertyBoardModal
+        snap={s} isHost={s.me.is_host} busy={false} onClose={onClose}
+        onRequestPurchase={vi.fn()} onPayRent={vi.fn()} onBid={vi.fn()} onCloseAuction={vi.fn()} onCancelAuction={vi.fn()}
+        {...over}
+      />,
+    );
   const withProps = (props: ActiveProperty[], over = {}) => makeSnap({ properties: props, ...over });
 
-  it('muestra propiedades por tablero con precio y alquiler', () => {
-    render(<PropertiesPanel snap={withProps([prop()])} busy={false} onRequestPurchase={vi.fn()} onPayRent={vi.fn()} />);
+  it('agrupa por tablero (Clásico) y por grupo de color (Marrón) y muestra nombre/precio', () => {
+    render0(withProps([prop()]));
     expect(screen.getByText('Clásico')).toBeInTheDocument();
+    expect(screen.getByText('Marrón')).toBeInTheDocument();
     expect(screen.getByText('Mediterráneo')).toBeInTheDocument();
-    expect(screen.getByText(/Precio 60/)).toBeInTheDocument();
+    expect(screen.getByText('60 ₥')).toBeInTheDocument();
+  });
+
+  it('agrupa también el tablero Regreso al futuro', () => {
+    render0(withProps([
+      prop(),
+      prop({ property_ref: 'bf-1', board_key: 'back_to_the_future', group_key: 'celeste', name: 'Hill Valley', sort_order: 200 }),
+    ]));
+    expect(screen.getByText('Clásico')).toBeInTheDocument();
+    expect(screen.getByText('Regreso al futuro')).toBeInTheDocument();
   });
 
   it('disponible: "Solicitar compra" llama onRequestPurchase', () => {
     const onReq = vi.fn();
-    render(<PropertiesPanel snap={withProps([prop({ price: 60 })])} busy={false} onRequestPurchase={onReq} onPayRent={vi.fn()} />);
+    render0(withProps([prop()]), { onRequestPurchase: onReq });
     const btn = screen.getByRole('button', { name: 'Solicitar compra' });
     expect(btn).toBeEnabled();
     fireEvent.click(btn);
     expect(onReq).toHaveBeenCalledTimes(1);
   });
 
-  it('en subasta: muestra "En subasta" sin botón de compra', () => {
-    render(<PropertiesPanel snap={withProps([prop({ in_auction: true })])} busy={false} onRequestPurchase={vi.fn()} onPayRent={vi.fn()} />);
-    expect(screen.getByText('En subasta')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Solicitar compra' })).toBeNull();
-  });
-
-  it('de otro jugador: "Pagar alquiler" llama onPayRent', () => {
-    const onRent = vi.fn();
-    render(<PropertiesPanel snap={withProps([prop({ owner_ref: 'P-AAAA', base_rent: 25 })])} busy={false} onRequestPurchase={vi.fn()} onPayRent={onRent} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Pagar alquiler' }));
-    expect(onRent).toHaveBeenCalledTimes(1);
-  });
-
-  it('mía: muestra "Tuya" y aparece en "Mis propiedades", sin botones de acción', () => {
-    render(<PropertiesPanel snap={withProps([prop({ owner_ref: 'P-BBBB' })])} busy={false} onRequestPurchase={vi.fn()} onPayRent={vi.fn()} />);
-    expect(screen.getAllByText('Tuya').length).toBeGreaterThan(0);
+  it('mía: muestra "Tuya" y no ofrece comprar/pagar', () => {
+    render0(withProps([prop({ owner_ref: 'P-BBBB' })]));
+    expect(screen.getByText('Tuya')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Solicitar compra' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Pagar alquiler' })).toBeNull();
   });
 
-  it('en pausa: aviso y acciones deshabilitadas', () => {
-    render(<PropertiesPanel snap={withProps([prop()], { runtime_status: 'paused' })} busy={false} onRequestPurchase={vi.fn()} onPayRent={vi.fn()} />);
-    expect(screen.getByText(/solo puedes consultar las propiedades/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Solicitar compra' })).toBeDisabled();
+  it('de otro jugador: muestra el propietario y "Pagar alquiler" llama onPayRent', () => {
+    const onRent = vi.fn();
+    render0(withProps([prop({ owner_ref: 'P-AAAA', base_rent: 25 })]), { onPayRent: onRent });
+    expect(screen.getByText(/Propiedad de Ana/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Pagar alquiler' }));
+    expect(onRent).toHaveBeenCalledTimes(1);
   });
 
-  it('espectador (en bancarrota): aviso y acciones deshabilitadas', () => {
+  it('en subasta: muestra el estado "En subasta" sin botón de compra', () => {
+    render0(withProps([prop({ in_auction: true })]));
+    expect(screen.getByText('En subasta')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Solicitar compra' })).toBeNull();
+  });
+
+  it('en pausa: aviso y sin botón de compra (acciones bloqueadas)', () => {
+    render0(withProps([prop()], { runtime_status: 'paused' }));
+    expect(screen.getByText(/acciones están deshabilitadas/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Solicitar compra' })).toBeNull();
+  });
+
+  it('espectador (en bancarrota): aviso y sin acciones', () => {
     const s = makeSnap({ properties: [prop()], me: { public_ref: 'P-BBBB', is_host: false, balance: 1000, is_current: false, is_spectator: true } });
-    render(<PropertiesPanel snap={s} busy={false} onRequestPurchase={vi.fn()} onPayRent={vi.fn()} />);
+    render0(s);
     expect(screen.getByText(/en bancarrota: solo puedes consultar/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Solicitar compra' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Solicitar compra' })).toBeNull();
+  });
+
+  it('las tarjetas se ven sin hover (grupos abiertos por defecto) y "Cerrar" llama onClose', () => {
+    const close = vi.fn();
+    render0(withProps([prop()]), { onClose: close });
+    // El grupo está abierto por defecto: la tarjeta es visible sin interacción.
+    expect(screen.getByText('Mediterráneo')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
+    expect(close).toHaveBeenCalledTimes(1);
   });
 });
 

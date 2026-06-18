@@ -1,7 +1,22 @@
-// Efecto de sonido "caja registradora" (ticling) sintetizado con Web Audio (sin asset binario,
-// libre de derechos). Preferencia local por dispositivo en localStorage. Falla en silencio si el
-// navegador bloquea el autoplay o no hay Web Audio.
+// Efecto de sonido "caja registradora" al recibir dinero.
+//
+// Implementación con HTMLAudioElement + asset WAV local (apps/web/public/sounds/cash-register.wav,
+// sintetizado y libre de derechos). Esta vía es la más fiable en iOS Safari/PWA: el elemento <audio>
+// reproduce media (no Web Audio), por lo que no depende del estado del AudioContext y, una vez
+// "desbloqueado" dentro de un gesto real del usuario, vuelve a sonar de forma programática.
+//
+// Diagnóstico previo (por qué fallaba en iPhone con Web Audio):
+//  - iOS solo permite crear/resumir el AudioContext DENTRO de un gesto; el contexto se creaba al
+//    reproducir (en un update de snapshot, fuera de gesto) y quedaba `suspended` → silencio.
+//  - El timbre triangular agudo era poco audible en el altavoz del iPhone.
+//  - Web Audio respeta el interruptor de silencio del hardware; <audio> es más permisivo.
+//
+// Reglas: preferencia local por dispositivo en localStorage; falla SIEMPRE en silencio (nunca lanza
+// ni muestra error técnico). El modo silencioso físico del iPhone puede silenciarlo: no se intenta
+// sortear, solo se documenta.
+
 const PREF_KEY = 'cash_sound_enabled';
+const ASSET_URL = `${import.meta.env.BASE_URL ?? '/'}sounds/cash-register.wav`;
 
 /** ¿Está activado el sonido al recibir dinero? (por defecto: sí). */
 export function isCashSoundEnabled(): boolean {
@@ -21,47 +36,85 @@ export function setCashSoundEnabled(on: boolean): void {
   }
 }
 
-type AC = typeof AudioContext;
-let ctx: AudioContext | null = null;
-function getCtx(): AudioContext | null {
-  if (typeof window === 'undefined') return null;
+let audio: HTMLAudioElement | null = null;
+let unlocked = false;
+
+function getAudio(): HTMLAudioElement | null {
+  if (typeof window === 'undefined' || typeof Audio === 'undefined') return null;
+  if (!audio) {
+    try {
+      audio = new Audio(ASSET_URL);
+      audio.preload = 'auto';
+      // iOS necesita reproducción inline (no a pantalla completa) y un único canal de SFX.
+      audio.setAttribute('playsinline', '');
+      audio.load();
+    } catch {
+      audio = null;
+    }
+  }
+  return audio;
+}
+
+/**
+ * Desbloquea el audio en la PRIMERA interacción real del usuario (pointerdown/touchend/click).
+ * Debe llamarse SÍNCRONAMENTE dentro del manejador del gesto: reproduce el asset en silencio
+ * (muted) y lo pausa de inmediato, dejando el elemento listo para sonar luego sin gesto.
+ * Marca `unlocked = true` solo si la promesa de play no es rechazada. Falla en silencio.
+ */
+export function primeCashSound(): void {
+  if (unlocked) return;
+  const a = getAudio();
+  if (!a) return;
   try {
-    const Ctor: AC | undefined = window.AudioContext ?? (window as unknown as { webkitAudioContext?: AC }).webkitAudioContext;
-    if (!Ctor) return null;
-    if (!ctx) ctx = new Ctor();
-    return ctx;
+    const prevMuted = a.muted;
+    a.muted = true;
+    const p = a.play();
+    if (p && typeof p.then === 'function') {
+      p.then(() => {
+        try {
+          a.pause();
+          a.currentTime = 0;
+        } catch {
+          /* noop */
+        }
+        a.muted = prevMuted;
+        unlocked = true;
+      }).catch(() => {
+        a.muted = prevMuted;
+        /* el navegador rechazó el desbloqueo: no marcamos unlocked, sin error */
+      });
+    } else {
+      // Navegadores sin promesa en play(): asumimos desbloqueo optimista.
+      try {
+        a.pause();
+        a.currentTime = 0;
+      } catch {
+        /* noop */
+      }
+      a.muted = prevMuted;
+      unlocked = true;
+    }
   } catch {
-    return null;
+    /* sin audio disponible: silencio */
   }
 }
 
-/** Desbloquea el audio tras la primera interacción del usuario (muchos navegadores lo exigen). */
-export function primeCashSound(): void {
-  const c = getCtx();
-  if (c && c.state === 'suspended') c.resume().catch(() => {});
-}
-
-/** Reproduce un "ticling" corto (dos campanitas) de caja registradora. Falla en silencio. */
+/** Reproduce el sonido de caja registradora. Falla en silencio si el navegador lo bloquea. */
 export function playCashSound(): void {
+  const a = getAudio();
+  if (!a) return;
   try {
-    const c = getCtx();
-    if (!c) return;
-    if (c.state === 'suspended') c.resume().catch(() => {});
-    const now = c.currentTime;
-    for (const [t, freq] of [[0, 1318.5], [0.075, 1760]] as const) {
-      const osc = c.createOscillator();
-      const gain = c.createGain();
-      osc.type = 'triangle';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.0001, now + t);
-      gain.gain.exponentialRampToValueAtTime(0.16, now + t + 0.008);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.16);
-      osc.connect(gain);
-      gain.connect(c.destination);
-      osc.start(now + t);
-      osc.stop(now + t + 0.18);
-    }
+    a.muted = false;
+    a.currentTime = 0;
+    const p = a.play();
+    if (p && typeof p.then === 'function') p.catch(() => {});
   } catch {
     /* autoplay bloqueado u otro problema: silencio, sin romper la UI */
   }
+}
+
+/** Solo para tests: restablece el estado interno del módulo. */
+export function __resetCashSoundForTests(): void {
+  audio = null;
+  unlocked = false;
 }

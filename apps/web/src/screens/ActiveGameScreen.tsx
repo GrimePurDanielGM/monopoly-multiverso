@@ -27,8 +27,8 @@ import { RevertDialog } from '../components/active/RevertDialog';
 import { GameControlPanel, PausedBanner } from '../components/active/GameControlPanel';
 import { FinishedView } from '../components/active/FinishedView';
 import { LateJoinTray } from '../components/active/LateJoinTray';
-import { PropertiesPanel } from '../components/active/PropertiesPanel';
-import { AuctionsPanel } from '../components/active/AuctionsPanel';
+import { PropertiesSummary } from '../components/active/PropertiesSummary';
+import { PropertyBoardModal } from '../components/active/PropertyBoardModal';
 import { PurchaseRequestsTray, LeaveRequestsTray, BankruptcyRequestsTray } from '../components/active/HostRequestTrays';
 import { BankruptcyDialog } from '../components/active/BankruptcyDialog';
 import { formatMoney, ownerName } from '../lib/activeSelectors';
@@ -71,15 +71,19 @@ export function ActiveGameScreen({
   const [buyTarget, setBuyTarget] = useState<ActiveProperty | null>(null);
   const [rentTarget, setRentTarget] = useState<ActiveProperty | null>(null);
   const [bankruptcyOpen, setBankruptcyOpen] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
   const [soundOn, setSoundOn] = useState<boolean>(() => isCashSoundEnabled());
 
   // Efecto "dinero recibido": suena + flash cuando MI saldo aumenta (no en el primer snapshot).
   const receivedFlash = useReceiveMoney(snap);
-  // Desbloquear el audio tras la primera interacción del usuario (autoplay).
+  // Desbloquear el audio dentro de la primera interacción REAL del usuario. iOS solo lo permite
+  // dentro del gesto, así que escuchamos varios eventos de gesto (el primero que llegue desbloquea;
+  // primeCashSound es idempotente). passive: no bloquea el scroll/tap.
   useEffect(() => {
     const unlock = () => primeCashSound();
-    window.addEventListener('pointerdown', unlock, { once: true });
-    return () => window.removeEventListener('pointerdown', unlock);
+    const events: (keyof WindowEventMap)[] = ['pointerdown', 'touchend', 'click'];
+    events.forEach((e) => window.addEventListener(e, unlock, { once: true, passive: true }));
+    return () => events.forEach((e) => window.removeEventListener(e, unlock));
   }, []);
   const toggleSound = useCallback(() => {
     setSoundOn((on) => {
@@ -259,15 +263,7 @@ export function ActiveGameScreen({
             </button>
           )}
           {error && <p role="alert" className="rounded-lg bg-rose-950/60 px-3 py-2 text-sm text-rose-200">{error}</p>}
-          <AuctionsPanel
-            snap={snap}
-            isHost={host}
-            busy={busy}
-            onBid={(a, amount) => void run(() => placePropertyBid(gameId, a.auction_ref, amount, newRequestId(), ver))}
-            onClose={(a) => void run(() => closePropertyAuction(gameId, a.auction_ref, newRequestId(), ver))}
-            onCancel={(a) => void run(() => cancelPropertyAuction(gameId, a.auction_ref, '', newRequestId(), ver))}
-          />
-          <PropertiesPanel snap={snap} busy={busy} onRequestPurchase={(p) => setBuyTarget(p)} onPayRent={(p) => setRentTarget(p)} />
+          <PropertiesSummary snap={snap} onOpenBoard={() => setBoardOpen(true)} />
         </div>
 
         <div className="mt-3 flex flex-col gap-3 lg:mt-0">
@@ -452,6 +448,20 @@ export function ActiveGameScreen({
         onConfirm={doBankruptcy}
         onCancel={() => setBankruptcyOpen(false)}
       />
+
+      {boardOpen && (
+        <PropertyBoardModal
+          snap={snap}
+          isHost={host}
+          busy={busy}
+          onClose={() => setBoardOpen(false)}
+          onRequestPurchase={(p) => setBuyTarget(p)}
+          onPayRent={(p) => setRentTarget(p)}
+          onBid={(a, amount) => void run(() => placePropertyBid(gameId, a.auction_ref, amount, newRequestId(), ver))}
+          onCloseAuction={(a) => void run(() => closePropertyAuction(gameId, a.auction_ref, newRequestId(), ver))}
+          onCancelAuction={(a) => void run(() => cancelPropertyAuction(gameId, a.auction_ref, '', newRequestId(), ver))}
+        />
+      )}
     </section>
   );
 }
