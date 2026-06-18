@@ -52,7 +52,37 @@
   - **Sin defectos bloqueantes conocidos.**
   - Último commit funcional de correcciones: `9e44699`. Último commit de estado previo al cierre: `8488a48`.
 
-## Pendiente para fases siguientes (no en Fase 0/1)
+## Fase 2 — Partida activa (banco digital, turnos, correcciones) · **`Fase 2: COMPLETADA`**
+- **Estado:** `COMPLETADA` (cierre 2026-06-18). Backend local + dev remoto, frontend, integración,
+  E2E y despliegue: verdes. Sin defectos bloqueantes conocidos.
+- **Alcance:** estado activo autoritativo; orden de turnos saneado por `public_ref`; jugador actual
+  derivado; finalizar turno (manual, sin dado); banco digital (saldo entero, banco ilimitado);
+  transferencias banco↔jugador (anfitrión) y jugador↔jugador; correcciones del anfitrión (ajuste de
+  saldo, fijar turno, transferencia en su nombre, reversión compensatoria por `ledger_ref`), todas
+  con motivo y auditadas; ledger append-only; idempotencia global; concurrencia por
+  `runtime_version`; snapshot saneado; Broadcast mínimo `active_state_changed`; reanudación.
+  **No incluye** propiedades, tablero, dado, cartas, cárcel, guardianes, ruleta, casas/hoteles ni tratos.
+- **Migraciones:** `0013_phase2_runtime`, `0014_phase2_economy_tables`, `0015_phase2_active_rpcs`,
+  `0016_phase2_start_game`. Aplicadas en LOCAL y en DEV remoto (`xazuytlseobprxqkdpjy`). El índice
+  `players(game_id, public_ref)` se promovió a constraint (`players_game_pubref_uniq`) para la FK.
+- **Seguridad:** RLS deny-all en `game_runtime`/`player_balances`/`ledger`/`active_requests`; acceso
+  solo por RPC `SECURITY DEFINER`; helpers internos revocados; ledger inmutable (trigger); snapshot
+  sin ids internos/`auth_uid`/`turn_order`(uuid)/secretos; `ledger_ref` opaco. Bundle `dist` sin
+  service-role/pepper/sb_secret_; cero ids internos en cliente.
+- **Pruebas:** SQL Fase 2 **43** (economy 14, turns 6, corrections 7, revert 6, idempotency 4, rls 3,
+  reconcile 3) + Fase 1 **68** sin regresión. Unit/componente web **158** (incl. selectores, parser
+  saneado, no-op, idempotencia cliente, componentes de turno/banco/correcciones). Integración local
+  real (economía, turnos, idempotencia, versión, **Broadcast** y resync). **E2E Playwright
+  Chromium + WebKit** del escenario completo de partida activa (crear→6 jugadores→iniciar→saldos→
+  banca→turno→transferencia→ajuste→reversión→sincronización→recarga conserva estado).
+- **Remoto dev:** snapshot activo, end_turn, banca, idempotencia, RLS y conflicto de versión
+  verificados contra `xazuytlseobprxqkdpjy`; smoke multiusuario remota superada. **Nota:** la
+  re-ejecución inmediata de smokes remotas de 6 jugadores queda limitada por el *rate limit* de
+  *sign-in* anónimo del proyecto dev (volumen de pruebas), condición transitoria de entorno, no del producto.
+- **Android físico:** pendiente como validación adicional NO bloqueante (igual que Fase 1).
+- **Commits:** backend `d6a514f`, frontend `cb9574c`.
+
+## Pendiente para fases siguientes (no en Fase 0/1/2)
 - Datos reales de tableros, títulos, precios, alquileres, hipotecas, stock físico.
 - Esquema definitivo de juego (propiedades, construcciones, cartas, banco, etc.).
 - Catálogo de cartas (transcripción de las fotos) + mazo especial de parking.
