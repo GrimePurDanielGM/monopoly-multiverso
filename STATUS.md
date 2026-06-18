@@ -80,7 +80,20 @@
   re-ejecución inmediata de smokes remotas de 6 jugadores queda limitada por el *rate limit* de
   *sign-in* anónimo del proyecto dev (volumen de pruebas), condición transitoria de entorno, no del producto.
 - **Android físico:** pendiente como validación adicional NO bloqueante (igual que Fase 1).
-- **Commits:** backend `d6a514f`, frontend `cb9574c`.
+- **Reanudación de jugador en partida activa (corrección 2026-06-18, `395080f`):** un jugador que
+  cerraba la pestaña no podía volver a la partida activa (dead-end en `/j/{CODE}` y sin acceso visible
+  a recuperar; el anfitrión tampoco veía las solicitudes durante la partida). **Backend ya lo soportaba**
+  (`my_status`/`request_recovery` sin restricción de estado); corrección **solo frontend/routing**:
+  - `/j/{CODE}` y `/unirse` detectan membresía y **reanudan** (lobby o activa) sin re-unirse ni elegir
+    ficha; si no eres miembro y la partida está `active`, ofrecen "Recuperar mi jugador" y "Recuperar
+    partida como anfitrión" (no `join_game`).
+  - La pantalla `not_member` es consciente del estado; el anfitrión ve la bandeja de solicitudes
+    también en la partida activa; Home añade "Recuperar mi jugador".
+  - Validado: integración local real (misma sesión + recuperación en `active`: mismo `public_ref`/saldo/
+    orden, sin fila nueva, sesión antigua pierde el control) y **E2E Chromium + WebKit** (`player-resume`).
+    Verificado en remoto desplegado (acceso visible en `/j/{activa}` y Home). **Pendiente de validación
+    manual.**
+- **Commits:** backend `d6a514f`, frontend `cb9574c`, fix reanudación `395080f`.
 
 ## Pendiente para fases siguientes (no en Fase 0/1/2)
 - Datos reales de tableros, títulos, precios, alquileres, hipotecas, stock físico.
