@@ -48,12 +48,20 @@ export interface LedgerEntry {
   reverts_ref: string | null;
   created_at: string;
 }
+export type RuntimeStatus = 'running' | 'paused' | 'finished';
+export interface ActiveControl {
+  paused_by_ref: string | null;
+  finished_by_ref: string | null;
+  reason: string | null;
+}
 export interface ActiveSnapshot {
   game: ActiveGameInfo;
   me: ActiveMe;
   turn: ActiveTurn;
   players: ActivePlayer[];
   ledger_recent: LedgerEntry[];
+  runtime_status: RuntimeStatus;
+  control: ActiveControl;
   runtime_version: number;
 }
 
@@ -120,6 +128,12 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
   }
 
   if (!isNum(raw.runtime_version)) return bad('runtime_version inválido');
+  const rs = raw.runtime_status;
+  if (rs !== 'running' && rs !== 'paused' && rs !== 'finished') return bad('runtime_status inválido');
+  const ctl = raw.control;
+  if (!isObj(ctl) || !isStrOrNull(ctl.paused_by_ref) || !isStrOrNull(ctl.finished_by_ref) || !isStrOrNull(ctl.reason)) {
+    return bad('control inválido');
+  }
 
   return {
     ok: true,
@@ -129,6 +143,8 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
       turn: { turn_number: t.turn_number, current_player_ref: t.current_player_ref, order: t.order as string[] },
       players,
       ledger_recent: ledger,
+      runtime_status: rs,
+      control: { paused_by_ref: ctl.paused_by_ref, finished_by_ref: ctl.finished_by_ref, reason: ctl.reason },
       runtime_version: raw.runtime_version,
     },
   };

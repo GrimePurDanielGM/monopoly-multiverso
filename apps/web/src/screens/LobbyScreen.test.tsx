@@ -151,6 +151,8 @@ describe('LobbyScreen', () => {
         turn: { turn_number: 1, current_player_ref: 'P-1', order: ['P-1'] },
         players: [{ public_ref: 'P-1', display_name: 'Anfitrión', token_id: 'delorean', balance: 3000, is_current: true }],
         ledger_recent: [],
+        runtime_status: 'running',
+        control: { paused_by_ref: null, finished_by_ref: null, reason: null },
         runtime_version: 0,
       },
     });

@@ -141,4 +141,38 @@ describe.skipIf(!enabled)('Partida activa — integración local real', () => {
     const old = await J.rpc('get_active_snapshot_by_code', { p_code: code });
     expect(old.error?.message).toBe('NOT_ACTIVE_MEMBER');
   }, 60000);
+
+  it('control: pausa bloquea, reanudar restaura, finalizar es terminal', async () => {
+    const { host, joiners, code, gid } = await startedGame();
+    const s0 = await host.rpc('get_active_snapshot_by_code', { p_code: code });
+    let ver = s0.data.runtime_version as number;
+    const cur = s0.data.turn.current_player_ref as string;
+    const all = [host, ...joiners];
+    let actor = host;
+    for (const c of all) { const sx = await c.rpc('get_active_snapshot_by_code', { p_code: code }); if (sx.data.me.public_ref === cur) { actor = c; break; } }
+
+    // Pausar -> snapshot paused y mutaciones bloqueadas.
+    const pz = await host.rpc('pause_game_runtime', { p_game: gid, p_reason: 'descanso', p_request_id: crypto.randomUUID(), p_expected_version: ver });
+    expect(pz.error).toBeNull();
+    const sp = await host.rpc('get_active_snapshot_by_code', { p_code: code });
+    expect(sp.data.runtime_status).toBe('paused');
+    const blocked = await actor.rpc('end_turn', { p_game: gid, p_expected_version: sp.data.runtime_version, p_request_id: crypto.randomUUID() });
+    expect(blocked.error?.message).toBe('GAME_PAUSED');
+
+    // Reanudar -> running y end_turn vuelve a funcionar.
+    ver = sp.data.runtime_version;
+    await host.rpc('resume_game_runtime', { p_game: gid, p_request_id: crypto.randomUUID(), p_expected_version: ver });
+    const sr = await host.rpc('get_active_snapshot_by_code', { p_code: code });
+    expect(sr.data.runtime_status).toBe('running');
+    const et = await actor.rpc('end_turn', { p_game: gid, p_expected_version: sr.data.runtime_version, p_request_id: crypto.randomUUID() });
+    expect(et.error).toBeNull();
+
+    // Finalizar -> terminal; mutaciones -> GAME_FINISHED; snapshot legible.
+    const sf0 = await host.rpc('get_active_snapshot_by_code', { p_code: code });
+    await host.rpc('finish_game_runtime', { p_game: gid, p_reason: 'fin', p_request_id: crypto.randomUUID(), p_expected_version: sf0.data.runtime_version });
+    const sf = await host.rpc('get_active_snapshot_by_code', { p_code: code });
+    expect(sf.data.runtime_status).toBe('finished');
+    const after = await host.rpc('bank_transfer', { p_game: gid, p_player_ref: sf.data.turn.order[1], p_direction: 'to_player', p_amount: 10, p_request_id: crypto.randomUUID(), p_expected_version: sf.data.runtime_version });
+    expect(after.error?.message).toBe('GAME_FINISHED');
+  }, 60000);
 });

@@ -19,6 +19,8 @@ function makeSnap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
       { public_ref: 'P-BBBB', display_name: 'Beto', token_id: 'boot', balance: 1000, is_current: false },
     ],
     ledger_recent: [],
+    runtime_status: 'running',
+    control: { paused_by_ref: null, finished_by_ref: null, reason: null },
     runtime_version: 7,
     ...over,
   };

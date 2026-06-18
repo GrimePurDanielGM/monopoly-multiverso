@@ -12,6 +12,8 @@ const valid = {
   ledger_recent: [
     { ledger_ref: 'L-AAAA', seq: 2, kind: 'bank_to_player', from_ref: null, to_ref: 'P-AAAA', amount: 100, before_balance: null, after_balance: null, reason: null, actor_ref: 'P-AAAA', reverts_ref: null, created_at: '2026-06-18T00:00:00Z' },
   ],
+  runtime_status: 'running',
+  control: { paused_by_ref: null, finished_by_ref: null, reason: null },
   runtime_version: 3,
 };
 

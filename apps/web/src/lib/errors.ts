@@ -62,6 +62,8 @@ const MESSAGES: Record<string, string> = {
   LEDGER_REF_EXHAUSTED: 'No se pudo registrar el movimiento. Inténtalo de nuevo.',
   REQUEST_ID_REQUIRED: 'Falta el identificador de la operación.',
   SNAPSHOT_INVALID: 'No se pudo leer el estado de la partida. Vuelve a intentarlo.',
+  GAME_PAUSED: 'La partida está en pausa. El anfitrión debe reanudarla.',
+  GAME_FINISHED: 'La partida ha finalizado.',
 };
 
 /** Mensaje legible para un código de error conocido (o genérico si no lo es). */

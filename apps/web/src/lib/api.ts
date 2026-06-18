@@ -388,3 +388,27 @@ export async function hostRevertMovement(
   if (error) return fail(error.message);
   return { ok: true, data: true };
 }
+
+/** Control de la partida (solo anfitrión): pausar. */
+export async function pauseGame(gameId: string, reason: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('pause_game_runtime', { p_game: gameId, p_reason: reason, p_request_id: requestId, p_expected_version: expectedVersion });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Control de la partida (solo anfitrión): reanudar. */
+export async function resumeGame(gameId: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('resume_game_runtime', { p_game: gameId, p_request_id: requestId, p_expected_version: expectedVersion });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Control de la partida (solo anfitrión): finalizar (terminal). */
+export async function finishGame(gameId: string, reason: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('finish_game_runtime', { p_game: gameId, p_reason: reason, p_request_id: requestId, p_expected_version: expectedVersion });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}

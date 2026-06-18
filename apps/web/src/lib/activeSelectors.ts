@@ -9,6 +9,12 @@ export function isMyTurn(snap: ActiveSnapshot): boolean {
   return snap.me.is_current;
 }
 
+export const isRunning = (s: ActiveSnapshot): boolean => s.runtime_status === 'running';
+export const isPaused = (s: ActiveSnapshot): boolean => s.runtime_status === 'paused';
+export const isFinished = (s: ActiveSnapshot): boolean => s.runtime_status === 'finished';
+/** ¿Se pueden ejecutar acciones económicas/de turno? (solo en curso). */
+export const canAct = (s: ActiveSnapshot): boolean => s.runtime_status === 'running';
+
 /** ¿El jugador local es el anfitrión (banca/correcciones)? */
 export function isHost(snap: ActiveSnapshot): boolean {
   return snap.me.is_host;

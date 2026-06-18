@@ -15,6 +15,8 @@ const snap: ActiveSnapshot = {
   turn: { turn_number: 5, current_player_ref: 'P-AAAA', order: ['P-AAAA', 'P-BBBB'] },
   players,
   ledger_recent: [],
+  runtime_status: 'running',
+  control: { paused_by_ref: null, finished_by_ref: null, reason: null },
   runtime_version: 7,
 };
 
