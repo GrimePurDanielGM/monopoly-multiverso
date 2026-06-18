@@ -4,7 +4,8 @@ import { hasForbiddenKey } from './snapshot';
 
 export type LedgerKind =
   | 'seed' | 'late_join_seed' | 'bank_to_player' | 'player_to_bank' | 'player_to_player'
-  | 'host_player_transfer' | 'host_adjust' | 'host_revert';
+  | 'host_player_transfer' | 'host_adjust' | 'host_revert'
+  | 'player_exit_to_bank' | 'player_exit_distribution' | 'player_exit_remainder_to_bank';
 
 export interface ActiveConfig {
   initial_money: number;
@@ -84,6 +85,7 @@ const isNumOrNull = (v: unknown): v is number | null => v === null || isNum(v);
 
 const KINDS: ReadonlySet<string> = new Set([
   'seed', 'late_join_seed', 'bank_to_player', 'player_to_bank', 'player_to_player', 'host_player_transfer', 'host_adjust', 'host_revert',
+  'player_exit_to_bank', 'player_exit_distribution', 'player_exit_remainder_to_bank',
 ]);
 
 export type ParseActiveResult = { ok: true; data: ActiveSnapshot } | { ok: false; reason: string };

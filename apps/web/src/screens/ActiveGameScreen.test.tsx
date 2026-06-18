@@ -2,11 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { ActiveSnapshot } from '../lib/activeSnapshot';
 
-const { activeMock, finishMock, pauseMock, resumeMock } = vi.hoisted(() => ({
+const { activeMock, finishMock, pauseMock, resumeMock, leaveMock, removeMock } = vi.hoisted(() => ({
   activeMock: vi.fn(),
   finishMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
   pauseMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
   resumeMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
+  leaveMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
+  removeMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
 }));
 
 vi.mock('../lib/api', () => {
@@ -17,6 +19,7 @@ vi.mock('../lib/api', () => {
     endTurn: noop, bankTransfer: noop, playerTransfer: noop, hostPlayerTransfer: noop,
     hostAdjustBalance: noop, hostSetTurn: noop, hostRevertMovement: noop,
     pauseGame: pauseMock, resumeGame: resumeMock, finishGame: finishMock,
+    leaveActiveGame: leaveMock, removeActivePlayer: removeMock,
     resolveRecovery: noop, resolveReentry: noop,
   };
 });
@@ -104,5 +107,52 @@ describe('ActiveGameScreen — control y estados', () => {
     activeMock.mockClear();
     fireEvent.click(screen.getByRole('button', { name: 'Recargar partida' }));
     await waitFor(() => expect(activeMock).toHaveBeenCalledWith('ABC234'));
+  });
+});
+
+describe('ActiveGameScreen — abandonar/expulsar', () => {
+  // jugador normal (no anfitrión): P-2
+  const playerSnap = () => snap({ me: { public_ref: 'P-2', is_host: false, balance: 3000, is_current: true } });
+
+  it('"Abandonar partida" solo abre el diálogo; Cancelar no llama a la RPC', () => {
+    renderScreen(playerSnap());
+    fireEvent.click(screen.getByRole('button', { name: 'Abandonar partida' }));
+    expect(screen.getByRole('dialog', { name: 'Abandonar partida' })).toBeInTheDocument();
+    expect(leaveMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'No, seguir jugando' }));
+    expect(leaveMock).not.toHaveBeenCalled();
+  });
+
+  it('confirmar abandono llama leaveActiveGame una sola vez (con runtime_version)', async () => {
+    renderScreen(playerSnap());
+    fireEvent.click(screen.getByRole('button', { name: 'Abandonar partida' }));
+    const yes = screen.getByRole('button', { name: 'Sí, abandonar partida' });
+    fireEvent.click(yes);
+    fireEvent.click(yes);
+    await waitFor(() => expect(leaveMock).toHaveBeenCalledTimes(1));
+    expect(leaveMock).toHaveBeenCalledWith('g1', expect.any(String), 5);
+  });
+
+  it('anfitrión: "Sacar jugador" abre diálogo con destino del saldo; por defecto a la banca', async () => {
+    renderScreen(snap()); // me anfitrión P-1
+    fireEvent.click(screen.getByRole('button', { name: 'Sacar jugador' }));
+    expect(screen.getByRole('dialog', { name: 'Sacar jugador' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Devolver a la banca')).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Sí, sacar jugador' }));
+    await waitFor(() => expect(removeMock).toHaveBeenCalledTimes(1));
+    expect(removeMock).toHaveBeenCalledWith('g1', 'P-2', 'to_bank', '', expect.any(String), 5);
+  });
+
+  it('anfitrión: elegir "Repartir" envía resolución distribute', async () => {
+    renderScreen(snap());
+    fireEvent.click(screen.getByRole('button', { name: 'Sacar jugador' }));
+    fireEvent.click(screen.getByLabelText('Repartir entre jugadores restantes'));
+    fireEvent.click(screen.getByRole('button', { name: 'Sí, sacar jugador' }));
+    await waitFor(() => expect(removeMock).toHaveBeenCalledWith('g1', 'P-2', 'distribute', '', expect.any(String), 5));
+  });
+
+  it('en pausa se permite abandonar (acción no bloqueada por el fieldset)', () => {
+    renderScreen(snap({ me: { public_ref: 'P-2', is_host: false, balance: 3000, is_current: false }, runtime_status: 'paused', control: { paused_by_ref: 'P-1', finished_by_ref: null, reason: null } }));
+    expect(screen.getByRole('button', { name: 'Abandonar partida' })).toBeEnabled();
   });
 });

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   getActiveSnapshotByCode, listActiveTokens, endTurn, bankTransfer, playerTransfer,
   hostPlayerTransfer, hostAdjustBalance, hostSetTurn, hostRevertMovement,
-  pauseGame, resumeGame, finishGame, resolveLateJoin, type ApiResult,
+  pauseGame, resumeGame, finishGame, resolveLateJoin,
+  leaveActiveGame, removeActivePlayer, type ApiResult, type ExitResolution,
 } from '../lib/api';
 import { useActiveStore } from '../store/active';
 import { useRealtimeStore } from '../store/realtime';
@@ -52,6 +53,9 @@ export function ActiveGameScreen({
   const [reloading, setReloading] = useState(false);
   const [reloadErr, setReloadErr] = useState<string | null>(null);
   const [reloadMsg, setReloadMsg] = useState('');
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<{ ref: string; name: string } | null>(null);
+  const [removeMode, setRemoveMode] = useState<ExitResolution>('to_bank');
 
   useEffect(() => {
     let active = true;
@@ -111,6 +115,26 @@ export function ActiveGameScreen({
     [controlBusy, refresh],
   );
 
+  // Abandono voluntario: tras salir, dejo de ser miembro -> recargamos para reevaluar la pantalla.
+  const doLeave = useCallback(async () => {
+    if (controlBusy) return;
+    setControlBusy(true);
+    setError(null);
+    const r = await leaveActiveGame(gameId, newRequestId(), snap?.runtime_version ?? 0);
+    setControlBusy(false);
+    setLeaveOpen(false);
+    if (r.ok) await onReload();
+    else setError(r.message);
+  }, [controlBusy, gameId, snap?.runtime_version, onReload]);
+
+  // Expulsión (anfitrión): saldo a la banca (def.) o reparto entre restantes.
+  const doRemove = useCallback(() => {
+    const t = removeTarget;
+    if (!t) return;
+    void runControl(() => removeActivePlayer(gameId, t.ref, removeMode, '', newRequestId(), snap?.runtime_version ?? 0))
+      .then(() => setRemoveTarget(null));
+  }, [removeTarget, removeMode, gameId, snap?.runtime_version, runControl]);
+
   const ver = snap?.runtime_version ?? 0;
   const host = useMemo(() => (snap ? isHost(snap) : false), [snap]);
 
@@ -152,7 +176,14 @@ export function ActiveGameScreen({
               {busy ? 'Procesando…' : 'Finalizar turno'}
             </button>
           )}
-          <PlayerBalances snap={snap} icons={icons} />
+          <PlayerBalances
+            snap={snap}
+            icons={icons}
+            isHost={host}
+            disabled={controlBusy}
+            onLeave={() => setLeaveOpen(true)}
+            onRemove={(ref, name) => { setRemoveMode('to_bank'); setRemoveTarget({ ref, name }); }}
+          />
           {error && <p role="alert" className="rounded-lg bg-rose-950/60 px-3 py-2 text-sm text-rose-200">{error}</p>}
         </div>
 
@@ -240,6 +271,62 @@ export function ActiveGameScreen({
         cancelLabel="No, continuar jugando"
         onConfirm={() => void runControl(() => finishGame(gameId, '', newRequestId(), ver)).then(() => setFinishOpen(false))}
         onCancel={() => setFinishOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={leaveOpen}
+        title="Abandonar partida"
+        destructive
+        busy={controlBusy}
+        message={<>¿Seguro que quieres abandonar la partida?<br />Perderás el control de tu jugador y tu saldo se devolverá a la banca.</>}
+        confirmLabel="Sí, abandonar partida"
+        cancelLabel="No, seguir jugando"
+        onConfirm={() => void doLeave()}
+        onCancel={() => setLeaveOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={removeTarget !== null}
+        title="Sacar jugador"
+        destructive
+        busy={controlBusy}
+        message={
+          <div className="flex flex-col gap-3">
+            <p>
+              ¿Seguro que quieres sacar a <span className="font-semibold">{removeTarget?.name}</span> de la partida?
+              <br />Su saldo se resolverá según la opción seleccionada y dejará de participar.
+            </p>
+            <fieldset className="flex flex-col gap-2 border-0 p-0">
+              <legend className="mb-1 text-xs font-semibold text-slate-200">Destino del saldo</legend>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="exit-resolution"
+                  value="to_bank"
+                  checked={removeMode === 'to_bank'}
+                  disabled={controlBusy}
+                  onChange={() => setRemoveMode('to_bank')}
+                />
+                <span>Devolver a la banca</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="exit-resolution"
+                  value="distribute"
+                  checked={removeMode === 'distribute'}
+                  disabled={controlBusy}
+                  onChange={() => setRemoveMode('distribute')}
+                />
+                <span>Repartir entre jugadores restantes</span>
+              </label>
+            </fieldset>
+          </div>
+        }
+        confirmLabel="Sí, sacar jugador"
+        cancelLabel="Cancelar"
+        onConfirm={doRemove}
+        onCancel={() => setRemoveTarget(null)}
       />
     </section>
   );

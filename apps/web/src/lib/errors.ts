@@ -65,6 +65,12 @@ const MESSAGES: Record<string, string> = {
   GAME_PAUSED: 'La partida está en pausa. El anfitrión debe reanudarla.',
   GAME_FINISHED: 'La partida ha finalizado.',
   LATE_JOIN_DISABLED: 'Esta partida no admite incorporaciones después de iniciar.',
+  // Fase 2 — salida/expulsión de jugador
+  HOST_CANNOT_LEAVE: 'El anfitrión no puede abandonar la partida (perdería el control).',
+  CANNOT_REMOVE_HOST: 'No se puede sacar al anfitrión de la partida.',
+  NO_REMAINING_PLAYERS: 'No hay jugadores restantes para repartir el saldo.',
+  INVALID_RESOLUTION: 'Opción de reparto del saldo no válida.',
+  TARGET_NOT_IN_GAME: 'Ese jugador ya no participa en la partida.',
 };
 
 /** Mensaje legible para un código de error conocido (o genérico si no lo es). */

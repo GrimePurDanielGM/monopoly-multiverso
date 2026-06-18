@@ -45,6 +45,36 @@ describe('PlayerBalances', () => {
     expect(screen.getByText(/3\.000/)).toBeInTheDocument();
     expect(screen.getByText('Tú')).toBeInTheDocument();
   });
+
+  it('jugador normal solo ve "Abandonar partida" en su propia fila (nunca "Sacar jugador")', () => {
+    const onLeave = vi.fn();
+    const onRemove = vi.fn();
+    // soy P-AAAA (no anfitrión)
+    const snap = makeSnap({ me: { public_ref: 'P-AAAA', is_host: false, balance: 3000, is_current: true } });
+    render(<PlayerBalances snap={snap} icons={{}} isHost={false} onLeave={onLeave} onRemove={onRemove} />);
+    expect(screen.getByRole('button', { name: 'Abandonar partida' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sacar jugador' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Abandonar partida' }));
+    expect(onLeave).toHaveBeenCalledTimes(1);
+  });
+
+  it('anfitrión ve "Sacar jugador" en otros y NO en su propia fila ni "Abandonar"', () => {
+    const onRemove = vi.fn();
+    // soy P-BBBB (anfitrión); el otro es P-AAAA
+    const snap = makeSnap({ me: { public_ref: 'P-BBBB', is_host: true, balance: 1000, is_current: false } });
+    render(<PlayerBalances snap={snap} icons={{}} isHost onLeave={vi.fn()} onRemove={onRemove} />);
+    const removes = screen.getAllByRole('button', { name: 'Sacar jugador' });
+    expect(removes).toHaveLength(1); // solo sobre el otro jugador, no sobre el anfitrión
+    expect(screen.queryByRole('button', { name: 'Abandonar partida' })).toBeNull();
+    fireEvent.click(removes[0]!);
+    expect(onRemove).toHaveBeenCalledWith('P-AAAA', 'Ana');
+  });
+
+  it('deshabilita las acciones mientras se procesa', () => {
+    const snap = makeSnap({ me: { public_ref: 'P-AAAA', is_host: false, balance: 3000, is_current: true } });
+    render(<PlayerBalances snap={snap} icons={{}} isHost={false} disabled onLeave={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Abandonar partida' })).toBeDisabled();
+  });
 });
 
 describe('PlayerTransferForm', () => {

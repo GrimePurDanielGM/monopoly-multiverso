@@ -431,3 +431,28 @@ export async function resolveLateJoin(requestRef: string, accept: boolean, expec
   if (error) return fail(error.message);
   return { ok: true, data: true };
 }
+
+export type ExitResolution = 'to_bank' | 'distribute';
+
+/** Salida voluntaria: el propio jugador abandona la partida (saldo a la banca). */
+export async function leaveActiveGame(gameId: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('leave_active_game', {
+    p_game: gameId, p_resolution_mode: 'to_bank', p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Expulsión (solo anfitrión): saca a un jugador y resuelve su saldo (banca o reparto). */
+export async function removeActivePlayer(
+  gameId: string, targetRef: string, resolution: ExitResolution, reason: string, requestId: string, expectedVersion: number,
+): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('remove_active_player', {
+    p_game: gameId, p_target_ref: targetRef, p_resolution_mode: resolution, p_reason: reason,
+    p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}

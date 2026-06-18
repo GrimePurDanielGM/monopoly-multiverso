@@ -66,9 +66,15 @@ export function isNoopAdjust(current: number, next: number): boolean {
   return current === next;
 }
 
-/** ¿El movimiento puede revertirse desde la UI? (seed y reversiones no). */
+/** Movimientos estructurales no revertibles desde la UI (semillas, reversiones y salidas). */
+const NON_REVERTIBLE: ReadonlySet<LedgerKind> = new Set<LedgerKind>([
+  'seed', 'late_join_seed', 'host_revert',
+  'player_exit_to_bank', 'player_exit_distribution', 'player_exit_remainder_to_bank',
+]);
+
+/** ¿El movimiento puede revertirse desde la UI? (semillas, reversiones y salidas no). */
 export function isRevertible(entry: LedgerEntry): boolean {
-  return entry.kind !== 'seed' && entry.kind !== 'host_revert' && entry.reverts_ref === null;
+  return !NON_REVERTIBLE.has(entry.kind) && entry.reverts_ref === null;
 }
 
 const KIND_LABEL: Record<LedgerKind, string> = {
@@ -80,6 +86,9 @@ const KIND_LABEL: Record<LedgerKind, string> = {
   host_player_transfer: 'Ajuste de transferencia',
   host_adjust: 'Ajuste de saldo',
   host_revert: 'Reversión',
+  player_exit_to_bank: 'Salida: saldo a la banca',
+  player_exit_distribution: 'Salida: reparto a jugador',
+  player_exit_remainder_to_bank: 'Salida: resto a la banca',
 };
 export function kindLabel(kind: LedgerKind): string {
   return KIND_LABEL[kind];

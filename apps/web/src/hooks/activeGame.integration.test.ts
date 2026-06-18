@@ -225,4 +225,62 @@ describe.skipIf(!enabled)('Partida activa — integración local real', () => {
     const blocked = await F.rpc('request_late_join', { p_code: code, p_name: 'Tarde', p_token: 'rider', p_device_label: 'x' });
     expect(blocked.error?.message).toBe('GAME_FINISHED');
   }, 90000);
+
+  it('salida: el jugador abandona (saldo a la banca), sale del orden, turno intacto y no puede actuar', async () => {
+    const { host, joiners, code, gid } = await startedGame();
+    const s0 = await host.rpc('get_active_snapshot_by_code', { p_code: code });
+    const cur = s0.data.turn.current_player_ref as string;
+    const refs = await Promise.all(joiners.map(async (c) =>
+      (await c.rpc('get_active_snapshot_by_code', { p_code: code })).data.me.public_ref as string));
+    const idx = refs.findIndex((r) => r !== cur);     // un jugador NO actual (ni host)
+    const leaver = joiners[idx]!; const leaverRef = refs[idx]!;
+
+    const lr = await leaver.rpc('leave_active_game', { p_game: gid, p_resolution_mode: 'to_bank', p_request_id: crypto.randomUUID(), p_expected_version: s0.data.runtime_version });
+    expect(lr.error).toBeNull();
+
+    const sh = await host.rpc('get_active_snapshot_by_code', { p_code: code });
+    expect((sh.data.turn.order as string[]).includes(leaverRef)).toBe(false);   // fuera del orden
+    expect(sh.data.turn.current_player_ref).toBe(cur);                          // turno intacto
+    expect((sh.data.players as { public_ref: string }[]).some((p) => p.public_ref === leaverRef)).toBe(false);
+    const led = (sh.data.ledger_recent as { kind: string; from_ref: string | null; amount: number }[])
+      .find((l) => l.kind === 'player_exit_to_bank' && l.from_ref === leaverRef);
+    expect(led?.amount).toBe(3000);                                            // saldo devuelto a la banca
+
+    // El saliente deja de ser miembro: ni snapshot activo ni de lobby, y no puede actuar.
+    const self = await leaver.rpc('get_active_snapshot_by_code', { p_code: code });
+    expect(self.error?.message).toBe('NOT_ACTIVE_MEMBER');
+    const selfLobby = await leaver.rpc('get_lobby_snapshot_by_code', { p_code: code });
+    expect(selfLobby.error?.message).toBe('NOT_ACTIVE_MEMBER');
+    const act = await leaver.rpc('end_turn', { p_game: gid, p_expected_version: sh.data.runtime_version, p_request_id: crypto.randomUUID() });
+    expect(act.error?.message).toBe('NOT_ACTIVE_MEMBER');
+  }, 90000);
+
+  it('expulsión con reparto: el host reparte el saldo entre restantes (resto a la banca) y reconcilia', async () => {
+    const { host, joiners, code, gid } = await startedGame();
+    const s0 = await host.rpc('get_active_snapshot_by_code', { p_code: code });
+    const victimRef = (await joiners[0]!.rpc('get_active_snapshot_by_code', { p_code: code })).data.me.public_ref as string;
+
+    // Fijar 1001: restantes = 5 (host + 4) -> 200 c/u, resto 1 a la banca (ejemplo del enunciado, escalado).
+    await host.rpc('host_adjust_balance', { p_game: gid, p_target_ref: victimRef, p_new_balance: 1001, p_reason: 'preparar reparto', p_request_id: crypto.randomUUID(), p_expected_version: s0.data.runtime_version });
+    const s1 = await host.rpc('get_active_snapshot_by_code', { p_code: code });
+    const rm = await host.rpc('remove_active_player', { p_game: gid, p_target_ref: victimRef, p_resolution_mode: 'distribute', p_reason: 'expulsión', p_request_id: crypto.randomUUID(), p_expected_version: s1.data.runtime_version });
+    expect(rm.error).toBeNull();
+
+    const sh = await host.rpc('get_active_snapshot_by_code', { p_code: code });
+    expect((sh.data.players as { public_ref: string }[]).some((p) => p.public_ref === victimRef)).toBe(false);
+    const ledger = sh.data.ledger_recent as { kind: string; from_ref: string | null; amount: number }[];
+    const dist = ledger.filter((l) => l.kind === 'player_exit_distribution' && l.from_ref === victimRef);
+    expect(dist.length).toBe(5);
+    expect(dist.every((l) => l.amount === 200)).toBe(true);
+    const rem = ledger.find((l) => l.kind === 'player_exit_remainder_to_bank' && l.from_ref === victimRef);
+    expect(rem?.amount).toBe(1);
+
+    // Reconciliación: cada restante recibió +200 (3000 -> 3200); la víctima queda fuera (no listada).
+    expect((sh.data.players as { balance: number }[]).every((p) => p.balance === 3200)).toBe(true);
+
+    // Permisos: un jugador normal NO puede expulsar.
+    const otherRef = (await joiners[2]!.rpc('get_active_snapshot_by_code', { p_code: code })).data.me.public_ref as string;
+    const bad = await joiners[1]!.rpc('remove_active_player', { p_game: gid, p_target_ref: otherRef, p_resolution_mode: 'to_bank', p_reason: 'x', p_request_id: crypto.randomUUID(), p_expected_version: sh.data.runtime_version });
+    expect(bad.error?.message).toBe('NOT_HOST');
+  }, 90000);
 });

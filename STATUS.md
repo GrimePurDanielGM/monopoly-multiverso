@@ -134,8 +134,40 @@
     off→sin entrada, on→solicitar/rechazar/reintentar/aprobar/aparece-en-todos/saldo/recarga/GAME_FULL),
     y **smoke remota dev** (config, solicitud, host la ve, aprobación, nuevo jugador al final con saldo,
     turno intacto). **Pendiente de validación manual.**
+- **Salida/expulsión de jugador en partida activa (2026-06-18, migración `0019`):** un jugador puede
+  **abandonar** y el anfitrión puede **sacar** a otro; se conserva la fila y el historial.
+  - **Marca de salida** en `players`: `left_at` / `left_reason` / `removed_by_ref` (no se borra nada).
+    El saliente **deja de ser miembro activo**: excluido en `_require_active_player`, en el snapshot
+    activo (`me`) y en el de lobby (`_lobby_snapshot`) → su pantalla pasa a "ya no formas parte".
+  - **Dinero (reconciliable, banco = NULL):** **a la banca** por defecto (`player_exit_to_bank`); o
+    **reparto** entre restantes (solo lo autoriza el anfitrión) con división entera
+    (`player_exit_distribution`) y **resto a la banca** (`player_exit_remainder_to_bank`). Tipos de
+    ledger nuevos; idempotencia por `left_at` (los asientos de reparto usan request_id propio).
+  - **Orden de turnos:** se quita del `turn_order_refs` preservando la invariante
+    `current = turn_order_refs[turn_index]`; si el saliente no era el actual, el turno no cambia; si lo
+    era, pasa al siguiente válido. `turn_number` intacto. El anfitrión **no** puede abandonar
+    (`HOST_CANNOT_LEAVE`) ni ser expulsado (`CANNOT_REMOVE_HOST`) → la partida nunca queda sin control.
+  - **`leave_active_game`** (solo el propio jugador, siempre a la banca) y **`remove_active_player`**
+    (solo anfitrión, banca o reparto): `SECURITY DEFINER`, idempotentes, `runtime_version`, auditadas,
+    `game_runtime FOR UPDATE`, un único Broadcast, sin ids internos. Permitidas en `running` y `paused`
+    (gestión administrativa); en `finished` → `GAME_FINISHED`.
+  - **UI:** por fila, "Abandonar partida" (mi jugador, si no soy anfitrión) y "Sacar jugador" (anfitrión,
+    sobre otros; nunca sobre sí mismo ni visible a no-anfitriones). Confirmaciones obligatorias: abandono
+    (`No, seguir jugando` / `Sí, abandonar partida`) y expulsión con **selector de destino del saldo**
+    (Devolver a la banca = por defecto / Repartir entre restantes) (`Cancelar` / `Sí, sacar jugador`).
+  - **Propiedades y cartas (Fase 3, solo documentado, NO implementado):** si un jugador abandona o es
+    expulsado, sus propiedades volverán a la banca (disponibles para compra) y las cartas conservables
+    al mazo/banca/estado disponible; no se repartirán entre jugadores. Subasta/reparto, si se quiere,
+    será una regla nueva en su momento.
+  - También se corrigió una divergencia previa del lobby: `allow_late_join` se movió al helper
+    `_lobby_snapshot` para que `by_code` y `by_id` coincidan (`bycode_phase1` verde).
+  - Validado: SQL `exit_phase2` (11), integración local real **y smoke remota dev** (abandono→banca,
+    expulsión+reparto con resto, fuera del orden, turno, reconciliación, permisos), unit/componente
+    (botones por rol y diálogos), **E2E Chromium+WebKit** (`player-exit`: expulsar→banca, abandonar,
+    expulsar+repartir, persistencia tras recargar). **Pendiente de validación manual.**
 - **Commits:** backend Fase 2 `d6a514f`, frontend `cb9574c`, reanudación `395080f`, control backend
-  `eddb8fb`, control frontend `e64e0e2`, late-join backend `ffb4508`, late-join frontend `482d010`.
+  `eddb8fb`, control frontend `e64e0e2`, late-join backend `ffb4508`, late-join frontend `482d010`,
+  salida/expulsión `0019` (este commit).
 
 ## Pendiente para fases siguientes (no en Fase 0/1/2)
 - Datos reales de tableros, títulos, precios, alquileres, hipotecas, stock físico.
