@@ -52,11 +52,11 @@ export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, all
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-slate-300">Mínimo</span>
-          <input type="number" inputMode="numeric" min={6} max={16} value={min} onChange={(e) => setMin(numField(e.target.value, min))} className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base" />
+          <input type="number" inputMode="numeric" min={2} max={16} value={min} onChange={(e) => setMin(numField(e.target.value, min))} className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base" />
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-slate-300">Máximo</span>
-          <input type="number" inputMode="numeric" min={6} max={16} value={max} onChange={(e) => setMax(numField(e.target.value, max))} className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base" />
+          <input type="number" inputMode="numeric" min={2} max={16} value={max} onChange={(e) => setMax(numField(e.target.value, max))} className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base" />
         </label>
       </div>
       <label className="flex flex-col gap-1 text-sm">

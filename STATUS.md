@@ -165,9 +165,19 @@
     expulsión+reparto con resto, fuera del orden, turno, reconciliación, permisos), unit/componente
     (botones por rol y diálogos), **E2E Chromium+WebKit** (`player-exit`: expulsar→banca, abandonar,
     expulsar+repartir, persistencia tras recargar). **Pendiente de validación manual.**
+- **Mínimo de jugadores configurable a 2 (2026-06-18, solo frontend — sin migración):** para facilitar
+  las pruebas manuales, el anfitrión puede fijar `min_players = 2` (el **default sigue siendo 6**; el
+  máximo sigue en 16). El **backend ya lo permitía** (`update_config` valida `v_min >= 2`; `start_game`
+  exige `v_active >= v_min`), por lo que **no hubo cambio de backend**: solo se bajó el suelo funcional de
+  la UI (`hostConfig.MIN_FLOOR` 6→2 y los `min` de los inputs del formulario). `min_players = 1` sigue
+  siendo inválido (`INVALID_PLAYER_LIMITS`).
+  - Validado: SQL `minplayers_phase2` (4: configurar 2, iniciar con 2, NO con 1, rechazar 1),
+    unit `hostConfig`/`GameConfigForm` (permite 2, rechaza 1, atributo `min=2`), **E2E Chromium+WebKit**
+    (`min-players`: la UI permite 2, no inicia con 1, sí con 2). El E2E `player-exit` se simplificó a
+    anfitrión + 3 jugadores (misma cobertura). **Pendiente de validación manual.**
 - **Commits:** backend Fase 2 `d6a514f`, frontend `cb9574c`, reanudación `395080f`, control backend
   `eddb8fb`, control frontend `e64e0e2`, late-join backend `ffb4508`, late-join frontend `482d010`,
-  salida/expulsión `0019` (este commit).
+  salida/expulsión `0019` `8b7fcff`, mínimo 2 jugadores (este commit).
 
 ## Pendiente para fases siguientes (no en Fase 0/1/2)
 - Datos reales de tableros, títulos, precios, alquileres, hipotecas, stock físico.

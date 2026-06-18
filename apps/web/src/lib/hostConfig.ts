@@ -1,6 +1,6 @@
-// Validación funcional de la configuración del lobby (regla aprobada de la app, más
-// estricta que el backend). El backend sigue siendo la autoridad; esto evita envíos inválidos.
-export const MIN_FLOOR = 6; // mínimo funcional de la app (el backend permitiría menos)
+// Validación funcional de la configuración del lobby. El backend sigue siendo la autoridad
+// (update_config exige v_min >= 2); esto solo evita envíos inválidos desde la UI.
+export const MIN_FLOOR = 2; // mínimo de jugadores para iniciar (coincide con el backend)
 export const MAX_CEIL = 16;
 
 export interface ConfigInput {

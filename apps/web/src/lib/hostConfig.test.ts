@@ -5,8 +5,10 @@ const base = { name: 'Mi sala', minPlayers: 6, maxPlayers: 16, initialMoney: 300
 
 describe('configErrors', () => {
   it('válida por defecto', () => expect(isConfigValid(base, 6)).toBe(true));
-  it('rechaza mínimo inferior a 6 (regla funcional)', () =>
-    expect(configErrors({ ...base, minPlayers: 5 }, 6).length).toBeGreaterThan(0));
+  it('permite mínimo 2 (configurable para pruebas)', () =>
+    expect(isConfigValid({ ...base, minPlayers: 2 }, 2)).toBe(true));
+  it('rechaza mínimo inferior a 2', () =>
+    expect(configErrors({ ...base, minPlayers: 1 }, 6).length).toBeGreaterThan(0));
   it('rechaza máximo superior a 16', () =>
     expect(configErrors({ ...base, maxPlayers: 17 }, 6).length).toBeGreaterThan(0));
   it('rechaza mínimo mayor que máximo', () =>

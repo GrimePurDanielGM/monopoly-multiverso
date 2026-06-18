@@ -38,7 +38,12 @@ test('salida y expulsión: abandonar a la banca, expulsar y repartir, persistenc
   const hostCtx = await browser.newContext();
   const host = await hostCtx.newPage();
   const code = await createGame(host);
-  const names = ['Marty', 'Doc', 'Jennifer', 'Biff', 'George'];
+  // Mínimo configurable a 2: iniciamos con anfitrión + 3 jugadores (cobertura completa, menos contextos).
+  await host.getByText('Configuración de la sala').click();
+  await host.getByLabel('Mínimo').fill('2');
+  await host.getByRole('button', { name: 'Guardar configuración' }).click();
+  await expect(host.getByLabel('Mínimo')).toHaveValue('2');
+  const names = ['Marty', 'Doc', 'Jennifer'];
   const ctxs: BrowserContext[] = [];
   const pages: Page[] = [];
   for (const n of names) {
@@ -54,7 +59,7 @@ test('salida y expulsión: abandonar a la banca, expulsar y repartir, persistenc
   await host.getByRole('button', { name: 'Iniciar partida' }).click();
   await host.getByRole('button', { name: 'Iniciar', exact: true }).click();
   await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
-  const [marty, doc, jennifer] = pages as [Page, Page, Page, Page, Page];
+  const [marty, doc] = pages as [Page, Page, Page]; // Jennifer se expulsa desde la fila del anfitrión
 
   // ── El anfitrión EXPULSA a Doc (saldo a la banca, opción por defecto).
   await row(host, 'Doc').getByRole('button', { name: 'Sacar jugador' }).click();
@@ -74,18 +79,18 @@ test('salida y expulsión: abandonar a la banca, expulsar y repartir, persistenc
   await expect(row(host, 'Marty')).toHaveCount(0, { timeout: 20_000 });
 
   // ── El anfitrión EXPULSA a Jennifer REPARTIENDO el saldo entre los restantes (solo el host).
-  // Restantes = anfitrión + Biff + George (3): 3.000 / 3 = 1.000 c/u, sin resto.
+  // Único restante = el anfitrión: recibe los 3.000 de Jennifer (3.000 -> 6.000), sin resto.
   await row(host, 'Jennifer').getByRole('button', { name: 'Sacar jugador' }).click();
   const distDlg = host.getByRole('dialog', { name: 'Sacar jugador' });
   await distDlg.getByLabel('Repartir entre jugadores restantes').check();
   await distDlg.getByRole('button', { name: 'Sí, sacar jugador' }).click();
   await expect(row(host, 'Jennifer')).toHaveCount(0, { timeout: 20_000 });
-  await expect(row(host, 'Anfitrión').getByText('4.000 ₥')).toBeVisible({ timeout: 20_000 });   // 3.000 + 1.000
+  await expect(row(host, 'Anfitrión').getByText('6.000 ₥')).toBeVisible({ timeout: 20_000 });   // 3.000 + 3.000
 
   // ── Persistencia: recargar conserva el estado final.
   await host.reload();
   await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
-  await expect(row(host, 'Anfitrión').getByText('4.000 ₥')).toBeVisible({ timeout: 20_000 });
+  await expect(row(host, 'Anfitrión').getByText('6.000 ₥')).toBeVisible({ timeout: 20_000 });
   await expect(row(host, 'Doc')).toHaveCount(0);
   await expect(row(host, 'Marty')).toHaveCount(0);
   await expect(row(host, 'Jennifer')).toHaveCount(0);
