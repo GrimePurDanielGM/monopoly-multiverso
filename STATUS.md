@@ -113,8 +113,29 @@
     componente (diálogo de finalización: abre/No/Escape/Sí-una-vez/doble-click/foco/terminal),
     **E2E Chromium + WebKit** (`game-control`), y **smoke remota dev** (running→paused→GAME_PAUSED→
     resumed→finished→GAME_FINISHED). **Pendiente de validación manual.**
+- **Incorporaciones tardías controladas (2026-06-18, `ffb4508`+`482d010`, migración `0018`):**
+  durante una partida iniciada, una sesión nueva puede pedir entrar **bajo aprobación del anfitrión**.
+  - **Config `allow_late_join`** (boolean, default `false`, solo configurable en lobby; en la whitelist
+    de `update_config`; expuesta saneada en los snapshots). UI: toggle "Permitir que entren jugadores
+    después de iniciar" con el texto explicativo.
+  - **Flujo separado** de recuperación de identidad y de reentrada de expulsados. `/j/{CODE}` en activa
+    para una sesión nueva: si `allow_late_join`, ofrece "Solicitar entrar como nuevo jugador" además de
+    recuperar jugador/anfitrión; si no, solo recuperación.
+  - **`request_late_join`/`resolve_late_join`** (solo anfitrión al aprobar; `SECURITY DEFINER`,
+    idempotentes, `runtime_version`, auditadas, Broadcast). El aprobado entra en una transacción:
+    jugador nuevo + saldo `initial_money` + ledger **`late_join_seed`** (tipo nuevo) + **al FINAL** de
+    `turn_order_refs` **sin** tocar turno/`turn_number`/jugador actual; `runtime_version +1`; reconcilia.
+    Rechazo no crea nada. En `finished` → `GAME_FINISHED`; en `paused` se puede aprobar (gestión
+    administrativa) pero el nuevo no actúa hasta reanudar. Sala llena → `GAME_FULL`.
+  - **UI anfitrión:** bandeja diferenciada "Solicitudes para entrar en la partida" (no se mezcla con
+    recuperación/reentrada). **Solicitante:** "Solicitud pendiente de aprobación…"; al aprobar entra
+    automáticamente con su identidad/saldo; al rechazar, mensaje claro.
+  - Validado: SQL `latejoin_phase2` (18), integración local real, **E2E Chromium+WebKit** (`late-join`:
+    off→sin entrada, on→solicitar/rechazar/reintentar/aprobar/aparece-en-todos/saldo/recarga/GAME_FULL),
+    y **smoke remota dev** (config, solicitud, host la ve, aprobación, nuevo jugador al final con saldo,
+    turno intacto). **Pendiente de validación manual.**
 - **Commits:** backend Fase 2 `d6a514f`, frontend `cb9574c`, reanudación `395080f`, control backend
-  `eddb8fb`, control frontend `e64e0e2`.
+  `eddb8fb`, control frontend `e64e0e2`, late-join backend `ffb4508`, late-join frontend `482d010`.
 
 ## Pendiente para fases siguientes (no en Fase 0/1/2)
 - Datos reales de tableros, títulos, precios, alquileres, hipotecas, stock físico.
