@@ -89,10 +89,10 @@ test('escenario principal: anfitrión crea, comparte, 5 se unen, todos listos, i
   await startBtn.click();
   await host.getByRole('button', { name: 'Iniciar', exact: true }).click();
 
-  // Todos (anfitrión + 5) ven el estado activo.
-  await expect(host.getByRole('heading', { name: 'La partida ha comenzado' })).toBeVisible({ timeout: 15_000 });
+  // Todos (anfitrión + 5) entran a la partida activa (Fase 2: pantalla de partida).
+  await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 15_000 });
   for (const p of pages) {
-    await expect(p.getByRole('heading', { name: 'La partida ha comenzado' })).toBeVisible({ timeout: 15_000 });
+    await expect(p.getByText(`Partida ${code}`)).toBeVisible({ timeout: 15_000 });
   }
 
   await hostCtx.close();

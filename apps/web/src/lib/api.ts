@@ -5,6 +5,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { messageForError } from './errors';
 import { parseSnapshot, type LobbySnapshot } from './snapshot';
+import { parseActiveSnapshot, type ActiveSnapshot } from './activeSnapshot';
 import type { RequestKind, RequestStatus } from './requestState';
 
 export type ApiOk<T> = { ok: true; data: T };
@@ -287,4 +288,103 @@ export async function joinGame(
   });
   if (error) return fail(error.message);
   return { ok: true, data: data as JoinGameResult };
+}
+
+// ============================================================================
+// Fase 2 — Partida activa (banco, turnos, correcciones). Concurrencia por
+// runtime_version; idempotencia por requestId. El snapshot es la única fuente.
+// ============================================================================
+
+/** Snapshot autoritativo de la partida activa (saneado: solo public_ref / ledger_ref). */
+export async function getActiveSnapshotByCode(code: string): Promise<ApiResult<ActiveSnapshot>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { data, error } = await supabase.rpc('get_active_snapshot_by_code', { p_code: code });
+  if (error) return fail(error.message);
+  const parsed = parseActiveSnapshot(data);
+  if (!parsed.ok) return fail('SNAPSHOT_INVALID');
+  return { ok: true, data: parsed.data };
+}
+
+/** Finaliza el turno (solo el jugador actual). */
+export async function endTurn(gameId: string, expectedVersion: number, requestId: string): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('end_turn', { p_game: gameId, p_expected_version: expectedVersion, p_request_id: requestId });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Banca (solo anfitrión): banco↔jugador. dir = 'to_player' | 'from_player'. */
+export async function bankTransfer(
+  gameId: string, playerRef: string, direction: 'to_player' | 'from_player',
+  amount: number, requestId: string, expectedVersion: number,
+): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('bank_transfer', {
+    p_game: gameId, p_player_ref: playerRef, p_direction: direction, p_amount: amount,
+    p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Transferencia entre jugadores (paga el llamante; permitido en cualquier momento). */
+export async function playerTransfer(
+  gameId: string, toRef: string, amount: number, requestId: string, expectedVersion: number,
+): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('player_transfer', {
+    p_game: gameId, p_to_ref: toRef, p_amount: amount, p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Corrección del anfitrión: transferencia en nombre de otro (motivo obligatorio). */
+export async function hostPlayerTransfer(
+  gameId: string, fromRef: string, toRef: string, amount: number, reason: string, requestId: string, expectedVersion: number,
+): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('host_player_transfer', {
+    p_game: gameId, p_from_ref: fromRef, p_to_ref: toRef, p_amount: amount, p_reason: reason,
+    p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Corrección del anfitrión: fija el saldo de un jugador (motivo obligatorio). */
+export async function hostAdjustBalance(
+  gameId: string, targetRef: string, newBalance: number, reason: string, requestId: string, expectedVersion: number,
+): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('host_adjust_balance', {
+    p_game: gameId, p_target_ref: targetRef, p_new_balance: newBalance, p_reason: reason,
+    p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Corrección del anfitrión: fija el turno a un jugador del orden (motivo obligatorio). */
+export async function hostSetTurn(
+  gameId: string, targetRef: string, reason: string, requestId: string, expectedVersion: number,
+): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('host_set_turn', {
+    p_game: gameId, p_target_ref: targetRef, p_reason: reason, p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Corrección del anfitrión: revierte un movimiento por su ledger_ref (motivo obligatorio). */
+export async function hostRevertMovement(
+  gameId: string, ledgerRef: string, reason: string, requestId: string, expectedVersion: number,
+): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('host_revert_movement', {
+    p_game: gameId, p_ledger_ref: ledgerRef, p_reason: reason, p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
 }

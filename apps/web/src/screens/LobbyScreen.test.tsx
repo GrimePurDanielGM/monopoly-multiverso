@@ -2,11 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
-const { snapMock, tokensMock, chooseMock, readyMock } = vi.hoisted(() => ({
+const { snapMock, tokensMock, chooseMock, readyMock, activeMock } = vi.hoisted(() => ({
   snapMock: vi.fn(),
   tokensMock: vi.fn(),
   chooseMock: vi.fn(),
   readyMock: vi.fn(),
+  activeMock: vi.fn(),
 }));
 
 vi.mock('react-router-dom', () => ({
@@ -15,6 +16,7 @@ vi.mock('react-router-dom', () => ({
 }));
 vi.mock('../lib/api', () => ({
   getLobbySnapshotByCode: snapMock,
+  getActiveSnapshotByCode: activeMock,
   listActiveTokens: tokensMock,
   chooseToken: chooseMock,
   setReady: readyMock,
@@ -24,6 +26,14 @@ vi.mock('../lib/api', () => ({
   updateConfig: () => Promise.resolve({ ok: true, data: true }),
   startGame: () => Promise.resolve({ ok: true, data: true }),
   cancelGame: () => Promise.resolve({ ok: true, data: true }),
+  // Acciones de partida activa (no se ejercitan al renderizar; no-ops para imports)
+  endTurn: () => Promise.resolve({ ok: true, data: true }),
+  bankTransfer: () => Promise.resolve({ ok: true, data: true }),
+  playerTransfer: () => Promise.resolve({ ok: true, data: true }),
+  hostPlayerTransfer: () => Promise.resolve({ ok: true, data: true }),
+  hostAdjustBalance: () => Promise.resolve({ ok: true, data: true }),
+  hostSetTurn: () => Promise.resolve({ ok: true, data: true }),
+  hostRevertMovement: () => Promise.resolve({ ok: true, data: true }),
 }));
 vi.mock('../lib/session', () => ({ ensureAnonSession: () => Promise.resolve('ready') }));
 vi.mock('../hooks/useLobbyRealtime', () => ({ useLobbyRealtime: () => ({ reconnect: () => {} }) }));
@@ -130,10 +140,21 @@ describe('LobbyScreen', () => {
     expect(screen.getByRole('button', { name: /Marcar Preparado/i })).toBeDisabled();
   });
 
-  it('muestra "La partida ha comenzado" en estado active', async () => {
+  it('renderiza la pantalla de partida activa en estado active', async () => {
     snapMock.mockResolvedValue({ ok: true, data: mkSnapshot({ status: 'active' }) });
+    activeMock.mockResolvedValue({
+      ok: true,
+      data: {
+        game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 6, max_players: 16 } },
+        me: { public_ref: 'P-1', is_host: true, balance: 3000, is_current: true },
+        turn: { turn_number: 1, current_player_ref: 'P-1', order: ['P-1'] },
+        players: [{ public_ref: 'P-1', display_name: 'Anfitrión', token_id: 'delorean', balance: 3000, is_current: true }],
+        ledger_recent: [],
+        runtime_version: 0,
+      },
+    });
     render(<LobbyScreen />);
-    expect(await screen.findByText(/ha comenzado/i)).toBeInTheDocument();
+    expect(await screen.findByText('Partida ABC234')).toBeInTheDocument();
   });
 
   it('muestra "La partida ha sido cancelada" en estado cancelled', async () => {

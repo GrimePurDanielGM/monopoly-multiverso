@@ -44,6 +44,24 @@ const MESSAGES: Record<string, string> = {
   TARGET_NOT_ACTIVE: 'Esa identidad ya no está activa.',
   REQUEST_NOT_FOUND: 'La solicitud ya no existe.',
   BAD_REQUEST: 'Datos no válidos.',
+  // Fase 2 — partida activa (banco / turnos / correcciones)
+  NOT_ACTIVE: 'La partida no está en curso.',
+  NOT_CURRENT_PLAYER: 'No es tu turno.',
+  INSUFFICIENT_FUNDS: 'Saldo insuficiente para esta operación.',
+  INVALID_AMOUNT: 'El importe no es válido (entero, mayor que 0 y hasta 10.000.000).',
+  INVALID_DIRECTION: 'Operación de banca no válida.',
+  UNKNOWN_PLAYER: 'Ese jugador no está en la partida.',
+  SELF_TRANSFER: 'No puedes transferirte dinero a ti mismo.',
+  REASON_REQUIRED: 'Indica un motivo (entre 3 y 500 caracteres).',
+  NEGATIVE_NOT_ALLOWED: 'El saldo no puede ser negativo.',
+  BALANCE_LIMIT: 'El saldo resultante supera el límite permitido.',
+  UNKNOWN_LEDGER: 'Ese movimiento no existe.',
+  CANNOT_REVERT_SEED: 'No se puede revertir este movimiento.',
+  ALREADY_REVERTED: 'Ese movimiento ya fue revertido.',
+  WOULD_GO_NEGATIVE: 'La reversión dejaría a un jugador con saldo negativo.',
+  LEDGER_REF_EXHAUSTED: 'No se pudo registrar el movimiento. Inténtalo de nuevo.',
+  REQUEST_ID_REQUIRED: 'Falta el identificador de la operación.',
+  SNAPSHOT_INVALID: 'No se pudo leer el estado de la partida. Vuelve a intentarlo.',
 };
 
 /** Mensaje legible para un código de error conocido (o genérico si no lo es). */

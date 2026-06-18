@@ -12,7 +12,7 @@ import { filterPresentRefs, presenceRefsFromState } from '../lib/presence';
 import { reduceConn, DISCONNECT_MS, HEARTBEAT_MS, EVENT_DEBOUNCE_MS, type ConnEvent } from '../lib/connState';
 import { useRealtimeStore } from '../store/realtime';
 
-const OFFICIAL_EVENTS = ['lobby_changed', 'game_started', 'game_cancelled', 'recovery_requested'] as const;
+const OFFICIAL_EVENTS = ['lobby_changed', 'game_started', 'game_cancelled', 'recovery_requested', 'active_state_changed'] as const;
 
 interface Params {
   code: string;

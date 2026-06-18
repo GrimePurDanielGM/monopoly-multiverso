@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   chooseToken,
+  getActiveSnapshotByCode,
   getLobbySnapshotByCode,
   getMyStatus,
   kickPlayer,
@@ -9,6 +10,8 @@ import {
   setReady,
   type PublicToken,
 } from '../lib/api';
+import { useActiveStore } from '../store/active';
+import { ActiveGameScreen } from './ActiveGameScreen';
 import { ensureAnonSession } from '../lib/session';
 import { normalizeCode } from '../lib/codes';
 import { useLobbyStore } from '../store/lobby';
@@ -50,6 +53,17 @@ export function LobbyScreen() {
 
   const channelStatus = useRealtimeStore((s) => s.channelStatus);
   const presentPublicRefs = useRealtimeStore((s) => s.presentPublicRefs);
+  const replaceActive = useActiveStore((s) => s.replaceActive);
+
+  // Cuando la partida está activa, trae también el snapshot económico/turno (Fase 2).
+  const loadActiveIfNeeded = useCallback(
+    async (status: string) => {
+      if (status !== 'active') return;
+      const a = await getActiveSnapshotByCode(code);
+      if (a.ok) replaceActive(a.data);
+    },
+    [code, replaceActive],
+  );
 
   const [tokens, setTokens] = useState<PublicToken[]>([]);
   const [actionBusy, setActionBusy] = useState(false);
@@ -91,15 +105,18 @@ export function LobbyScreen() {
     replaceSnapshot(r.data, Date.now());
     const tk = await listActiveTokens(r.data.game.config.token_catalog_version);
     if (tk.ok) setTokens(tk.data);
-  }, [code, replaceSnapshot, setStatus, setError, applyNotMember]);
+    await loadActiveIfNeeded(r.data.game.status);
+  }, [code, replaceSnapshot, setStatus, setError, applyNotMember, loadActiveIfNeeded]);
 
   // Resync silencioso (eventos Realtime / foreground): sin parpadeo; errores transitorios no borran el snapshot.
   const resync = useCallback(async () => {
     const prevGameId = useLobbyStore.getState().game?.id ?? null;
     const r = await getLobbySnapshotByCode(code);
-    if (r.ok) replaceSnapshot(r.data, Date.now());
-    else if (r.code === 'NOT_ACTIVE_MEMBER') await applyNotMember(prevGameId);
-  }, [code, replaceSnapshot, applyNotMember]);
+    if (r.ok) {
+      replaceSnapshot(r.data, Date.now());
+      await loadActiveIfNeeded(r.data.game.status);
+    } else if (r.code === 'NOT_ACTIVE_MEMBER') await applyNotMember(prevGameId);
+  }, [code, replaceSnapshot, applyNotMember, loadActiveIfNeeded]);
 
   useEffect(() => {
     void load();
@@ -226,12 +243,7 @@ export function LobbyScreen() {
     );
   }
   if (game.status === 'active') {
-    return (
-      <section className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-        <h1 className="text-2xl font-bold">La partida ha comenzado</h1>
-        <p className="text-sm text-slate-400">Sala {game.code}</p>
-      </section>
-    );
+    return <ActiveGameScreen code={code} gameId={game.id} onReload={load} onReconnect={reconnect} />;
   }
 
   // lobby interactivo
