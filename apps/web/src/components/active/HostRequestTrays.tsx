@@ -1,0 +1,76 @@
+import type { ActiveSnapshot, PurchaseRequest, LeaveRequest, BankruptcyRequest } from '../../lib/activeSnapshot';
+import type { ExitResolution } from '../../lib/api';
+
+/** Bandeja: solicitudes de compra de propiedades (aprobar / rechazar / iniciar subasta). */
+export function PurchaseRequestsTray({
+  snap, busy, onResolve, onAuction,
+}: {
+  snap: ActiveSnapshot; busy: boolean;
+  onResolve: (r: PurchaseRequest, accept: boolean) => void;
+  onAuction: (r: PurchaseRequest) => void;
+}) {
+  if (snap.purchase_requests.length === 0) return null;
+  return (
+    <section aria-label="Solicitudes de compra" className="flex flex-col gap-2 rounded-xl border border-emerald-700/50 p-4">
+      <h2 className="text-sm font-bold text-emerald-200">Solicitudes de compra</h2>
+      {snap.purchase_requests.map((r) => (
+        <div key={r.request_ref} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm">
+          <span className="flex-1 truncate"><span className="font-semibold">{r.requester_name}</span> quiere {r.property_name}</span>
+          <button type="button" onClick={() => onResolve(r, true)} disabled={busy} className="min-h-[36px] rounded-lg bg-emerald-600 px-3 text-xs font-semibold disabled:opacity-40">Aprobar</button>
+          <button type="button" onClick={() => onAuction(r)} disabled={busy} className="min-h-[36px] rounded-lg bg-fuchsia-600 px-3 text-xs font-semibold disabled:opacity-40">Subastar</button>
+          <button type="button" onClick={() => onResolve(r, false)} disabled={busy} className="min-h-[36px] rounded-lg border border-slate-600 px-3 text-xs font-semibold disabled:opacity-40">Rechazar</button>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+/** Bandeja: solicitudes de abandono (aprobar eligiendo destino del dinero, o rechazar). */
+export function LeaveRequestsTray({
+  snap, busy, onResolve,
+}: {
+  snap: ActiveSnapshot; busy: boolean;
+  onResolve: (r: LeaveRequest, accept: boolean, resolution: ExitResolution) => void;
+}) {
+  if (snap.leave_requests.length === 0) return null;
+  return (
+    <section aria-label="Solicitudes de abandono" className="flex flex-col gap-2 rounded-xl border border-rose-700/50 p-4">
+      <h2 className="text-sm font-bold text-rose-200">Solicitudes de abandono</h2>
+      {snap.leave_requests.map((r) => (
+        <div key={r.request_ref} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm">
+          <span className="flex-1 truncate"><span className="font-semibold">{r.requester_name}</span> quiere abandonar</span>
+          <span className="text-[11px] text-slate-400">Destino del dinero:</span>
+          <button type="button" onClick={() => onResolve(r, true, 'to_bank')} disabled={busy} className="min-h-[36px] rounded-lg bg-emerald-600 px-3 text-xs font-semibold disabled:opacity-40">Aprobar · a la banca</button>
+          <button type="button" onClick={() => onResolve(r, true, 'distribute')} disabled={busy} className="min-h-[36px] rounded-lg bg-emerald-700 px-3 text-xs font-semibold disabled:opacity-40">Aprobar · repartir</button>
+          <button type="button" onClick={() => onResolve(r, false, 'to_bank')} disabled={busy} className="min-h-[36px] rounded-lg border border-slate-600 px-3 text-xs font-semibold disabled:opacity-40">Rechazar</button>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+/** Bandeja: solicitudes de bancarrota (aprobar / rechazar). */
+export function BankruptcyRequestsTray({
+  snap, busy, onResolve,
+}: {
+  snap: ActiveSnapshot; busy: boolean;
+  onResolve: (r: BankruptcyRequest, accept: boolean) => void;
+}) {
+  if (snap.bankruptcy_requests.length === 0) return null;
+  return (
+    <section aria-label="Solicitudes de bancarrota" className="flex flex-col gap-2 rounded-xl border border-amber-700/50 p-4">
+      <h2 className="text-sm font-bold text-amber-200">Solicitudes de bancarrota</h2>
+      {snap.bankruptcy_requests.map((r) => (
+        <div key={r.request_ref} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm">
+          <span className="flex-1 truncate">
+            <span className="font-semibold">{r.requester_name}</span>{' '}
+            {r.kind === 'to_bank' ? 'frente a la banca' : <>frente a <span className="font-semibold">{r.creditor_name}</span></>}
+            {r.reason && <span className="ml-1 text-[11px] text-slate-400">· {r.reason}</span>}
+          </span>
+          <button type="button" onClick={() => onResolve(r, true)} disabled={busy} className="min-h-[36px] rounded-lg bg-amber-600 px-3 text-xs font-semibold disabled:opacity-40">Aprobar</button>
+          <button type="button" onClick={() => onResolve(r, false)} disabled={busy} className="min-h-[36px] rounded-lg border border-slate-600 px-3 text-xs font-semibold disabled:opacity-40">Rechazar</button>
+        </div>
+      ))}
+    </section>
+  );
+}

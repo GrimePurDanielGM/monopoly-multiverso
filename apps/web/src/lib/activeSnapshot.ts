@@ -6,10 +6,11 @@ export type LedgerKind =
   | 'seed' | 'late_join_seed' | 'bank_to_player' | 'player_to_bank' | 'player_to_player'
   | 'host_player_transfer' | 'host_adjust' | 'host_revert'
   | 'player_exit_to_bank' | 'player_exit_distribution' | 'player_exit_remainder_to_bank'
-  | 'property_purchase' | 'rent_payment';
+  | 'property_purchase' | 'rent_payment' | 'property_auction_purchase'
+  | 'bankruptcy_cash_to_bank' | 'bankruptcy_cash_to_player';
 
 export type BoardKey = 'classic' | 'back_to_the_future';
-export type PropertyKind = 'street' | 'station' | 'utility' | 'special';
+export type PropertyKind = 'street' | 'station' | 'transport' | 'utility' | 'special';
 export interface ActiveProperty {
   property_ref: string;
   board_key: BoardKey;
@@ -21,6 +22,38 @@ export interface ActiveProperty {
   is_buyable: boolean;
   sort_order: number;
   owner_ref: string | null; // null = disponible en banca
+  in_auction: boolean;
+}
+
+export interface PropertyAuction {
+  auction_ref: string;
+  property_ref: string;
+  property_name: string;
+  high_bid: number | null;
+  high_bidder_ref: string | null;
+  started_by_ref: string;
+}
+export interface PurchaseRequest {
+  request_ref: string;
+  property_ref: string;
+  property_name: string;
+  requester_ref: string;
+  requester_name: string;
+}
+export interface LeaveRequest {
+  request_ref: string;
+  requester_ref: string;
+  requester_name: string;
+}
+export type BankruptcyKind = 'to_bank' | 'to_player';
+export interface BankruptcyRequest {
+  request_ref: string;
+  requester_ref: string;
+  requester_name: string;
+  kind: BankruptcyKind;
+  creditor_ref: string | null;
+  creditor_name: string | null;
+  reason: string | null;
 }
 
 export interface ActiveConfig {
@@ -45,18 +78,21 @@ export interface ActiveMe {
   is_host: boolean;
   balance: number;
   is_current: boolean;
+  is_spectator: boolean; // en bancarrota: consulta pero no actúa
 }
 export interface ActiveTurn {
   turn_number: number;
   current_player_ref: string;
   order: string[];
 }
+export type PlayerStatus = 'active' | 'bankrupt';
 export interface ActivePlayer {
   public_ref: string;
   display_name: string;
   token_id: string | null;
   balance: number;
   is_current: boolean;
+  status: PlayerStatus;
 }
 export interface LedgerEntry {
   ledger_ref: string;
@@ -85,6 +121,10 @@ export interface ActiveSnapshot {
   players: ActivePlayer[];
   ledger_recent: LedgerEntry[];
   properties: ActiveProperty[];
+  auctions: PropertyAuction[];
+  purchase_requests: PurchaseRequest[];
+  leave_requests: LeaveRequest[];
+  bankruptcy_requests: BankruptcyRequest[];
   late_join_requests: LateJoinRequest[];
   runtime_status: RuntimeStatus;
   control: ActiveControl;
@@ -103,10 +143,10 @@ const isNumOrNull = (v: unknown): v is number | null => v === null || isNum(v);
 const KINDS: ReadonlySet<string> = new Set([
   'seed', 'late_join_seed', 'bank_to_player', 'player_to_bank', 'player_to_player', 'host_player_transfer', 'host_adjust', 'host_revert',
   'player_exit_to_bank', 'player_exit_distribution', 'player_exit_remainder_to_bank',
-  'property_purchase', 'rent_payment',
+  'property_purchase', 'rent_payment', 'property_auction_purchase', 'bankruptcy_cash_to_bank', 'bankruptcy_cash_to_player',
 ]);
 const BOARDS: ReadonlySet<string> = new Set(['classic', 'back_to_the_future']);
-const PKINDS: ReadonlySet<string> = new Set(['street', 'station', 'utility', 'special']);
+const PKINDS: ReadonlySet<string> = new Set(['street', 'station', 'transport', 'utility', 'special']);
 
 export type ParseActiveResult = { ok: true; data: ActiveSnapshot } | { ok: false; reason: string };
 const bad = (reason: string): { ok: false; reason: string } => ({ ok: false, reason });
@@ -123,7 +163,7 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
   if (!isNum(cfg.initial_money) || !isNum(cfg.min_players) || !isNum(cfg.max_players) || !isBool(cfg.allow_late_join)) return bad('config inválida');
 
   const m = raw.me;
-  if (!isObj(m) || !isStr(m.public_ref) || !isBool(m.is_host) || !isNum(m.balance) || !isBool(m.is_current)) return bad('me inválido');
+  if (!isObj(m) || !isStr(m.public_ref) || !isBool(m.is_host) || !isNum(m.balance) || !isBool(m.is_current) || !isBool(m.is_spectator)) return bad('me inválido');
 
   const t = raw.turn;
   if (!isObj(t) || !isNum(t.turn_number) || !isStr(t.current_player_ref) || !Array.isArray(t.order) || !t.order.every(isStr)) {
@@ -133,10 +173,11 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
   if (!Array.isArray(raw.players)) return bad('players ausente');
   const players: ActivePlayer[] = [];
   for (const p of raw.players) {
-    if (!isObj(p) || !isStr(p.public_ref) || !isStr(p.display_name) || !isStrOrNull(p.token_id) || !isNum(p.balance) || !isBool(p.is_current)) {
+    if (!isObj(p) || !isStr(p.public_ref) || !isStr(p.display_name) || !isStrOrNull(p.token_id) || !isNum(p.balance) || !isBool(p.is_current) ||
+        (p.status !== 'active' && p.status !== 'bankrupt')) {
       return bad('player inválido');
     }
-    players.push({ public_ref: p.public_ref, display_name: p.display_name, token_id: p.token_id, balance: p.balance, is_current: p.is_current });
+    players.push({ public_ref: p.public_ref, display_name: p.display_name, token_id: p.token_id, balance: p.balance, is_current: p.is_current, status: p.status });
   }
 
   if (!Array.isArray(raw.ledger_recent)) return bad('ledger_recent ausente');
@@ -163,15 +204,49 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
     if (
       !isObj(p) || !isStr(p.property_ref) || !isStr(p.board_key) || !BOARDS.has(p.board_key) ||
       !isStr(p.group_key) || !isStr(p.name) || !isStr(p.kind) || !PKINDS.has(p.kind) ||
-      !isNum(p.price) || !isNum(p.base_rent) || !isBool(p.is_buyable) || !isNum(p.sort_order) || !isStrOrNull(p.owner_ref)
+      !isNum(p.price) || !isNum(p.base_rent) || !isBool(p.is_buyable) || !isNum(p.sort_order) || !isStrOrNull(p.owner_ref) || !isBool(p.in_auction)
     ) {
       return bad('property inválida');
     }
     properties.push({
       property_ref: p.property_ref, board_key: p.board_key as BoardKey, group_key: p.group_key, name: p.name,
       kind: p.kind as PropertyKind, price: p.price, base_rent: p.base_rent, is_buyable: p.is_buyable,
-      sort_order: p.sort_order, owner_ref: p.owner_ref,
+      sort_order: p.sort_order, owner_ref: p.owner_ref, in_auction: p.in_auction,
     });
+  }
+
+  if (!Array.isArray(raw.auctions)) return bad('auctions ausente');
+  const auctions: PropertyAuction[] = [];
+  for (const a of raw.auctions) {
+    if (!isObj(a) || !isStr(a.auction_ref) || !isStr(a.property_ref) || !isStr(a.property_name) ||
+        !isNumOrNull(a.high_bid) || !isStrOrNull(a.high_bidder_ref) || !isStr(a.started_by_ref)) {
+      return bad('auction inválida');
+    }
+    auctions.push({ auction_ref: a.auction_ref, property_ref: a.property_ref, property_name: a.property_name, high_bid: a.high_bid, high_bidder_ref: a.high_bidder_ref, started_by_ref: a.started_by_ref });
+  }
+
+  if (!Array.isArray(raw.purchase_requests)) return bad('purchase_requests ausente');
+  const purchase: PurchaseRequest[] = [];
+  for (const r of raw.purchase_requests) {
+    if (!isObj(r) || !isStr(r.request_ref) || !isStr(r.property_ref) || !isStr(r.property_name) || !isStr(r.requester_ref) || !isStr(r.requester_name)) return bad('purchase_request inválida');
+    purchase.push({ request_ref: r.request_ref, property_ref: r.property_ref, property_name: r.property_name, requester_ref: r.requester_ref, requester_name: r.requester_name });
+  }
+
+  if (!Array.isArray(raw.leave_requests)) return bad('leave_requests ausente');
+  const leaves: LeaveRequest[] = [];
+  for (const r of raw.leave_requests) {
+    if (!isObj(r) || !isStr(r.request_ref) || !isStr(r.requester_ref) || !isStr(r.requester_name)) return bad('leave_request inválida');
+    leaves.push({ request_ref: r.request_ref, requester_ref: r.requester_ref, requester_name: r.requester_name });
+  }
+
+  if (!Array.isArray(raw.bankruptcy_requests)) return bad('bankruptcy_requests ausente');
+  const bankruptcies: BankruptcyRequest[] = [];
+  for (const r of raw.bankruptcy_requests) {
+    if (!isObj(r) || !isStr(r.request_ref) || !isStr(r.requester_ref) || !isStr(r.requester_name) ||
+        (r.kind !== 'to_bank' && r.kind !== 'to_player') || !isStrOrNull(r.creditor_ref) || !isStrOrNull(r.creditor_name) || !isStrOrNull(r.reason)) {
+      return bad('bankruptcy_request inválida');
+    }
+    bankruptcies.push({ request_ref: r.request_ref, requester_ref: r.requester_ref, requester_name: r.requester_name, kind: r.kind, creditor_ref: r.creditor_ref, creditor_name: r.creditor_name, reason: r.reason });
   }
 
   if (!Array.isArray(raw.late_join_requests)) return bad('late_join_requests ausente');
@@ -194,11 +269,15 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
     ok: true,
     data: {
       game: { code: g.code, status: 'active', config: { initial_money: cfg.initial_money, min_players: cfg.min_players, max_players: cfg.max_players, allow_late_join: cfg.allow_late_join } },
-      me: { public_ref: m.public_ref, is_host: m.is_host, balance: m.balance, is_current: m.is_current },
+      me: { public_ref: m.public_ref, is_host: m.is_host, balance: m.balance, is_current: m.is_current, is_spectator: m.is_spectator },
       turn: { turn_number: t.turn_number, current_player_ref: t.current_player_ref, order: t.order as string[] },
       players,
       ledger_recent: ledger,
       properties,
+      auctions,
+      purchase_requests: purchase,
+      leave_requests: leaves,
+      bankruptcy_requests: bankruptcies,
       late_join_requests: late,
       runtime_status: rs,
       control: { paused_by_ref: ctl.paused_by_ref, finished_by_ref: ctl.finished_by_ref, reason: ctl.reason },

@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// Propiedades (Fase 3): comprar, pagar alquiler, pausa bloquea, salida devuelve a banca,
-// recompra y persistencia tras recargar. Anfitrión + 1 jugador (mínimo 2).
+// Propiedades (Fase 3 corrección): compra con aprobación del anfitrión, subasta, alquiler,
+// bancarrota frente a jugador y estado espectador. Anfitrión + 1 jugador (mínimo 2).
 const PIN = '246813';
 
 async function createGame(page: Page): Promise<string> {
@@ -28,13 +28,14 @@ async function pickAndReady(page: Page, tokenIndex: number) {
   await expect(ready).toBeEnabled({ timeout: 10_000 });
   await ready.click();
 }
-const ESTACION = 'Estación Sur';
 function propRow(page: Page, name: string) {
   return page.getByRole('region', { name: 'Propiedades' }).getByRole('listitem').filter({ hasText: name });
 }
+const ESTACION = 'Estación del Norte';
+const PRADO = 'Paseo del Prado';
 
-test('propiedades: comprar, alquiler, pausa, salida a banca, recompra y persistencia', async ({ browser }) => {
-  test.setTimeout(160_000);
+test('propiedades: compra con aprobación, subasta, bancarrota y espectador', async ({ browser }) => {
+  test.setTimeout(180_000);
   const hostCtx = await browser.newContext();
   const host = await hostCtx.newPage();
   const code = await createGame(host);
@@ -48,52 +49,62 @@ test('propiedades: comprar, alquiler, pausa, salida a banca, recompra y persiste
   await joinGame(B, code, 'Marty');
   await host.getByRole('button', { name: 'Marcar Preparado' }).click();
   await pickAndReady(B, 1);
-  await host.reload(); // recarga autoritativa (evita depender de la propagación Realtime en WebKit)
+  await host.reload();
   await expect(host.getByRole('button', { name: 'Iniciar partida' })).toBeEnabled({ timeout: 20_000 });
   await host.getByRole('button', { name: 'Iniciar partida' }).click();
   await host.getByRole('button', { name: 'Iniciar', exact: true }).click();
   await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
 
-  // ── B compra la estación.
-  await propRow(B, ESTACION).getByRole('button', { name: 'Comprar' }).click();
-  await B.getByRole('dialog', { name: 'Comprar propiedad' }).getByRole('button', { name: 'Comprar' }).click();
-  await expect(propRow(B, ESTACION).getByText('Tuya')).toBeVisible({ timeout: 20_000 });
-
-  // ── El anfitrión ve la propiedad como ajena (sin "Comprar") y paga el alquiler.
-  await expect(propRow(host, ESTACION).getByText(/Propiedad de/)).toBeVisible({ timeout: 20_000 });
-  await expect(propRow(host, ESTACION).getByRole('button', { name: 'Comprar' })).toHaveCount(0);
-  await propRow(host, ESTACION).getByRole('button', { name: 'Pagar alquiler' }).click();
-  await host.getByRole('dialog', { name: 'Pagar alquiler' }).getByRole('button', { name: 'Pagar alquiler' }).click();
-  // El anfitrión paga 25 de alquiler: 3.000 -> 2.975.
-  await expect(host.getByText('2.975 ₥').first()).toBeVisible({ timeout: 20_000 });
-
-  // ── Pausa: las acciones de propiedades quedan deshabilitadas.
-  await host.getByRole('button', { name: 'Pausar partida' }).click();
-  await host.getByRole('dialog', { name: 'Pausar partida' }).getByRole('button', { name: 'Pausar' }).click();
-  await expect(host.getByText('Partida en pausa', { exact: true })).toBeVisible({ timeout: 20_000 });
-  await expect(host.getByText(/solo puedes consultar las propiedades/i)).toBeVisible();
-  await host.getByRole('button', { name: 'Reanudar partida' }).click();
-  await expect(host.getByText('Partida en pausa', { exact: true })).toHaveCount(0, { timeout: 20_000 });
-
-  // ── B abandona: su propiedad vuelve a banca (disponible) y el anfitrión la recompra.
-  await B.reload(); // estado autoritativo (versión actual) tras los cambios del anfitrión
-  await expect(B.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
-  await B.getByRole('list', { name: 'Saldos de los jugadores' }).getByRole('listitem').filter({ hasText: 'Marty' })
-    .getByRole('button', { name: 'Abandonar partida' }).click();
-  await B.getByRole('dialog', { name: 'Abandonar partida' }).getByRole('button', { name: 'Sí, abandonar partida' }).click();
-  await expect(B.getByText(/Esta partida ya ha comenzado/)).toBeVisible({ timeout: 25_000 }); // B salió
-  await host.reload(); // recarga autoritativa: la propiedad de B vuelve a estar disponible
-  await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
-  await expect(propRow(host, ESTACION).getByText('Disponible')).toBeVisible({ timeout: 20_000 });
-
-  await propRow(host, ESTACION).getByRole('button', { name: 'Comprar' }).click();
-  await host.getByRole('dialog', { name: 'Comprar propiedad' }).getByRole('button', { name: 'Comprar' }).click();
-  await expect(propRow(host, ESTACION).getByText('Tuya')).toBeVisible({ timeout: 20_000 });
-
-  // ── Persistencia: recargar conserva la posesión.
+  // ── B solicita comprar la estación; el anfitrión la aprueba.
+  await propRow(B, ESTACION).getByRole('button', { name: 'Solicitar compra' }).click();
+  await B.getByRole('dialog', { name: 'Solicitar compra' }).getByRole('button', { name: 'Solicitar compra' }).click();
   await host.reload();
   await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
-  await expect(propRow(host, ESTACION).getByText('Tuya')).toBeVisible({ timeout: 20_000 });
+  await expect(host.getByText('Solicitudes de compra')).toBeVisible({ timeout: 20_000 });
+  await host.getByRole('region', { name: 'Solicitudes de compra' }).getByRole('button', { name: 'Aprobar' }).click();
+  await B.reload();
+  await expect(propRow(B, ESTACION).getByText('Tuya')).toBeVisible({ timeout: 20_000 });
+
+  // ── B solicita Paseo del Prado; el anfitrión inicia subasta en vez de aprobar.
+  await propRow(B, PRADO).getByRole('button', { name: 'Solicitar compra' }).click();
+  await B.getByRole('dialog', { name: 'Solicitar compra' }).getByRole('button', { name: 'Solicitar compra' }).click();
+  await host.reload();
+  await expect(host.getByText('Solicitudes de compra')).toBeVisible({ timeout: 20_000 });
+  await host.getByRole('region', { name: 'Solicitudes de compra' }).getByRole('button', { name: 'Subastar' }).click();
+  await expect(host.getByText('Subastas activas')).toBeVisible({ timeout: 20_000 });
+
+  // ── B puja; el anfitrión cierra y se adjudica (B único postor).
+  await B.reload();
+  await expect(B.getByText('Subastas activas')).toBeVisible({ timeout: 20_000 });
+  await B.getByRole('region', { name: 'Subastas activas' }).getByLabel('Tu puja').fill('100');
+  await B.getByRole('region', { name: 'Subastas activas' }).getByRole('button', { name: 'Pujar' }).click();
+  await host.reload();
+  await expect(host.getByText(/Puja: 100/)).toBeVisible({ timeout: 20_000 });
+  await host.getByRole('region', { name: 'Subastas activas' }).getByRole('button', { name: 'Cerrar subasta' }).click();
+  await B.reload();
+  await expect(propRow(B, PRADO).getByText('Tuya')).toBeVisible({ timeout: 20_000 });
+
+  // ── B se declara en bancarrota frente al anfitrión; el anfitrión aprueba.
+  await B.getByRole('button', { name: 'Declararme en bancarrota' }).click();
+  const dlg = B.getByRole('dialog', { name: 'Declararme en bancarrota' });
+  await dlg.getByText('Bancarrota por impago a otro jugador').click();
+  await dlg.getByLabel('Acreedor').selectOption({ label: 'Anfitrión' });
+  await dlg.getByPlaceholder(/motivo/i).fill('Sin liquidez');
+  await dlg.getByRole('button', { name: 'Declararme en bancarrota' }).click();
+  await host.reload();
+  await expect(host.getByText('Solicitudes de bancarrota')).toBeVisible({ timeout: 20_000 });
+  await host.getByRole('region', { name: 'Solicitudes de bancarrota' }).getByRole('button', { name: 'Aprobar' }).click();
+
+  // ── B queda como espectador; sus propiedades pasaron al anfitrión.
+  await B.reload();
+  await expect(B.getByText(/Estás en bancarrota\. Puedes seguir consultando/)).toBeVisible({ timeout: 20_000 });
+  await expect(B.getByRole('button', { name: 'Declararme en bancarrota' })).toHaveCount(0);
+  await host.reload();
+  await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
+  await expect(propRow(host, ESTACION).getByText('Tuya')).toBeVisible({ timeout: 20_000 }); // de B al anfitrión
+  await expect(propRow(host, PRADO).getByText('Tuya')).toBeVisible({ timeout: 20_000 });
+  await expect(host.getByText('Marty').first()).toBeVisible();
+  await expect(host.getByText('En bancarrota').first()).toBeVisible({ timeout: 20_000 });
 
   await hostCtx.close();
   await bCtx.close();

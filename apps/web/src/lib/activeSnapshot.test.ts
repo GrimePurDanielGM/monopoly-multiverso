@@ -3,18 +3,28 @@ import { parseActiveSnapshot } from './activeSnapshot';
 
 const valid = {
   game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 6, max_players: 16, allow_late_join: false } },
-  me: { public_ref: 'P-AAAA', is_host: true, balance: 3000, is_current: true },
+  me: { public_ref: 'P-AAAA', is_host: true, balance: 3000, is_current: true, is_spectator: false },
   turn: { turn_number: 1, current_player_ref: 'P-AAAA', order: ['P-AAAA', 'P-BBBB'] },
   players: [
-    { public_ref: 'P-AAAA', display_name: 'Ana', token_id: 'cat', balance: 3000, is_current: true },
-    { public_ref: 'P-BBBB', display_name: 'Beto', token_id: null, balance: 3000, is_current: false },
+    { public_ref: 'P-AAAA', display_name: 'Ana', token_id: 'cat', balance: 3000, is_current: true, status: 'active' },
+    { public_ref: 'P-BBBB', display_name: 'Beto', token_id: null, balance: 3000, is_current: false, status: 'bankrupt' },
   ],
   ledger_recent: [
     { ledger_ref: 'L-AAAA', seq: 2, kind: 'bank_to_player', from_ref: null, to_ref: 'P-AAAA', amount: 100, before_balance: null, after_balance: null, reason: null, actor_ref: 'P-AAAA', reverts_ref: null, created_at: '2026-06-18T00:00:00Z' },
   ],
   properties: [
-    { property_ref: 'cl-marron-1', board_key: 'classic', group_key: 'marron', name: 'Mediterráneo', kind: 'street', price: 60, base_rent: 2, is_buyable: true, sort_order: 10, owner_ref: null },
-    { property_ref: 'cl-estacion-1', board_key: 'classic', group_key: 'estaciones', name: 'Estación Sur', kind: 'station', price: 200, base_rent: 25, is_buyable: true, sort_order: 30, owner_ref: 'P-AAAA' },
+    { property_ref: 'cl-ronda-valencia', board_key: 'classic', group_key: 'marron', name: 'Ronda de Valencia', kind: 'street', price: 60, base_rent: 2, is_buyable: true, sort_order: 10, owner_ref: null, in_auction: false },
+    { property_ref: 'cl-estacion-norte', board_key: 'classic', group_key: 'estaciones', name: 'Estación del Norte', kind: 'station', price: 200, base_rent: 25, is_buyable: true, sort_order: 30, owner_ref: 'P-AAAA', in_auction: false },
+  ],
+  auctions: [
+    { auction_ref: 'A-1', property_ref: 'cl-prado', property_name: 'Paseo del Prado', high_bid: 100, high_bidder_ref: 'P-AAAA', started_by_ref: 'P-AAAA' },
+  ],
+  purchase_requests: [
+    { request_ref: 'PR-1', property_ref: 'cl-bailen', property_name: 'Calle Bailén', requester_ref: 'P-BBBB', requester_name: 'Beto' },
+  ],
+  leave_requests: [],
+  bankruptcy_requests: [
+    { request_ref: 'BR-1', requester_ref: 'P-BBBB', requester_name: 'Beto', kind: 'to_player', creditor_ref: 'P-AAAA', creditor_name: 'Ana', reason: 'sin fondos' },
   ],
   late_join_requests: [],
   runtime_status: 'running',

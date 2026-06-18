@@ -3,8 +3,11 @@ import {
   getActiveSnapshotByCode, listActiveTokens, endTurn, bankTransfer, playerTransfer,
   hostPlayerTransfer, hostAdjustBalance, hostSetTurn, hostRevertMovement,
   pauseGame, resumeGame, finishGame, resolveLateJoin,
-  leaveActiveGame, removeActivePlayer, buyProperty, payRent,
-  type ApiResult, type ExitResolution,
+  requestLeaveActive, resolveLeaveActive, removeActivePlayer,
+  requestPropertyPurchase, resolvePropertyPurchase, payRent,
+  startPropertyAuction, placePropertyBid, closePropertyAuction, cancelPropertyAuction,
+  requestBankruptcy, resolveBankruptcy,
+  type ApiResult, type ExitResolution, type BankruptcyKind,
 } from '../lib/api';
 import { useActiveStore } from '../store/active';
 import { useRealtimeStore } from '../store/realtime';
@@ -25,6 +28,9 @@ import { GameControlPanel, PausedBanner } from '../components/active/GameControl
 import { FinishedView } from '../components/active/FinishedView';
 import { LateJoinTray } from '../components/active/LateJoinTray';
 import { PropertiesPanel } from '../components/active/PropertiesPanel';
+import { AuctionsPanel } from '../components/active/AuctionsPanel';
+import { PurchaseRequestsTray, LeaveRequestsTray, BankruptcyRequestsTray } from '../components/active/HostRequestTrays';
+import { BankruptcyDialog } from '../components/active/BankruptcyDialog';
 import { formatMoney, ownerName } from '../lib/activeSelectors';
 import type { ActiveProperty } from '../lib/activeSnapshot';
 
@@ -62,6 +68,7 @@ export function ActiveGameScreen({
   const [removeMode, setRemoveMode] = useState<ExitResolution>('to_bank');
   const [buyTarget, setBuyTarget] = useState<ActiveProperty | null>(null);
   const [rentTarget, setRentTarget] = useState<ActiveProperty | null>(null);
+  const [bankruptcyOpen, setBankruptcyOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -121,17 +128,23 @@ export function ActiveGameScreen({
     [controlBusy, refresh],
   );
 
-  // Abandono voluntario: tras salir, dejo de ser miembro -> recargamos para reevaluar la pantalla.
+  // Solicitud de abandono: si no tengo saldo ni propiedades salgo directo (y dejo de ser miembro);
+  // si no, queda pendiente de aprobación del anfitrión. Recargamos para reevaluar la pantalla.
   const doLeave = useCallback(async () => {
     if (controlBusy) return;
     setControlBusy(true);
     setError(null);
-    const r = await leaveActiveGame(gameId, newRequestId(), snap?.runtime_version ?? 0);
+    const r = await requestLeaveActive(gameId, newRequestId());
     setControlBusy(false);
     setLeaveOpen(false);
     if (r.ok) await onReload();
     else setError(r.message);
-  }, [controlBusy, gameId, snap?.runtime_version, onReload]);
+  }, [controlBusy, gameId, onReload]);
+
+  // Declararse en bancarrota: crea solicitud (anfitrión la aprueba). Tras aprobar quedo espectador.
+  const doBankruptcy = useCallback((kind: BankruptcyKind, creditorRef: string | null, reason: string) => {
+    void run(() => requestBankruptcy(gameId, kind, creditorRef, reason, newRequestId())).then(() => setBankruptcyOpen(false));
+  }, [gameId, run]);
 
   // Expulsión (anfitrión): saldo a la banca (def.) o reparto entre restantes.
   const doRemove = useCallback(() => {
@@ -141,12 +154,12 @@ export function ActiveGameScreen({
       .then(() => setRemoveTarget(null));
   }, [removeTarget, removeMode, gameId, snap?.runtime_version, runControl]);
 
-  // Compra de propiedad (jugador activo, en curso). Confirmación previa.
+  // Solicitud de compra (jugador activo, en curso). El anfitrión la aprobará. Confirmación previa.
   const doBuy = useCallback(() => {
     const p = buyTarget;
     if (!p) return;
-    void run(() => buyProperty(gameId, p.property_ref, newRequestId(), snap?.runtime_version ?? 0)).then(() => setBuyTarget(null));
-  }, [buyTarget, gameId, snap?.runtime_version, run]);
+    void run(() => requestPropertyPurchase(gameId, p.property_ref, newRequestId())).then(() => setBuyTarget(null));
+  }, [buyTarget, gameId, run]);
 
   // Pago de alquiler al propietario. Confirmación previa.
   const doPayRent = useCallback(() => {
@@ -182,11 +195,16 @@ export function ActiveGameScreen({
       </header>
 
       {paused && <PausedBanner />}
+      {snap.me.is_spectator && (
+        <p role="status" className="rounded-xl border border-amber-700/60 bg-amber-950/40 px-4 py-3 text-sm text-amber-100">
+          Estás en bancarrota. Puedes seguir consultando la partida como espectador.
+        </p>
+      )}
 
       <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-5">
         <div className="flex flex-col gap-3">
           <TurnBanner snap={snap} />
-          {canAct(snap) && isMyTurn(snap) && (
+          {canAct(snap) && !snap.me.is_spectator && isMyTurn(snap) && (
             <button
               type="button"
               onClick={() => void run(() => endTurn(gameId, ver, newRequestId()))}
@@ -204,8 +222,27 @@ export function ActiveGameScreen({
             onLeave={() => setLeaveOpen(true)}
             onRemove={(ref, name) => { setRemoveMode('to_bank'); setRemoveTarget({ ref, name }); }}
           />
+          {/* Declararse en bancarrota: jugador activo (no anfitrión, no espectador). */}
+          {!host && !snap.me.is_spectator && (
+            <button
+              type="button"
+              onClick={() => setBankruptcyOpen(true)}
+              disabled={busy || snap.runtime_status === 'finished'}
+              className="min-h-[40px] rounded-xl border border-amber-700 px-4 text-sm font-semibold text-amber-200 disabled:opacity-40"
+            >
+              Declararme en bancarrota
+            </button>
+          )}
           {error && <p role="alert" className="rounded-lg bg-rose-950/60 px-3 py-2 text-sm text-rose-200">{error}</p>}
-          <PropertiesPanel snap={snap} busy={busy} onBuy={(p) => setBuyTarget(p)} onPayRent={(p) => setRentTarget(p)} />
+          <AuctionsPanel
+            snap={snap}
+            isHost={host}
+            busy={busy}
+            onBid={(a, amount) => void run(() => placePropertyBid(gameId, a.auction_ref, amount, newRequestId(), ver))}
+            onClose={(a) => void run(() => closePropertyAuction(gameId, a.auction_ref, newRequestId(), ver))}
+            onCancel={(a) => void run(() => cancelPropertyAuction(gameId, a.auction_ref, '', newRequestId(), ver))}
+          />
+          <PropertiesPanel snap={snap} busy={busy} onRequestPurchase={(p) => setBuyTarget(p)} onPayRent={(p) => setRentTarget(p)} />
         </div>
 
         <div className="mt-3 flex flex-col gap-3 lg:mt-0">
@@ -218,6 +255,13 @@ export function ActiveGameScreen({
               onFinish={() => setFinishOpen(true)}
             />
           )}
+          {host && <PurchaseRequestsTray snap={snap} busy={busy}
+            onResolve={(r, accept) => void run(() => resolvePropertyPurchase(r.request_ref, accept, ver))}
+            onAuction={(r) => void run(() => startPropertyAuction(gameId, r.property_ref, newRequestId(), ver))} />}
+          {host && <LeaveRequestsTray snap={snap} busy={busy}
+            onResolve={(r, accept, resolution) => void run(() => resolveLeaveActive(r.request_ref, accept, resolution, ver))} />}
+          {host && <BankruptcyRequestsTray snap={snap} busy={busy}
+            onResolve={(r, accept) => void run(() => resolveBankruptcy(r.request_ref, accept, ver))} />}
           {host && <LateJoinTray snap={snap} icons={icons} busy={controlBusy} onResolve={(ref, accept) => void runControl(() => resolveLateJoin(ref, accept, ver))} />}
           {host && <RecoveryRequestsTray requests={requests} players={lobbyPlayers} reload={onReload} />}
           {/* En pausa, fieldset deshabilita TODAS las acciones de forma accesible sin alterar etiquetas. */}
@@ -299,8 +343,8 @@ export function ActiveGameScreen({
         title="Abandonar partida"
         destructive
         busy={controlBusy}
-        message={<>¿Seguro que quieres abandonar la partida?<br />Perderás el control de tu jugador y tu saldo se devolverá a la banca.</>}
-        confirmLabel="Sí, abandonar partida"
+        message={<>¿Seguro que quieres abandonar la partida?<br />Si tienes saldo o propiedades, el anfitrión deberá aprobar tu salida y decidir el destino del dinero; tus propiedades volverán a la banca.</>}
+        confirmLabel="Sí, solicitar abandono"
         cancelLabel="No, seguir jugando"
         onConfirm={() => void doLeave()}
         onCancel={() => setLeaveOpen(false)}
@@ -352,10 +396,10 @@ export function ActiveGameScreen({
 
       <ConfirmDialog
         open={buyTarget !== null}
-        title="Comprar propiedad"
+        title="Solicitar compra"
         busy={busy}
-        message={buyTarget ? <>¿Comprar <span className="font-semibold">{buyTarget.name}</span> por {formatMoney(buyTarget.price)}?</> : ''}
-        confirmLabel="Comprar"
+        message={buyTarget ? <>¿Solicitar comprar <span className="font-semibold">{buyTarget.name}</span> por {formatMoney(buyTarget.price)}?<br />El anfitrión deberá aprobarla.</> : ''}
+        confirmLabel="Solicitar compra"
         cancelLabel="Cancelar"
         onConfirm={doBuy}
         onCancel={() => setBuyTarget(null)}
@@ -370,6 +414,14 @@ export function ActiveGameScreen({
         cancelLabel="Cancelar"
         onConfirm={doPayRent}
         onCancel={() => setRentTarget(null)}
+      />
+
+      <BankruptcyDialog
+        open={bankruptcyOpen}
+        snap={snap}
+        busy={busy}
+        onConfirm={doBankruptcy}
+        onCancel={() => setBankruptcyOpen(false)}
       />
     </section>
   );

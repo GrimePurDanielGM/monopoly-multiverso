@@ -25,22 +25,25 @@ export function PlayerBalances({
     <ul aria-label="Saldos de los jugadores" className="flex flex-col gap-2">
       {snap.players.map((p) => {
         const mine = p.public_ref === snap.me.public_ref;
-        const canLeave = mine && !isHost && onLeave;            // mi jugador (no anfitrión)
-        const canRemove = isHost && !mine && onRemove;          // el anfitrión saca a otro
+        const active = p.status === 'active';
+        const canLeave = mine && !isHost && active && onLeave;          // mi jugador activo (no anfitrión)
+        const canRemove = isHost && !mine && active && onRemove;        // el anfitrión saca a otro activo
         const nProps = propCounts[p.public_ref] ?? 0;
         const propNames = propertiesOf(p.public_ref, snap).map((x) => x.name).join(', ');
         return (
           <li
             key={p.public_ref}
             className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2 ${
-              p.is_current ? 'border-emerald-500 bg-emerald-950/30' : mine ? 'border-indigo-500 bg-indigo-950/40' : 'border-slate-700'
+              !active ? 'border-slate-700 bg-slate-900/60 opacity-70'
+                : p.is_current ? 'border-emerald-500 bg-emerald-950/30' : mine ? 'border-indigo-500 bg-indigo-950/40' : 'border-slate-700'
             }`}
           >
             <span aria-hidden className="text-2xl leading-none">{p.token_id ? icons[p.token_id] ?? '·' : '·'}</span>
             <span className="flex-1 truncate text-sm">
               {p.display_name}
               {mine && <span className="ml-2 rounded bg-indigo-600 px-1 text-[10px] font-semibold">Tú</span>}
-              {p.is_current && <span className="ml-2 text-xs text-emerald-400">en turno</span>}
+              {p.is_current && active && <span className="ml-2 text-xs text-emerald-400">en turno</span>}
+              {!active && <span className="ml-2 rounded bg-amber-700 px-1.5 text-[10px] font-semibold text-amber-100">En bancarrota</span>}
             </span>
             {nProps > 0 && (
               <span className="rounded bg-slate-700 px-1.5 text-[11px] text-slate-200" title={propNames}>

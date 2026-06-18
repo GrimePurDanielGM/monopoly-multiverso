@@ -434,12 +434,18 @@ export async function resolveLateJoin(requestRef: string, accept: boolean, expec
 
 export type ExitResolution = 'to_bank' | 'distribute';
 
-/** Salida voluntaria: el propio jugador abandona la partida (saldo a la banca). */
-export async function leaveActiveGame(gameId: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+/** Solicitud de abandono: el jugador la pide (salida directa solo si no tiene saldo ni propiedades). */
+export async function requestLeaveActive(gameId: string, requestId: string): Promise<ApiResult<true>> {
   if (!supabase) return fail('UNCONFIGURED');
-  const { error } = await supabase.rpc('leave_active_game', {
-    p_game: gameId, p_resolution_mode: 'to_bank', p_request_id: requestId, p_expected_version: expectedVersion,
-  });
+  const { error } = await supabase.rpc('request_leave_active', { p_game: gameId, p_request_id: requestId });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Resuelve una solicitud de abandono (solo anfitrión): aprobar con destino del dinero, o rechazar. */
+export async function resolveLeaveActive(requestRef: string, accept: boolean, resolution: ExitResolution, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('resolve_leave_active', { p_request_ref: requestRef, p_accept: accept, p_resolution_mode: resolution, p_expected_version: expectedVersion });
   if (error) return fail(error.message);
   return { ok: true, data: true };
 }
@@ -457,12 +463,68 @@ export async function removeActivePlayer(
   return { ok: true, data: true };
 }
 
-/** Compra una propiedad disponible (solo jugador activo, partida en curso). */
-export async function buyProperty(gameId: string, propertyRef: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+/** Solicitud de compra: el jugador la pide; no cambia economía hasta que el anfitrión aprueba. */
+export async function requestPropertyPurchase(gameId: string, propertyRef: string, requestId: string): Promise<ApiResult<true>> {
   if (!supabase) return fail('UNCONFIGURED');
-  const { error } = await supabase.rpc('buy_property', {
-    p_game: gameId, p_property_ref: propertyRef, p_request_id: requestId, p_expected_version: expectedVersion,
-  });
+  const { error } = await supabase.rpc('request_property_purchase', { p_game: gameId, p_property_ref: propertyRef, p_request_id: requestId });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Resuelve una solicitud de compra (solo anfitrión): aprobar (cobra y asigna) o rechazar. */
+export async function resolvePropertyPurchase(requestRef: string, accept: boolean, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('resolve_property_purchase', { p_request_ref: requestRef, p_accept: accept, p_expected_version: expectedVersion });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Subasta (solo anfitrión): inicia una subasta sobre una propiedad disponible. */
+export async function startPropertyAuction(gameId: string, propertyRef: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('start_property_auction', { p_game: gameId, p_property_ref: propertyRef, p_request_id: requestId, p_expected_version: expectedVersion });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Puja en una subasta activa (jugador activo; importe > puja actual y ≤ saldo). */
+export async function placePropertyBid(gameId: string, auctionRef: string, amount: number, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('place_property_bid', { p_game: gameId, p_auction_ref: auctionRef, p_amount: amount, p_request_id: requestId, p_expected_version: expectedVersion });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Cierra una subasta (solo anfitrión): adjudica al mayor postor o la deja sin adjudicar. */
+export async function closePropertyAuction(gameId: string, auctionRef: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('close_property_auction', { p_game: gameId, p_auction_ref: auctionRef, p_request_id: requestId, p_expected_version: expectedVersion });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Cancela una subasta (solo anfitrión): la propiedad sigue disponible. */
+export async function cancelPropertyAuction(gameId: string, auctionRef: string, reason: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('cancel_property_auction', { p_game: gameId, p_auction_ref: auctionRef, p_reason: reason, p_request_id: requestId, p_expected_version: expectedVersion });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+export type BankruptcyKind = 'to_bank' | 'to_player';
+
+/** Solicitud de bancarrota: el propio jugador la pide (a banca o a un acreedor). */
+export async function requestBankruptcy(gameId: string, kind: BankruptcyKind, creditorRef: string | null, reason: string, requestId: string): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('request_bankruptcy', { p_game: gameId, p_kind: kind, p_creditor_ref: creditorRef, p_reason: reason, p_request_id: requestId });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Resuelve una solicitud de bancarrota (solo anfitrión): aprobar o rechazar. */
+export async function resolveBankruptcy(requestRef: string, accept: boolean, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('resolve_bankruptcy', { p_request_ref: requestRef, p_accept: accept, p_expected_version: expectedVersion });
   if (error) return fail(error.message);
   return { ok: true, data: true };
 }

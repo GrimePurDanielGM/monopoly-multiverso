@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import type { ActiveSnapshot, ActiveProperty } from '../lib/activeSnapshot';
 
-const { activeMock, finishMock, pauseMock, resumeMock, leaveMock, removeMock, buyMock, rentMock } = vi.hoisted(() => ({
+const { activeMock, finishMock, pauseMock, resumeMock, leaveMock, removeMock, buyMock, rentMock, bankruptcyMock } = vi.hoisted(() => ({
   activeMock: vi.fn(),
   finishMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
   pauseMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
@@ -11,6 +11,7 @@ const { activeMock, finishMock, pauseMock, resumeMock, leaveMock, removeMock, bu
   removeMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
   buyMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
   rentMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
+  bankruptcyMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
 }));
 
 vi.mock('../lib/api', () => {
@@ -21,15 +22,17 @@ vi.mock('../lib/api', () => {
     endTurn: noop, bankTransfer: noop, playerTransfer: noop, hostPlayerTransfer: noop,
     hostAdjustBalance: noop, hostSetTurn: noop, hostRevertMovement: noop,
     pauseGame: pauseMock, resumeGame: resumeMock, finishGame: finishMock,
-    leaveActiveGame: leaveMock, removeActivePlayer: removeMock,
-    buyProperty: buyMock, payRent: rentMock,
+    requestLeaveActive: leaveMock, resolveLeaveActive: noop, removeActivePlayer: removeMock,
+    requestPropertyPurchase: buyMock, resolvePropertyPurchase: noop, payRent: rentMock,
+    startPropertyAuction: noop, placePropertyBid: noop, closePropertyAuction: noop, cancelPropertyAuction: noop,
+    requestBankruptcy: bankruptcyMock, resolveBankruptcy: noop,
     resolveRecovery: noop, resolveReentry: noop,
   };
 });
 
 const PROP = (over: Partial<ActiveProperty> = {}): ActiveProperty => ({
   property_ref: 'cl-marron-1', board_key: 'classic', group_key: 'marron', name: 'Mediterráneo',
-  kind: 'street', price: 60, base_rent: 2, is_buyable: true, sort_order: 10, owner_ref: null, ...over,
+  kind: 'street', price: 60, base_rent: 2, is_buyable: true, sort_order: 10, owner_ref: null, in_auction: false, ...over,
 });
 
 import { ActiveGameScreen } from './ActiveGameScreen';
@@ -38,14 +41,18 @@ import { useActiveStore } from '../store/active';
 function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
   return {
     game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 6, max_players: 16, allow_late_join: false } },
-    me: { public_ref: 'P-1', is_host: true, balance: 3000, is_current: false },
+    me: { public_ref: 'P-1', is_host: true, balance: 3000, is_current: false, is_spectator: false },
     turn: { turn_number: 1, current_player_ref: 'P-2', order: ['P-1', 'P-2'] },
     players: [
-      { public_ref: 'P-1', display_name: 'Host', token_id: 'cat', balance: 3000, is_current: false },
-      { public_ref: 'P-2', display_name: 'Marty', token_id: 'boot', balance: 3000, is_current: true },
+      { public_ref: 'P-1', display_name: 'Host', token_id: 'cat', balance: 3000, is_current: false, status: 'active' },
+      { public_ref: 'P-2', display_name: 'Marty', token_id: 'boot', balance: 3000, is_current: true, status: 'active' },
     ],
     ledger_recent: [],
     properties: [],
+    auctions: [],
+    purchase_requests: [],
+    leave_requests: [],
+    bankruptcy_requests: [],
     late_join_requests: [],
     runtime_status: 'running',
     control: { paused_by_ref: null, finished_by_ref: null, reason: null },
@@ -121,7 +128,7 @@ describe('ActiveGameScreen — control y estados', () => {
 
 describe('ActiveGameScreen — abandonar/expulsar', () => {
   // jugador normal (no anfitrión): P-2
-  const playerSnap = () => snap({ me: { public_ref: 'P-2', is_host: false, balance: 3000, is_current: true } });
+  const playerSnap = () => snap({ me: { public_ref: 'P-2', is_host: false, balance: 3000, is_current: true, is_spectator: false } });
 
   it('"Abandonar partida" solo abre el diálogo; Cancelar no llama a la RPC', () => {
     renderScreen(playerSnap());
@@ -135,11 +142,11 @@ describe('ActiveGameScreen — abandonar/expulsar', () => {
   it('confirmar abandono llama leaveActiveGame una sola vez (con runtime_version)', async () => {
     renderScreen(playerSnap());
     fireEvent.click(screen.getByRole('button', { name: 'Abandonar partida' }));
-    const yes = screen.getByRole('button', { name: 'Sí, abandonar partida' });
+    const yes = screen.getByRole('button', { name: 'Sí, solicitar abandono' });
     fireEvent.click(yes);
     fireEvent.click(yes);
     await waitFor(() => expect(leaveMock).toHaveBeenCalledTimes(1));
-    expect(leaveMock).toHaveBeenCalledWith('g1', expect.any(String), 5);
+    expect(leaveMock).toHaveBeenCalledWith('g1', expect.any(String));
   });
 
   it('anfitrión: "Sacar jugador" abre diálogo con destino del saldo; por defecto a la banca', async () => {
@@ -161,29 +168,29 @@ describe('ActiveGameScreen — abandonar/expulsar', () => {
   });
 
   it('en pausa se permite abandonar (acción no bloqueada por el fieldset)', () => {
-    renderScreen(snap({ me: { public_ref: 'P-2', is_host: false, balance: 3000, is_current: false }, runtime_status: 'paused', control: { paused_by_ref: 'P-1', finished_by_ref: null, reason: null } }));
+    renderScreen(snap({ me: { public_ref: 'P-2', is_host: false, balance: 3000, is_current: false, is_spectator: false }, runtime_status: 'paused', control: { paused_by_ref: 'P-1', finished_by_ref: null, reason: null } }));
     expect(screen.getByRole('button', { name: 'Abandonar partida' })).toBeEnabled();
   });
 });
 
 describe('ActiveGameScreen — propiedades', () => {
-  it('comprar abre confirmación con precio; confirmar llama buyProperty una vez', async () => {
+  it('solicitar compra abre confirmación; confirmar llama requestPropertyPurchase una vez', async () => {
     renderScreen(snap({ properties: [PROP({ price: 60 })] }));
-    fireEvent.click(screen.getByRole('button', { name: 'Comprar' }));
-    const dlg = screen.getByRole('dialog', { name: 'Comprar propiedad' });
+    fireEvent.click(screen.getByRole('button', { name: 'Solicitar compra' }));
+    const dlg = screen.getByRole('dialog', { name: 'Solicitar compra' });
     expect(dlg).toBeInTheDocument();
     expect(buyMock).not.toHaveBeenCalled();
-    const yes = within(dlg).getByRole('button', { name: 'Comprar' });
+    const yes = within(dlg).getByRole('button', { name: 'Solicitar compra' });
     fireEvent.click(yes);
     fireEvent.click(yes);
     await waitFor(() => expect(buyMock).toHaveBeenCalledTimes(1));
-    expect(buyMock).toHaveBeenCalledWith('g1', 'cl-marron-1', expect.any(String), 5);
+    expect(buyMock).toHaveBeenCalledWith('g1', 'cl-marron-1', expect.any(String));
   });
 
-  it('cancelar la compra no llama a la RPC', () => {
+  it('cancelar la solicitud no llama a la RPC', () => {
     renderScreen(snap({ properties: [PROP({ price: 60 })] }));
-    fireEvent.click(screen.getByRole('button', { name: 'Comprar' }));
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Comprar propiedad' })).getByRole('button', { name: 'Cancelar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Solicitar compra' }));
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Solicitar compra' })).getByRole('button', { name: 'Cancelar' }));
     expect(buyMock).not.toHaveBeenCalled();
   });
 
@@ -197,5 +204,25 @@ describe('ActiveGameScreen — propiedades', () => {
     fireEvent.click(yes);
     await waitFor(() => expect(rentMock).toHaveBeenCalledTimes(1));
     expect(rentMock).toHaveBeenCalledWith('g1', 'cl-marron-1', expect.any(String), 5);
+  });
+
+  it('un jugador no anfitrión puede declararse en bancarrota (abre el diálogo y solicita)', async () => {
+    renderScreen(snap({ me: { public_ref: 'P-2', is_host: false, balance: 3000, is_current: true, is_spectator: false } }));
+    fireEvent.click(screen.getByRole('button', { name: 'Declararme en bancarrota' }));
+    const dlg = screen.getByRole('dialog', { name: 'Declararme en bancarrota' });
+    fireEvent.change(within(dlg).getByPlaceholderText(/motivo/i), { target: { value: 'sin fondos' } });
+    fireEvent.click(within(dlg).getByRole('button', { name: 'Declararme en bancarrota' }));
+    await waitFor(() => expect(bankruptcyMock).toHaveBeenCalledTimes(1));
+    expect(bankruptcyMock).toHaveBeenCalledWith('g1', 'to_bank', null, 'sin fondos', expect.any(String));
+  });
+
+  it('el espectador (en bancarrota) ve el aviso y no puede declararse de nuevo', () => {
+    renderScreen(snap({ me: { public_ref: 'P-2', is_host: false, balance: 0, is_current: false, is_spectator: true },
+      players: [
+        { public_ref: 'P-1', display_name: 'Host', token_id: 'cat', balance: 3000, is_current: true, status: 'active' },
+        { public_ref: 'P-2', display_name: 'Marty', token_id: 'boot', balance: 0, is_current: false, status: 'bankrupt' },
+      ] }));
+    expect(screen.getByText(/Estás en bancarrota\. Puedes seguir consultando/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Declararme en bancarrota' })).toBeNull();
   });
 });

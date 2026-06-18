@@ -1,37 +1,40 @@
 import type { ActiveProperty, ActiveSnapshot } from '../../lib/activeSnapshot';
 import {
-  formatMoney, propertiesByBoard, propertyStatus, canBuyProperty, canPayRent, ownerName, myProperties,
+  formatMoney, propertiesByBoard, propertyStatus, canRequestPurchase, canPayRent, ownerName, myProperties,
 } from '../../lib/activeSelectors';
 
 const KIND_LABEL: Record<string, string> = {
-  street: 'Calle', station: 'Estación', utility: 'Servicio', special: 'Especial',
+  street: 'Calle', station: 'Estación', transport: 'Transporte', utility: 'Servicio', special: 'Especial',
 };
 
-/** Sección "Propiedades": vista general por tablero + acciones (Comprar / Pagar alquiler / Tuya)
- *  y un bloque "Mis propiedades". Las acciones se deshabilitan en pausa/finalización. */
+/** Sección "Propiedades": vista general por tablero con "Solicitar compra" (aprobación del anfitrión),
+ *  "Pagar alquiler", estado (Tuya / En subasta / Disponible / Propiedad de X) y bloque "Mis propiedades".
+ *  Las acciones se deshabilitan en pausa/finalización y para espectadores (en bancarrota). */
 export function PropertiesPanel({
   snap,
   busy,
-  onBuy,
+  onRequestPurchase,
   onPayRent,
 }: {
   snap: ActiveSnapshot;
   busy: boolean;
-  onBuy: (p: ActiveProperty) => void;
+  onRequestPurchase: (p: ActiveProperty) => void;
   onPayRent: (p: ActiveProperty) => void;
 }) {
   const boards = propertiesByBoard(snap);
   const mine = myProperties(snap);
-  const blocked = snap.runtime_status !== 'running';
+  const blocked = snap.runtime_status !== 'running' || snap.me.is_spectator;
 
   return (
     <section aria-label="Propiedades" className="flex flex-col gap-3 rounded-xl border border-slate-700 p-4">
       <h2 className="text-sm font-bold text-slate-200">Propiedades</h2>
       {blocked && (
         <p role="note" className="rounded-lg bg-slate-800 px-3 py-2 text-xs text-slate-300">
-          {snap.runtime_status === 'paused'
-            ? 'La partida está pausada; solo puedes consultar las propiedades.'
-            : 'La partida ha finalizado; las propiedades no pueden cambiar.'}
+          {snap.me.is_spectator
+            ? 'Estás en bancarrota: solo puedes consultar las propiedades.'
+            : snap.runtime_status === 'paused'
+              ? 'La partida está pausada; solo puedes consultar las propiedades.'
+              : 'La partida ha finalizado; las propiedades no pueden cambiar.'}
         </p>
       )}
 
@@ -48,22 +51,25 @@ export function PropertiesPanel({
                     <span className="ml-2 text-[11px] text-slate-500">{KIND_LABEL[p.kind] ?? p.kind}</span>
                   </span>
                   <span className="text-xs text-slate-400">
-                    {p.is_buyable ? <>Precio {formatMoney(p.price)} · Alquiler {formatMoney(p.base_rent)}</> : 'No comprable'}
+                    {p.is_buyable
+                      ? <>Precio {formatMoney(p.price)}{p.base_rent > 0 ? <> · Alquiler {formatMoney(p.base_rent)}</> : <> · Alquiler por dados</>}</>
+                      : 'No comprable'}
                   </span>
                   <span className="basis-full text-xs sm:basis-auto">
                     {status === 'mine' && <span className="rounded bg-indigo-600 px-2 py-0.5 font-semibold">Tuya</span>}
                     {status === 'owned' && <span className="text-amber-300">Propiedad de {ownerName(p, snap)}</span>}
+                    {status === 'in_auction' && <span className="text-fuchsia-300">En subasta</span>}
                     {status === 'available' && <span className="text-emerald-400">Disponible</span>}
                     {status === 'not_buyable' && <span className="text-slate-500">—</span>}
                   </span>
                   {status === 'available' && (
                     <button
                       type="button"
-                      onClick={() => onBuy(p)}
-                      disabled={busy || !canBuyProperty(p, snap)}
+                      onClick={() => onRequestPurchase(p)}
+                      disabled={busy || !canRequestPurchase(p, snap)}
                       className="min-h-[36px] rounded-lg bg-emerald-600 px-3 text-xs font-semibold disabled:opacity-40"
                     >
-                      Comprar
+                      Solicitar compra
                     </button>
                   )}
                   {status === 'owned' && (
@@ -92,7 +98,7 @@ export function PropertiesPanel({
             {mine.map((p) => (
               <li key={p.property_ref} className="flex justify-between text-sm">
                 <span className="truncate">{p.name}</span>
-                <span className="text-xs text-slate-400">Alquiler {formatMoney(p.base_rent)}</span>
+                <span className="text-xs text-slate-400">{p.base_rent > 0 ? <>Alquiler {formatMoney(p.base_rent)}</> : 'Servicio'}</span>
               </li>
             ))}
           </ul>

@@ -76,12 +76,35 @@ do $$ declare h boolean; begin
   perform pg_temp._rec('S4) helper _p2_remove_player no ejecutable por authenticated', h = false);
 end $$;
 
--- S5) buy_property y pay_rent SÍ concedidas a authenticated (RPC pública controlada).
-do $$ declare b boolean; p boolean; begin
+-- S5) compra directa revocada (buy_property NO ejecutable); pay_rent y el flujo de aprobación SÍ.
+do $$ declare b boolean; p boolean; rq boolean; rs boolean; au boolean; begin
   perform pg_temp._as_admin();
   b := has_function_privilege('authenticated','public.buy_property(uuid,text,uuid,bigint)','execute');
   p := has_function_privilege('authenticated','public.pay_rent(uuid,text,uuid,bigint)','execute');
-  perform pg_temp._rec('S5) buy_property y pay_rent ejecutables por authenticated', b and p);
+  rq := has_function_privilege('authenticated','public.request_property_purchase(uuid,text,uuid)','execute');
+  rs := has_function_privilege('authenticated','public.resolve_property_purchase(text,boolean,bigint)','execute');
+  au := has_function_privilege('authenticated','public.place_property_bid(uuid,text,bigint,uuid,bigint)','execute');
+  perform pg_temp._rec('S5) buy_property revocada; pay_rent + request/resolve/bid ejecutables', (not b) and p and rq and rs and au);
+end $$;
+
+-- S7) tablas nuevas de Fase 3 (corrección) deny-all: SELECT directo denegado.
+do $$ declare ok boolean:=true; t text; begin
+  perform pg_temp._as_user(pg_temp._ctx('host'));
+  foreach t in array array['property_purchase_requests','property_auctions','property_bids','player_leave_requests','bankruptcy_requests'] loop
+    begin execute format('select 1 from public.%I limit 1', t); ok:=false;  -- no debería poder
+    exception when others then if sqlstate<>'42501' then ok:=false; end if; end;
+  end loop;
+  perform pg_temp._as_admin();
+  perform pg_temp._rec('S7) solicitudes/subastas/pujas deny-all (SELECT directo denegado)', ok);
+end $$;
+
+-- S8) abandono directo revocado (leave_active_game no ejecutable); flujo de abandono/bancarrota concedido.
+do $$ declare lv boolean; rl boolean; rb boolean; begin
+  perform pg_temp._as_admin();
+  lv := has_function_privilege('authenticated','public.leave_active_game(uuid,text,uuid,bigint)','execute');
+  rl := has_function_privilege('authenticated','public.request_leave_active(uuid,uuid)','execute');
+  rb := has_function_privilege('authenticated','public.request_bankruptcy(uuid,text,text,text,uuid)','execute');
+  perform pg_temp._rec('S8) leave_active_game revocada; request_leave_active + request_bankruptcy ejecutables', (not lv) and rl and rb);
 end $$;
 
 -- S6) acciones de host: un jugador normal no puede expulsar (NOT_HOST).

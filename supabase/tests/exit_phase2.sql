@@ -21,6 +21,19 @@ begin insert into _t values (p_name,p_ok) on conflict (name) do update set ok=ex
 create or replace function pg_temp._ctx(k text) returns text language sql as $f$ select v from _ctx where k=$1 $f$;
 create or replace function pg_temp._uid_of(p_gid uuid, p_ref text) returns text language sql security definer as $f$
   select auth_uid::text from public.players where game_id=p_gid and public_ref=p_ref $f$;
+-- Abandono (Fase 3): el jugador solicita y el anfitrión aprueba con el destino del dinero.
+create or replace function pg_temp._leave_via(p_gid uuid, p_victim_uid text, p_mode text) returns void language plpgsql as $f$
+declare rref text; v_ver bigint; v_ref text; v_host_uid text;
+begin
+  perform pg_temp._as_user(p_victim_uid); perform request_leave_active(p_gid, gen_random_uuid());
+  perform pg_temp._as_admin();
+  select public_ref into v_ref from public.players where game_id=p_gid and auth_uid=p_victim_uid::uuid;
+  select public_ref into rref from public.player_leave_requests where game_id=p_gid and requester_ref=v_ref and status='pending';
+  select runtime_version into v_ver from public.game_runtime where game_id=p_gid;
+  select p.auth_uid::text into v_host_uid from public.players p join public.games g on g.host_player_id=p.id where g.id=p_gid;
+  perform pg_temp._as_user(v_host_uid); perform resolve_leave_active(rref, true, p_mode, v_ver);
+  perform pg_temp._as_admin();
+end $f$;
 -- ¿reconcilia TODO el ledger? saldo = sum(to=ref) - sum(from=ref), para cada jugador (incl. salientes=0).
 create or replace function pg_temp._reconciles(p_gid uuid) returns boolean language sql security definer as $f$
   select not exists (
@@ -76,8 +89,7 @@ do $$ declare gid uuid:=pg_temp._ctx('A_gid')::uuid; v_ver bigint; cur text; vic
   select public_ref into victim from players p where p.game_id=gid and p.public_ref<>cur
      and p.id<>(select host_player_id from games where id=gid) and p.kicked_at is null and p.left_at is null limit 1;
   victim_uid := pg_temp._uid_of(gid, victim);
-  perform pg_temp._as_user(victim_uid);
-  perform leave_active_game(gid, 'to_bank', gen_random_uuid(), v_ver);
+  perform pg_temp._leave_via(gid, victim_uid, 'to_bank');
   perform pg_temp._as_admin();
   select count(*) into n_exit from ledger where game_id=gid and kind='player_exit_to_bank' and from_ref=victim;
   select balance into bal from player_balances where game_id=gid and player_ref=victim;
@@ -120,8 +132,7 @@ do $$ declare gid uuid:=pg_temp._ctx('A_gid')::uuid; host text:=pg_temp._ctx('A_
   end if;
   nxt := order_refs[(idx % len) + 1];                 -- siguiente esperado
   victim_uid := pg_temp._uid_of(gid, cur);
-  perform pg_temp._as_user(victim_uid);
-  perform leave_active_game(gid, 'to_bank', gen_random_uuid(), v_ver);
+  perform pg_temp._leave_via(gid, victim_uid, 'to_bank');
   perform pg_temp._as_admin();
   select turn_order_refs[turn_index] into cur_after from game_runtime where game_id=gid;
   perform pg_temp._rec('E3) abandono del jugador actual: el turno pasa al siguiente válido', cur_after = nxt);
@@ -147,7 +158,7 @@ do $$ declare gid uuid:=pg_temp._ctx('B_gid')::uuid; host text:=pg_temp._ctx('B_
   perform pg_temp._as_user(host);
   begin perform remove_active_player(gid, host_ref, 'to_bank', 'x', gen_random_uuid(), v_ver);
   exception when others then ok1:=(sqlerrm='CANNOT_REMOVE_HOST'); end;
-  begin perform leave_active_game(gid, 'to_bank', gen_random_uuid(), v_ver);
+  begin perform request_leave_active(gid, gen_random_uuid());
   exception when others then ok2:=(sqlerrm='HOST_CANNOT_LEAVE'); end;
   perform pg_temp._as_admin();
   perform pg_temp._rec('E5) anfitrión no se autoexpulsa ni abandona (mantiene el control)', ok1 and ok2);
@@ -250,7 +261,7 @@ do $$ declare gid uuid:=pg_temp._ctx('B_gid')::uuid; host text:=pg_temp._ctx('B_
   begin perform remove_active_player(gid, victim, 'to_bank', 'x', gen_random_uuid(), v_ver);
   exception when others then ok1:=(sqlerrm='GAME_FINISHED'); end;
   perform pg_temp._as_user(victim_uid);
-  begin perform leave_active_game(gid, 'to_bank', gen_random_uuid(), v_ver);
+  begin perform request_leave_active(gid, gen_random_uuid());
   exception when others then ok2:=(sqlerrm='GAME_FINISHED'); end;
   perform pg_temp._as_admin();
   perform pg_temp._rec('E11) finished bloquea abandono y expulsión -> GAME_FINISHED', ok1 and ok2);

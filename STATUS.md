@@ -224,6 +224,39 @@ subastas/cartas/cárcel/dado/movimiento por casillas/tablero visual (fases poste
   Vercel; smoke remota OK. **Pendiente de validación manual.**
 - **Commit:** propiedades Fase 3 `0020` (este commit).
 
+## Fase 3 — CORRECCIÓN AMPLIADA · **COMPLETA (pendiente smoke remota + commit)**
+Migraciones `0021`–`0024` (catálogo real, compra con aprobación+subasta, abandono con aprobación+bancarrota,
+snapshot ampliado) + frontend completo. Aplicado a `monopoly-multiverso-dev` (vía Management API).
+- **Catálogo real (`0021`):** 56 propiedades extraídas de las fotos (28 Classic + 28 RdF), sustituye al de
+  prueba. Tipos street/station/transport/utility. **Precio CONFIRMADO con la foto del tablero (IMG_4979):**
+  `price_source='board'`, `= 2×hipoteca` (anclas verificadas Estación 200, Castellana 350, Prado 400; RdF
+  espeja al Classic). Estación de Goya (hecha a mano) integrada. Utilities comprables con `base_rent=0`
+  (alquiler por dados, fuera de alcance). Tabla: `docs/catalog_extraction_phase3.md`.
+- **Compra SIEMPRE con aprobación (`0022`):** `request_property_purchase` (jugador) + `resolve_property_purchase`
+  (anfitrión, revalida y cobra). `buy_property` directo **revocado**. **Subasta:** `start/place/close/cancel_property_auction`
+  (puja > actual y ≤ saldo; cierre adjudica o sin pujas; `WINNER_INSUFFICIENT_FUNDS` deja abierta).
+  Ledger `property_auction_purchase`.
+- **Abandono con aprobación (`0023`):** `request_leave_active` (directo solo si sin saldo ni propiedades) +
+  `resolve_leave_active` (anfitrión elige destino del dinero). `leave_active_game` directo **revocado**.
+  La expulsión (`remove_active_player`) sigue siendo directa del anfitrión con destino del dinero.
+- **Bancarrota (`0023`):** `request_bankruptcy` (a banca / a jugador) + `resolve_bankruptcy`. A banca:
+  dinero+propiedades a banca. A jugador: dinero+propiedades **al acreedor** (transferencia de posesión,
+  sin ledger monetario de propiedad). El deudor queda **espectador** (`bankrupt_at`, fuera del orden, puede
+  consultar el snapshot pero no actuar). Ledger `bankruptcy_cash_to_bank/_to_player`.
+- **Snapshot (`0024`):** estado de cada jugador (active/bankrupt-espectador), `me.is_spectator`, `properties`
+  con `in_auction`, `auctions`, `purchase_requests`/`leave_requests`/`bankruptcy_requests` (bandejas host).
+- **Frontend:** `PropertiesPanel` ("Solicitar compra", estado En subasta), `AuctionsPanel` (pujar + cerrar/
+  cancelar host), bandejas del anfitrión (`PurchaseRequestsTray`/`LeaveRequestsTray`/`BankruptcyRequestsTray`),
+  `BankruptcyDialog` (a banca / a jugador + acreedor + motivo), estado **espectador** (aviso + acciones
+  ocultas), badges de estado en `PlayerBalances`. Tipos/parser/selectores/errores ampliados.
+- **Seguridad:** todas las tablas nuevas deny-all; RPC `SECURITY DEFINER`; helpers revocados; sin ids internos.
+- **Validado:** SQL `purchase_phase3` (10) + `leave_bankrupt_phase3` (4) + `properties_phase3` (7) +
+  `rent_phase3` (3) + `property_exit_phase3` (3) + `rls_properties_phase3` (8) = **35**, sin regresión Fase 1/2.
+  Unit/componente **206** (PropertiesPanel, AuctionsPanel, bandejas, BankruptcyDialog, pantalla). Integración
+  local real (compra con aprobación, subasta, alquiler, pausa, bancarrota a jugador). **E2E Chromium+WebKit**
+  (`properties`: solicitar→aprobar / subastar→pujar→cerrar / bancarrota a jugador → espectador). typecheck/
+  lint/build limpios. Aplicado a dev (Management API). **Pendiente:** smoke remota navegador, Vercel, commit/push.
+
 ## Pendiente para fases siguientes (no en Fase 0/1/2/3)
 - Datos reales de tableros, títulos, precios, alquileres, hipotecas, stock físico.
 - Esquema definitivo de juego (propiedades, construcciones, cartas, banco, etc.).

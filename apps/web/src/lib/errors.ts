@@ -77,7 +77,19 @@ const MESSAGES: Record<string, string> = {
   PROPERTY_ALREADY_OWNED: 'Esa propiedad ya tiene dueño.',
   PROPERTY_NOT_OWNED: 'Esa propiedad no tiene propietario activo.',
   SELF_RENT: 'No puedes pagarte alquiler a ti mismo.',
-  NO_RENT_DUE: 'Esa propiedad no cobra alquiler.',
+  NO_RENT_DUE: 'Esa propiedad no cobra alquiler (aún sin dados).',
+  // Fase 3 corrección — compra con aprobación, subasta, abandono, bancarrota
+  PROPERTY_IN_AUCTION: 'Esa propiedad está en subasta.',
+  AUCTION_ALREADY_ACTIVE: 'Ya hay una subasta activa de esa propiedad.',
+  AUCTION_NOT_FOUND: 'Esa subasta ya no existe.',
+  AUCTION_NOT_ACTIVE: 'La subasta ya no está activa.',
+  BID_TOO_LOW: 'La puja debe superar la puja actual.',
+  WINNER_INSUFFICIENT_FUNDS: 'El ganador no tiene saldo suficiente; la subasta sigue abierta.',
+  WINNER_NOT_ACTIVE: 'El ganador ya no está activo en la partida.',
+  BUYER_NOT_ACTIVE: 'El solicitante ya no está activo en la partida.',
+  HOST_CANNOT_BANKRUPT: 'El anfitrión no puede declararse en bancarrota.',
+  INVALID_CREDITOR: 'El acreedor no es válido.',
+  INVALID_BANKRUPTCY_KIND: 'Tipo de bancarrota no válido.',
 };
 
 /** Mensaje legible para un código de error conocido (o genérico si no lo es). */

@@ -55,7 +55,8 @@ test('salida y expulsión: abandonar a la banca, expulsar y repartir, persistenc
   }
   await host.getByRole('button', { name: 'Marcar Preparado' }).click();
   for (let i = 0; i < pages.length; i++) await pickAndReady(pages[i]!, i + 1);
-  await expect(host.getByRole('button', { name: 'Iniciar partida' })).toBeEnabled({ timeout: 15_000 });
+  await host.reload(); // estado autoritativo (evita depender de la propagación Realtime en WebKit)
+  await expect(host.getByRole('button', { name: 'Iniciar partida' })).toBeEnabled({ timeout: 20_000 });
   await host.getByRole('button', { name: 'Iniciar partida' }).click();
   await host.getByRole('button', { name: 'Iniciar', exact: true }).click();
   await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
@@ -70,11 +71,14 @@ test('salida y expulsión: abandonar a la banca, expulsar y repartir, persistenc
   // Doc deja de participar: su pantalla pasa a "no formas parte" (vía Realtime).
   await expect(doc.getByText(/Esta partida ya ha comenzado/)).toBeVisible({ timeout: 25_000 });
 
-  // ── Un jugador ABANDONA voluntariamente (Marty): confirmación y saldo a la banca.
+  // ── Un jugador SOLICITA abandonar (Marty tiene saldo): el anfitrión lo aprueba (saldo a la banca).
   await row(marty, 'Marty').getByRole('button', { name: 'Abandonar partida' }).click();
   const leaveDlg = marty.getByRole('dialog', { name: 'Abandonar partida' });
   await expect(leaveDlg.getByRole('button', { name: 'No, seguir jugando' })).toBeFocused();
-  await leaveDlg.getByRole('button', { name: 'Sí, abandonar partida' }).click();
+  await leaveDlg.getByRole('button', { name: 'Sí, solicitar abandono' }).click();
+  await host.reload();
+  await expect(host.getByText('Solicitudes de abandono')).toBeVisible({ timeout: 25_000 });
+  await host.getByRole('region', { name: 'Solicitudes de abandono' }).getByRole('button', { name: 'Aprobar · a la banca' }).click();
   await expect(marty.getByText(/Esta partida ya ha comenzado/)).toBeVisible({ timeout: 25_000 });
   await expect(row(host, 'Marty')).toHaveCount(0, { timeout: 20_000 });
 

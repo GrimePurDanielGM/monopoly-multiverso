@@ -70,7 +70,8 @@ export function isNoopAdjust(current: number, next: number): boolean {
 const NON_REVERTIBLE: ReadonlySet<LedgerKind> = new Set<LedgerKind>([
   'seed', 'late_join_seed', 'host_revert',
   'player_exit_to_bank', 'player_exit_distribution', 'player_exit_remainder_to_bank',
-  'property_purchase', 'rent_payment',
+  'property_purchase', 'rent_payment', 'property_auction_purchase',
+  'bankruptcy_cash_to_bank', 'bankruptcy_cash_to_player',
 ]);
 
 /** ¿El movimiento puede revertirse desde la UI? (semillas, reversiones y salidas no). */
@@ -92,6 +93,9 @@ const KIND_LABEL: Record<LedgerKind, string> = {
   player_exit_remainder_to_bank: 'Salida: resto a la banca',
   property_purchase: 'Compra de propiedad',
   rent_payment: 'Pago de alquiler',
+  property_auction_purchase: 'Compra en subasta',
+  bankruptcy_cash_to_bank: 'Bancarrota: efectivo a la banca',
+  bankruptcy_cash_to_player: 'Bancarrota: efectivo al acreedor',
 };
 export function kindLabel(kind: LedgerKind): string {
   return KIND_LABEL[kind];
@@ -115,28 +119,47 @@ export function newRequestId(): string {
   return crypto.randomUUID();
 }
 
-// ── Propiedades (Fase 3) ─────────────────────────────────────────────────────────
-export type PropertyStatus = 'mine' | 'available' | 'owned' | 'not_buyable';
+// ── Propiedades (Fase 3 corrección) ──────────────────────────────────────────────
+export type PropertyStatus = 'mine' | 'available' | 'owned' | 'not_buyable' | 'in_auction';
+
+/** ¿Puede actuar el jugador local? (en curso y NO espectador/bancarrota). */
+export const canActAsMe = (s: ActiveSnapshot): boolean => canAct(s) && !s.me.is_spectator;
 
 /** Estado de una propiedad respecto al jugador local. */
 export function propertyStatus(p: ActiveProperty, snap: ActiveSnapshot): PropertyStatus {
   if (p.owner_ref && p.owner_ref === snap.me.public_ref) return 'mine';
   if (p.owner_ref) return 'owned';
+  if (p.in_auction) return 'in_auction';
   if (!p.is_buyable) return 'not_buyable';
   return 'available';
 }
 
-/** ¿Puedo comprar esta propiedad ahora? (en curso, comprable, libre y con saldo). */
-export function canBuyProperty(p: ActiveProperty, snap: ActiveSnapshot): boolean {
-  return canAct(snap) && p.is_buyable && p.owner_ref === null && snap.me.balance >= p.price;
+/** ¿Puedo SOLICITAR la compra ahora? (en curso, comprable, libre, sin subasta, no espectador). */
+export function canRequestPurchase(p: ActiveProperty, snap: ActiveSnapshot): boolean {
+  return canActAsMe(snap) && p.is_buyable && p.owner_ref === null && !p.in_auction;
 }
 
 /** ¿Puedo pagar el alquiler de esta propiedad? (en curso, de otro jugador, con alquiler y saldo). */
 export function canPayRent(p: ActiveProperty, snap: ActiveSnapshot): boolean {
   return (
-    canAct(snap) && p.owner_ref !== null && p.owner_ref !== snap.me.public_ref &&
+    canActAsMe(snap) && p.owner_ref !== null && p.owner_ref !== snap.me.public_ref &&
     p.base_rent > 0 && snap.me.balance >= p.base_rent
   );
+}
+
+/** ¿Puedo pujar en una subasta? (en curso, no espectador). */
+export function canBid(snap: ActiveSnapshot): boolean {
+  return canActAsMe(snap);
+}
+
+/** Puja mínima válida para una subasta (puja actual + 1, o 1 si no hay). */
+export function minBid(a: { high_bid: number | null }): number {
+  return (a.high_bid ?? 0) + 1;
+}
+
+/** Otros jugadores activos a los que se les puede deber (para bancarrota a jugador). */
+export function activeCreditors(snap: ActiveSnapshot): ActivePlayer[] {
+  return snap.players.filter((p) => p.status === 'active' && p.public_ref !== snap.me.public_ref);
 }
 
 /** Nombre del propietario (o "Banca" si está libre / "—" si no se encuentra). */

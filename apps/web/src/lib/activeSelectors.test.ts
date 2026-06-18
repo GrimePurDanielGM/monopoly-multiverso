@@ -2,26 +2,30 @@ import { describe, it, expect } from 'vitest';
 import {
   parseAmount, parseBalance, canAfford, isValidReason, isNoopAdjust, isRevertible,
   isMyTurn, isHost, currentPlayerName, kindLabel, refLabel, formatMoney, newRequestId, MAX_AMOUNT,
-  propertyStatus, canBuyProperty, canPayRent, myProperties, propertyCountByPlayer, ownerName, propertiesByBoard,
+  propertyStatus, canRequestPurchase, canPayRent, myProperties, propertyCountByPlayer, ownerName, propertiesByBoard,
 } from './activeSelectors';
 import type { ActiveSnapshot, LedgerEntry, ActivePlayer, ActiveProperty } from './activeSnapshot';
 
 const prop = (over: Partial<ActiveProperty> = {}): ActiveProperty => ({
   property_ref: 'cl-marron-1', board_key: 'classic', group_key: 'marron', name: 'Mediterráneo',
-  kind: 'street', price: 60, base_rent: 2, is_buyable: true, sort_order: 10, owner_ref: null, ...over,
+  kind: 'street', price: 60, base_rent: 2, is_buyable: true, sort_order: 10, owner_ref: null, in_auction: false, ...over,
 });
 
 const players: ActivePlayer[] = [
-  { public_ref: 'P-AAAA', display_name: 'Ana', token_id: 'cat', balance: 3000, is_current: true },
-  { public_ref: 'P-BBBB', display_name: 'Beto', token_id: 'boot', balance: 1000, is_current: false },
+  { public_ref: 'P-AAAA', display_name: 'Ana', token_id: 'cat', balance: 3000, is_current: true, status: 'active' },
+  { public_ref: 'P-BBBB', display_name: 'Beto', token_id: 'boot', balance: 1000, is_current: false, status: 'active' },
 ];
 const snap: ActiveSnapshot = {
   game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 6, max_players: 16, allow_late_join: false } },
-  me: { public_ref: 'P-BBBB', is_host: true, balance: 1000, is_current: false },
+  me: { public_ref: 'P-BBBB', is_host: true, balance: 1000, is_current: false, is_spectator: false },
   turn: { turn_number: 5, current_player_ref: 'P-AAAA', order: ['P-AAAA', 'P-BBBB'] },
   players,
   ledger_recent: [],
   properties: [],
+  auctions: [],
+  purchase_requests: [],
+  leave_requests: [],
+  bankruptcy_requests: [],
   late_join_requests: [],
   runtime_status: 'running',
   control: { paused_by_ref: null, finished_by_ref: null, reason: null },
@@ -92,15 +96,19 @@ describe('propiedades (Fase 3)', () => {
     expect(propertyStatus(s.properties[3]!, s)).toBe('not_buyable');
   });
 
-  it('canBuyProperty: solo libre, comprable, con saldo y en curso', () => {
+  it('canRequestPurchase: libre, comprable, sin subasta, en curso y no espectador (sin gate de saldo)', () => {
     const ok = withProps([prop({ price: 60 })]);
-    expect(canBuyProperty(ok.properties[0]!, ok)).toBe(true);
-    const caro = withProps([prop({ price: 5000 })]);                      // saldo 1000 < 5000
-    expect(canBuyProperty(caro.properties[0]!, caro)).toBe(false);
+    expect(canRequestPurchase(ok.properties[0]!, ok)).toBe(true);
+    const caro = withProps([prop({ price: 5000 })]);                      // solicitar no exige saldo
+    expect(canRequestPurchase(caro.properties[0]!, caro)).toBe(true);
     const ocupada = withProps([prop({ owner_ref: 'P-AAAA' })]);
-    expect(canBuyProperty(ocupada.properties[0]!, ocupada)).toBe(false);
+    expect(canRequestPurchase(ocupada.properties[0]!, ocupada)).toBe(false);
+    const subasta = withProps([prop({ in_auction: true })]);
+    expect(canRequestPurchase(subasta.properties[0]!, subasta)).toBe(false);
     const pausada = withProps([prop({ price: 60 })], { runtime_status: 'paused' });
-    expect(canBuyProperty(pausada.properties[0]!, pausada)).toBe(false);
+    expect(canRequestPurchase(pausada.properties[0]!, pausada)).toBe(false);
+    const espectador = withProps([prop({ price: 60 })], { me: { ...snap.me, is_spectator: true } });
+    expect(canRequestPurchase(espectador.properties[0]!, espectador)).toBe(false);
   });
 
   it('canPayRent: de otro jugador, con alquiler y saldo, en curso (nunca a uno mismo)', () => {
