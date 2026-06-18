@@ -224,9 +224,12 @@ subastas/cartas/cárcel/dado/movimiento por casillas/tablero visual (fases poste
   Vercel; smoke remota OK. **Pendiente de validación manual.**
 - **Commit:** propiedades Fase 3 `0020` (este commit).
 
-## Fase 3 — CORRECCIÓN AMPLIADA · **COMPLETA (pendiente smoke remota + commit)**
+## Fase 3 — CORRECCIÓN AMPLIADA · **`COMPLETADA Y DESPLEGADA`** (pendiente validación manual)
 Migraciones `0021`–`0024` (catálogo real, compra con aprobación+subasta, abandono con aprobación+bancarrota,
-snapshot ampliado) + frontend completo. Aplicado a `monopoly-multiverso-dev` (vía Management API).
+snapshot ampliado) + frontend completo. Aplicado a `monopoly-multiverso-dev` (vía Management API por el
+cuelgue del pooler), desplegado en Vercel (`2e0c38c` → bundle `index-BknBW7A4.js`, UI nueva, backend dev),
+**smoke remota de navegador OK** (compra con aprobación → subasta → bancarrota a jugador → espectador).
+Commit `2e0c38c`, árbol limpio.
 - **Catálogo real (`0021`):** 56 propiedades extraídas de las fotos (28 Classic + 28 RdF), sustituye al de
   prueba. Tipos street/station/transport/utility. **Precio CONFIRMADO con la foto del tablero (IMG_4979):**
   `price_source='board'`, `= 2×hipoteca` (anclas verificadas Estación 200, Castellana 350, Prado 400; RdF
