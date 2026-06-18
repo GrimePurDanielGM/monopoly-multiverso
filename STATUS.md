@@ -93,7 +93,28 @@
     orden, sin fila nueva, sesión antigua pierde el control) y **E2E Chromium + WebKit** (`player-resume`).
     Verificado en remoto desplegado (acceso visible en `/j/{activa}` y Home). **Pendiente de validación
     manual.**
-- **Commits:** backend `d6a514f`, frontend `cb9574c`, fix reanudación `395080f`.
+- **Recargar partida + control de la partida (corrección 2026-06-18, `eddb8fb`+`e64e0e2`):**
+  - **"Recargar partida"** era un enlace sin efecto visible. Ahora es un **botón real y accesible**
+    que reconecta el canal Realtime si está caído, recarga `get_active_snapshot_by_code` y sustituye
+    el store, con "Recargando…", confirmación (`aria-live`) y error+reintento; evita doble pulsación;
+    no recarga la página ni crea sesión nueva.
+  - **Estado de ejecución `running`/`paused`/`finished`** (migración `0017`, en `game_runtime`; **no
+    toca el enum histórico `games.status`**). RPC nuevas solo-anfitrión, idempotentes, con
+    `runtime_version`, auditadas y Broadcast mínimo: `pause_game_runtime`, `resume_game_runtime`,
+    `finish_game_runtime`. **Pausada/finalizada rechazan en servidor** las 7 mutaciones económicas/de
+    turno (`GAME_PAUSED`/`GAME_FINISHED`); `finished` es **terminal** (no se reanuda), conserva ledger
+    y saldos, y el snapshot sigue legible. Orden: idempotencia → estado → versión.
+  - **UI:** bloque "Control de la partida" (anfitrión): running→Pausar/Finalizar, paused→Reanudar/
+    Finalizar, finished→solo resumen. Pausa con confirmación; en pausa, banner "Partida en pausa" para
+    todos y todas las acciones deshabilitadas. **Finalizar con confirmación fuerte** (`ConfirmDialog`
+    accesible: foco inicial en "No, continuar jugando", Escape=No, clic fuera no confirma, botón
+    destructivo, sin doble envío). Pantalla "Partida finalizada" persistente tras recarga.
+  - Validado: SQL `control_phase2` (9), integración local real (pausa/reanudar/finalizar), unit/
+    componente (diálogo de finalización: abre/No/Escape/Sí-una-vez/doble-click/foco/terminal),
+    **E2E Chromium + WebKit** (`game-control`), y **smoke remota dev** (running→paused→GAME_PAUSED→
+    resumed→finished→GAME_FINISHED). **Pendiente de validación manual.**
+- **Commits:** backend Fase 2 `d6a514f`, frontend `cb9574c`, reanudación `395080f`, control backend
+  `eddb8fb`, control frontend `e64e0e2`.
 
 ## Pendiente para fases siguientes (no en Fase 0/1/2)
 - Datos reales de tableros, títulos, precios, alquileres, hipotecas, stock físico.
