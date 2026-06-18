@@ -230,6 +230,12 @@ snapshot ampliado) + frontend completo. Aplicado a `monopoly-multiverso-dev` (v�
 cuelgue del pooler), desplegado en Vercel (`2e0c38c` → bundle `index-BknBW7A4.js`, UI nueva, backend dev),
 **smoke remota de navegador OK** (compra con aprobación → subasta → bancarrota a jugador → espectador).
 Commit `2e0c38c`, árbol limpio.
+- **Feedback sonoro "dinero recibido" (solo frontend):** efecto tipo caja registradora (Web Audio
+  sintetizado, sin asset) + flash "+X recibidos" cuando **MI** saldo aumenta entre snapshots. NO suena en
+  el primer snapshot, ni al bajar/no cambiar el saldo, ni por el saldo de otro, ni dos veces por el mismo
+  `runtime_version`, ni para espectadores. Preferencia local "Sonido al recibir dinero" (default on,
+  `localStorage`); autoplay desbloqueado tras la 1ª interacción; falla en silencio. Sin tocar backend.
+  Tests: `receiveMoney` (lógica pura, 7 casos) + `useReceiveMoney` (hook). Unit total **219**.
 - **Catálogo real (`0021`):** 56 propiedades extraídas de las fotos (28 Classic + 28 RdF), sustituye al de
   prueba. Tipos street/station/transport/utility. **Precio CONFIRMADO con la foto del tablero (IMG_4979):**
   `price_source='board'`, `= 2×hipoteca` (anclas verificadas Estación 200, Castellana 350, Prado 400; RdF

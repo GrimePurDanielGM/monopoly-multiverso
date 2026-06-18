@@ -32,6 +32,8 @@ import { AuctionsPanel } from '../components/active/AuctionsPanel';
 import { PurchaseRequestsTray, LeaveRequestsTray, BankruptcyRequestsTray } from '../components/active/HostRequestTrays';
 import { BankruptcyDialog } from '../components/active/BankruptcyDialog';
 import { formatMoney, ownerName } from '../lib/activeSelectors';
+import { useReceiveMoney } from '../hooks/useReceiveMoney';
+import { isCashSoundEnabled, setCashSoundEnabled, primeCashSound } from '../lib/cashSound';
 import type { ActiveProperty } from '../lib/activeSnapshot';
 
 /** Pantalla de partida activa (Fase 2). El snapshot del store es la única fuente de verdad;
@@ -69,6 +71,24 @@ export function ActiveGameScreen({
   const [buyTarget, setBuyTarget] = useState<ActiveProperty | null>(null);
   const [rentTarget, setRentTarget] = useState<ActiveProperty | null>(null);
   const [bankruptcyOpen, setBankruptcyOpen] = useState(false);
+  const [soundOn, setSoundOn] = useState<boolean>(() => isCashSoundEnabled());
+
+  // Efecto "dinero recibido": suena + flash cuando MI saldo aumenta (no en el primer snapshot).
+  const receivedFlash = useReceiveMoney(snap);
+  // Desbloquear el audio tras la primera interacción del usuario (autoplay).
+  useEffect(() => {
+    const unlock = () => primeCashSound();
+    window.addEventListener('pointerdown', unlock, { once: true });
+    return () => window.removeEventListener('pointerdown', unlock);
+  }, []);
+  const toggleSound = useCallback(() => {
+    setSoundOn((on) => {
+      const next = !on;
+      setCashSoundEnabled(next);
+      if (next) primeCashSound();
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -204,6 +224,11 @@ export function ActiveGameScreen({
       <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-5">
         <div className="flex flex-col gap-3">
           <TurnBanner snap={snap} />
+          {receivedFlash !== null && receivedFlash > 0 && (
+            <p role="status" className="rounded-lg bg-emerald-900/60 px-3 py-2 text-sm font-semibold text-emerald-200">
+              +{formatMoney(receivedFlash)} recibidos
+            </p>
+          )}
           {canAct(snap) && !snap.me.is_spectator && isMyTurn(snap) && (
             <button
               type="button"
@@ -298,6 +323,10 @@ export function ActiveGameScreen({
                 <button type="button" onClick={() => void doReload()} className="underline">Reintentar</button>
               </p>
             )}
+            <label className="mt-1 flex items-center gap-2 text-xs text-slate-400">
+              <input type="checkbox" checked={soundOn} onChange={toggleSound} className="h-4 w-4" />
+              Sonido al recibir dinero
+            </label>
             <LiveRegion message={reloadMsg} tone="success" />
           </div>
         </div>

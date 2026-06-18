@@ -1,0 +1,61 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderHook } from '@testing-library/react';
+import type { ActiveSnapshot } from '../lib/activeSnapshot';
+
+const { playMock, enabledMock } = vi.hoisted(() => ({ playMock: vi.fn(), enabledMock: vi.fn(() => true) }));
+vi.mock('../lib/cashSound', () => ({
+  playCashSound: playMock,
+  isCashSoundEnabled: enabledMock,
+  setCashSoundEnabled: vi.fn(),
+  primeCashSound: vi.fn(),
+}));
+
+import { useReceiveMoney } from './useReceiveMoney';
+
+function snap(balance: number, version: number): ActiveSnapshot {
+  return {
+    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false } },
+    me: { public_ref: 'P-1', is_host: false, balance, is_current: false, is_spectator: false },
+    turn: { turn_number: 1, current_player_ref: 'P-2', order: ['P-1', 'P-2'] },
+    players: [], ledger_recent: [], properties: [], auctions: [], purchase_requests: [],
+    leave_requests: [], bankruptcy_requests: [], late_join_requests: [],
+    runtime_status: 'running', control: { paused_by_ref: null, finished_by_ref: null, reason: null },
+    runtime_version: version,
+  };
+}
+
+describe('useReceiveMoney', () => {
+  beforeEach(() => { playMock.mockClear(); enabledMock.mockReturnValue(true); });
+
+  it('no suena en el primer snapshot', () => {
+    renderHook(({ s }) => useReceiveMoney(s), { initialProps: { s: snap(3000, 5) } });
+    expect(playMock).not.toHaveBeenCalled();
+  });
+
+  it('suena (una vez) y devuelve el delta cuando mi saldo aumenta', () => {
+    const { result, rerender } = renderHook(({ s }) => useReceiveMoney(s), { initialProps: { s: snap(3000, 5) } });
+    rerender({ s: snap(3500, 6) });
+    expect(playMock).toHaveBeenCalledTimes(1);
+    expect(result.current).toBe(500);
+  });
+
+  it('no suena si la preferencia está desactivada', () => {
+    enabledMock.mockReturnValue(false);
+    const { rerender } = renderHook(({ s }) => useReceiveMoney(s), { initialProps: { s: snap(3000, 5) } });
+    rerender({ s: snap(3500, 6) });
+    expect(playMock).not.toHaveBeenCalled();
+  });
+
+  it('no suena dos veces por el mismo runtime_version', () => {
+    const { rerender } = renderHook(({ s }) => useReceiveMoney(s), { initialProps: { s: snap(3000, 5) } });
+    rerender({ s: snap(3500, 6) });
+    rerender({ s: snap(3500, 6) }); // mismo runtime_version reprocesado
+    expect(playMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('no suena si mi saldo baja', () => {
+    const { rerender } = renderHook(({ s }) => useReceiveMoney(s), { initialProps: { s: snap(3000, 5) } });
+    rerender({ s: snap(2500, 6) });
+    expect(playMock).not.toHaveBeenCalled();
+  });
+});
