@@ -9,6 +9,8 @@ import { HostCorrections } from './HostCorrections';
 import { LedgerList } from './LedgerList';
 import { RevertDialog } from './RevertDialog';
 import { LateJoinTray } from './LateJoinTray';
+import { PropertiesPanel } from './PropertiesPanel';
+import type { ActiveProperty } from '../../lib/activeSnapshot';
 
 function makeSnap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
   return {
@@ -20,6 +22,7 @@ function makeSnap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
       { public_ref: 'P-BBBB', display_name: 'Beto', token_id: 'boot', balance: 1000, is_current: false },
     ],
     ledger_recent: [],
+    properties: [],
     late_join_requests: [],
     runtime_status: 'running',
     control: { paused_by_ref: null, finished_by_ref: null, reason: null },
@@ -74,6 +77,17 @@ describe('PlayerBalances', () => {
     const snap = makeSnap({ me: { public_ref: 'P-AAAA', is_host: false, balance: 3000, is_current: true } });
     render(<PlayerBalances snap={snap} icons={{}} isHost={false} disabled onLeave={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Abandonar partida' })).toBeDisabled();
+  });
+
+  it('muestra cuántas propiedades tiene cada jugador', () => {
+    const snap = makeSnap({
+      properties: [
+        { property_ref: 'a', board_key: 'classic', group_key: 'm', name: 'Mediterráneo', kind: 'street', price: 60, base_rent: 2, is_buyable: true, sort_order: 1, owner_ref: 'P-AAAA' },
+        { property_ref: 'b', board_key: 'classic', group_key: 'm', name: 'Báltico', kind: 'street', price: 60, base_rent: 4, is_buyable: true, sort_order: 2, owner_ref: 'P-AAAA' },
+      ],
+    });
+    render(<PlayerBalances snap={snap} icons={{}} />);
+    expect(screen.getByText('2 propiedades')).toBeInTheDocument();
   });
 });
 
@@ -160,6 +174,56 @@ describe('LateJoinTray', () => {
   it('sin solicitudes no renderiza nada', () => {
     const { container } = render(<LateJoinTray snap={makeSnap()} icons={{}} busy={false} onResolve={vi.fn()} />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe('PropertiesPanel', () => {
+  const prop = (over: Partial<ActiveProperty> = {}): ActiveProperty => ({
+    property_ref: 'cl-marron-1', board_key: 'classic', group_key: 'marron', name: 'Mediterráneo',
+    kind: 'street', price: 60, base_rent: 2, is_buyable: true, sort_order: 10, owner_ref: null, ...over,
+  });
+  // me = P-BBBB (host, saldo 1000 en makeSnap).
+  const withProps = (props: ActiveProperty[], over = {}) => makeSnap({ properties: props, ...over });
+
+  it('muestra propiedades por tablero con precio y alquiler', () => {
+    render(<PropertiesPanel snap={withProps([prop()])} busy={false} onBuy={vi.fn()} onPayRent={vi.fn()} />);
+    expect(screen.getByText('Clásico')).toBeInTheDocument();
+    expect(screen.getByText('Mediterráneo')).toBeInTheDocument();
+    expect(screen.getByText(/Precio 60/)).toBeInTheDocument();
+  });
+
+  it('disponible y con saldo: "Comprar" llama onBuy', () => {
+    const onBuy = vi.fn();
+    render(<PropertiesPanel snap={withProps([prop({ price: 60 })])} busy={false} onBuy={onBuy} onPayRent={vi.fn()} />);
+    const btn = screen.getByRole('button', { name: 'Comprar' });
+    expect(btn).toBeEnabled();
+    fireEvent.click(btn);
+    expect(onBuy).toHaveBeenCalledTimes(1);
+  });
+
+  it('de otro jugador: "Pagar alquiler" llama onPayRent', () => {
+    const onRent = vi.fn();
+    render(<PropertiesPanel snap={withProps([prop({ owner_ref: 'P-AAAA', base_rent: 25 })])} busy={false} onBuy={vi.fn()} onPayRent={onRent} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Pagar alquiler' }));
+    expect(onRent).toHaveBeenCalledTimes(1);
+  });
+
+  it('mía: muestra "Tuya" y aparece en "Mis propiedades", sin botones de acción', () => {
+    render(<PropertiesPanel snap={withProps([prop({ owner_ref: 'P-BBBB' })])} busy={false} onBuy={vi.fn()} onPayRent={vi.fn()} />);
+    expect(screen.getAllByText('Tuya').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: 'Comprar' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Pagar alquiler' })).toBeNull();
+  });
+
+  it('en pausa: aviso y acciones deshabilitadas', () => {
+    render(<PropertiesPanel snap={withProps([prop()], { runtime_status: 'paused' })} busy={false} onBuy={vi.fn()} onPayRent={vi.fn()} />);
+    expect(screen.getByText(/solo puedes consultar las propiedades/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Comprar' })).toBeDisabled();
+  });
+
+  it('saldo insuficiente deshabilita "Comprar"', () => {
+    render(<PropertiesPanel snap={withProps([prop({ price: 5000 })])} busy={false} onBuy={vi.fn()} onPayRent={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Comprar' })).toBeDisabled();
   });
 });
 

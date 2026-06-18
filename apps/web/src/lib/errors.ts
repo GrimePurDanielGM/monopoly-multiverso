@@ -71,6 +71,13 @@ const MESSAGES: Record<string, string> = {
   NO_REMAINING_PLAYERS: 'No hay jugadores restantes para repartir el saldo.',
   INVALID_RESOLUTION: 'Opción de reparto del saldo no válida.',
   TARGET_NOT_IN_GAME: 'Ese jugador ya no participa en la partida.',
+  // Fase 3 — propiedades
+  PROPERTY_NOT_FOUND: 'Esa propiedad no existe.',
+  PROPERTY_NOT_BUYABLE: 'Esa casilla no se puede comprar.',
+  PROPERTY_ALREADY_OWNED: 'Esa propiedad ya tiene dueño.',
+  PROPERTY_NOT_OWNED: 'Esa propiedad no tiene propietario activo.',
+  SELF_RENT: 'No puedes pagarte alquiler a ti mismo.',
+  NO_RENT_DUE: 'Esa propiedad no cobra alquiler.',
 };
 
 /** Mensaje legible para un código de error conocido (o genérico si no lo es). */

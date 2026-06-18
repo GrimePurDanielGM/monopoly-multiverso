@@ -1,14 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import type { ActiveSnapshot } from '../lib/activeSnapshot';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import type { ActiveSnapshot, ActiveProperty } from '../lib/activeSnapshot';
 
-const { activeMock, finishMock, pauseMock, resumeMock, leaveMock, removeMock } = vi.hoisted(() => ({
+const { activeMock, finishMock, pauseMock, resumeMock, leaveMock, removeMock, buyMock, rentMock } = vi.hoisted(() => ({
   activeMock: vi.fn(),
   finishMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
   pauseMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
   resumeMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
   leaveMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
   removeMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
+  buyMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
+  rentMock: vi.fn(() => Promise.resolve({ ok: true, data: true })),
 }));
 
 vi.mock('../lib/api', () => {
@@ -20,8 +22,14 @@ vi.mock('../lib/api', () => {
     hostAdjustBalance: noop, hostSetTurn: noop, hostRevertMovement: noop,
     pauseGame: pauseMock, resumeGame: resumeMock, finishGame: finishMock,
     leaveActiveGame: leaveMock, removeActivePlayer: removeMock,
+    buyProperty: buyMock, payRent: rentMock,
     resolveRecovery: noop, resolveReentry: noop,
   };
+});
+
+const PROP = (over: Partial<ActiveProperty> = {}): ActiveProperty => ({
+  property_ref: 'cl-marron-1', board_key: 'classic', group_key: 'marron', name: 'Mediterráneo',
+  kind: 'street', price: 60, base_rent: 2, is_buyable: true, sort_order: 10, owner_ref: null, ...over,
 });
 
 import { ActiveGameScreen } from './ActiveGameScreen';
@@ -37,6 +45,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
       { public_ref: 'P-2', display_name: 'Marty', token_id: 'boot', balance: 3000, is_current: true },
     ],
     ledger_recent: [],
+    properties: [],
     late_join_requests: [],
     runtime_status: 'running',
     control: { paused_by_ref: null, finished_by_ref: null, reason: null },
@@ -154,5 +163,39 @@ describe('ActiveGameScreen — abandonar/expulsar', () => {
   it('en pausa se permite abandonar (acción no bloqueada por el fieldset)', () => {
     renderScreen(snap({ me: { public_ref: 'P-2', is_host: false, balance: 3000, is_current: false }, runtime_status: 'paused', control: { paused_by_ref: 'P-1', finished_by_ref: null, reason: null } }));
     expect(screen.getByRole('button', { name: 'Abandonar partida' })).toBeEnabled();
+  });
+});
+
+describe('ActiveGameScreen — propiedades', () => {
+  it('comprar abre confirmación con precio; confirmar llama buyProperty una vez', async () => {
+    renderScreen(snap({ properties: [PROP({ price: 60 })] }));
+    fireEvent.click(screen.getByRole('button', { name: 'Comprar' }));
+    const dlg = screen.getByRole('dialog', { name: 'Comprar propiedad' });
+    expect(dlg).toBeInTheDocument();
+    expect(buyMock).not.toHaveBeenCalled();
+    const yes = within(dlg).getByRole('button', { name: 'Comprar' });
+    fireEvent.click(yes);
+    fireEvent.click(yes);
+    await waitFor(() => expect(buyMock).toHaveBeenCalledTimes(1));
+    expect(buyMock).toHaveBeenCalledWith('g1', 'cl-marron-1', expect.any(String), 5);
+  });
+
+  it('cancelar la compra no llama a la RPC', () => {
+    renderScreen(snap({ properties: [PROP({ price: 60 })] }));
+    fireEvent.click(screen.getByRole('button', { name: 'Comprar' }));
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Comprar propiedad' })).getByRole('button', { name: 'Cancelar' }));
+    expect(buyMock).not.toHaveBeenCalled();
+  });
+
+  it('pagar alquiler abre confirmación; confirmar llama payRent una vez', async () => {
+    // me = P-1 (host); la propiedad es de P-2.
+    renderScreen(snap({ properties: [PROP({ owner_ref: 'P-2', base_rent: 25 })] }));
+    fireEvent.click(screen.getByRole('button', { name: 'Pagar alquiler' }));
+    const dlg = screen.getByRole('dialog', { name: 'Pagar alquiler' });
+    expect(dlg).toBeInTheDocument();
+    const yes = within(dlg).getByRole('button', { name: 'Pagar alquiler' });
+    fireEvent.click(yes);
+    await waitFor(() => expect(rentMock).toHaveBeenCalledTimes(1));
+    expect(rentMock).toHaveBeenCalledWith('g1', 'cl-marron-1', expect.any(String), 5);
   });
 });

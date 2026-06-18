@@ -5,7 +5,23 @@ import { hasForbiddenKey } from './snapshot';
 export type LedgerKind =
   | 'seed' | 'late_join_seed' | 'bank_to_player' | 'player_to_bank' | 'player_to_player'
   | 'host_player_transfer' | 'host_adjust' | 'host_revert'
-  | 'player_exit_to_bank' | 'player_exit_distribution' | 'player_exit_remainder_to_bank';
+  | 'player_exit_to_bank' | 'player_exit_distribution' | 'player_exit_remainder_to_bank'
+  | 'property_purchase' | 'rent_payment';
+
+export type BoardKey = 'classic' | 'back_to_the_future';
+export type PropertyKind = 'street' | 'station' | 'utility' | 'special';
+export interface ActiveProperty {
+  property_ref: string;
+  board_key: BoardKey;
+  group_key: string;
+  name: string;
+  kind: PropertyKind;
+  price: number;
+  base_rent: number;
+  is_buyable: boolean;
+  sort_order: number;
+  owner_ref: string | null; // null = disponible en banca
+}
 
 export interface ActiveConfig {
   initial_money: number;
@@ -68,6 +84,7 @@ export interface ActiveSnapshot {
   turn: ActiveTurn;
   players: ActivePlayer[];
   ledger_recent: LedgerEntry[];
+  properties: ActiveProperty[];
   late_join_requests: LateJoinRequest[];
   runtime_status: RuntimeStatus;
   control: ActiveControl;
@@ -86,7 +103,10 @@ const isNumOrNull = (v: unknown): v is number | null => v === null || isNum(v);
 const KINDS: ReadonlySet<string> = new Set([
   'seed', 'late_join_seed', 'bank_to_player', 'player_to_bank', 'player_to_player', 'host_player_transfer', 'host_adjust', 'host_revert',
   'player_exit_to_bank', 'player_exit_distribution', 'player_exit_remainder_to_bank',
+  'property_purchase', 'rent_payment',
 ]);
+const BOARDS: ReadonlySet<string> = new Set(['classic', 'back_to_the_future']);
+const PKINDS: ReadonlySet<string> = new Set(['street', 'station', 'utility', 'special']);
 
 export type ParseActiveResult = { ok: true; data: ActiveSnapshot } | { ok: false; reason: string };
 const bad = (reason: string): { ok: false; reason: string } => ({ ok: false, reason });
@@ -137,6 +157,23 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
     });
   }
 
+  if (!Array.isArray(raw.properties)) return bad('properties ausente');
+  const properties: ActiveProperty[] = [];
+  for (const p of raw.properties) {
+    if (
+      !isObj(p) || !isStr(p.property_ref) || !isStr(p.board_key) || !BOARDS.has(p.board_key) ||
+      !isStr(p.group_key) || !isStr(p.name) || !isStr(p.kind) || !PKINDS.has(p.kind) ||
+      !isNum(p.price) || !isNum(p.base_rent) || !isBool(p.is_buyable) || !isNum(p.sort_order) || !isStrOrNull(p.owner_ref)
+    ) {
+      return bad('property inválida');
+    }
+    properties.push({
+      property_ref: p.property_ref, board_key: p.board_key as BoardKey, group_key: p.group_key, name: p.name,
+      kind: p.kind as PropertyKind, price: p.price, base_rent: p.base_rent, is_buyable: p.is_buyable,
+      sort_order: p.sort_order, owner_ref: p.owner_ref,
+    });
+  }
+
   if (!Array.isArray(raw.late_join_requests)) return bad('late_join_requests ausente');
   const late: LateJoinRequest[] = [];
   for (const l of raw.late_join_requests) {
@@ -161,6 +198,7 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
       turn: { turn_number: t.turn_number, current_player_ref: t.current_player_ref, order: t.order as string[] },
       players,
       ledger_recent: ledger,
+      properties,
       late_join_requests: late,
       runtime_status: rs,
       control: { paused_by_ref: ctl.paused_by_ref, finished_by_ref: ctl.finished_by_ref, reason: ctl.reason },

@@ -1,5 +1,5 @@
 import type { ActiveSnapshot } from '../../lib/activeSnapshot';
-import { formatMoney } from '../../lib/activeSelectors';
+import { formatMoney, propertyCountByPlayer, propertiesOf } from '../../lib/activeSelectors';
 
 /** Lista de jugadores con saldo visible para todos, ficha, indicador de turno y "Tú".
  *  Acciones de salida por fila: "Abandonar partida" (mi propia fila, si no soy anfitrión)
@@ -20,12 +20,15 @@ export function PlayerBalances({
   onLeave?: () => void;
   onRemove?: (ref: string, name: string) => void;
 }) {
+  const propCounts = propertyCountByPlayer(snap);
   return (
     <ul aria-label="Saldos de los jugadores" className="flex flex-col gap-2">
       {snap.players.map((p) => {
         const mine = p.public_ref === snap.me.public_ref;
         const canLeave = mine && !isHost && onLeave;            // mi jugador (no anfitrión)
         const canRemove = isHost && !mine && onRemove;          // el anfitrión saca a otro
+        const nProps = propCounts[p.public_ref] ?? 0;
+        const propNames = propertiesOf(p.public_ref, snap).map((x) => x.name).join(', ');
         return (
           <li
             key={p.public_ref}
@@ -39,6 +42,11 @@ export function PlayerBalances({
               {mine && <span className="ml-2 rounded bg-indigo-600 px-1 text-[10px] font-semibold">Tú</span>}
               {p.is_current && <span className="ml-2 text-xs text-emerald-400">en turno</span>}
             </span>
+            {nProps > 0 && (
+              <span className="rounded bg-slate-700 px-1.5 text-[11px] text-slate-200" title={propNames}>
+                {nProps} {nProps === 1 ? 'propiedad' : 'propiedades'}
+              </span>
+            )}
             <span className="text-sm font-semibold tabular-nums">{formatMoney(p.balance)}</span>
             {canLeave && (
               <button

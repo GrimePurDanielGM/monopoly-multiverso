@@ -255,6 +255,64 @@ describe.skipIf(!enabled)('Partida activa — integración local real', () => {
     expect(act.error?.message).toBe('NOT_ACTIVE_MEMBER');
   }, 90000);
 
+  it('propiedades: comprar, alquiler, pausa bloquea, salida devuelve a banca y recompra', async () => {
+    const { host, joiners, code, gid } = await startedGame();
+    const A = host, B = joiners[0]!, C = joiners[1]!;
+    const snapOf = async (c: SupabaseClient) => (await c.rpc('get_active_snapshot_by_code', { p_code: code })).data;
+    const propOf = (s: { properties: { property_ref: string; owner_ref: string | null }[] }, ref: string) =>
+      s.properties.find((p) => p.property_ref === ref)!;
+
+    let s = await snapOf(A);
+    const hostRef = s.me.public_ref as string;
+
+    // A (host) compra una estación (200, alquiler 25): pasa a propietario y baja su saldo.
+    let r = await A.rpc('buy_property', { p_game: gid, p_property_ref: 'cl-estacion-1', p_request_id: crypto.randomUUID(), p_expected_version: s.runtime_version });
+    expect(r.error).toBeNull();
+    s = await snapOf(A);
+    expect(propOf(s, 'cl-estacion-1').owner_ref).toBe(hostRef);
+    expect(s.me.balance).toBe(2800);
+
+    // B paga alquiler a A: B -25, A +25.
+    let sb = await snapOf(B);
+    const bRef = sb.me.public_ref as string;
+    r = await B.rpc('pay_rent', { p_game: gid, p_property_ref: 'cl-estacion-1', p_request_id: crypto.randomUUID(), p_expected_version: sb.runtime_version });
+    expect(r.error).toBeNull();
+    sb = await snapOf(B);
+    expect(sb.me.balance).toBe(2975);
+    expect((await snapOf(A)).players.find((p: { public_ref: string }) => p.public_ref === hostRef).balance).toBe(2825);
+
+    // No se puede pagar alquiler a uno mismo.
+    s = await snapOf(A);
+    const self = await A.rpc('pay_rent', { p_game: gid, p_property_ref: 'cl-estacion-1', p_request_id: crypto.randomUUID(), p_expected_version: s.runtime_version });
+    expect(self.error?.message).toBe('SELF_RENT');
+
+    // Pausa: comprar queda bloqueado (GAME_PAUSED). Luego reanudar.
+    s = await snapOf(A);
+    await A.rpc('pause_game_runtime', { p_game: gid, p_reason: 'x', p_request_id: crypto.randomUUID(), p_expected_version: s.runtime_version });
+    s = await snapOf(A);
+    const blocked = await A.rpc('buy_property', { p_game: gid, p_property_ref: 'cl-marron-1', p_request_id: crypto.randomUUID(), p_expected_version: s.runtime_version });
+    expect(blocked.error?.message).toBe('GAME_PAUSED');
+    await A.rpc('resume_game_runtime', { p_game: gid, p_request_id: crypto.randomUUID(), p_expected_version: s.runtime_version });
+
+    // B compra una calle; el host la expulsa -> la propiedad vuelve a banca (disponible).
+    sb = await snapOf(B);
+    await B.rpc('buy_property', { p_game: gid, p_property_ref: 'cl-marron-1', p_request_id: crypto.randomUUID(), p_expected_version: sb.runtime_version });
+    s = await snapOf(A);
+    r = await A.rpc('remove_active_player', { p_game: gid, p_target_ref: bRef, p_resolution_mode: 'to_bank', p_reason: 'x', p_request_id: crypto.randomUUID(), p_expected_version: s.runtime_version });
+    expect(r.error).toBeNull();
+    s = await snapOf(A);
+    expect(propOf(s, 'cl-marron-1').owner_ref).toBeNull();          // de vuelta en banca
+
+    // C recompra la propiedad devuelta; persiste tras recargar el snapshot.
+    let sc = await snapOf(C);
+    const cRef = sc.me.public_ref as string;
+    r = await C.rpc('buy_property', { p_game: gid, p_property_ref: 'cl-marron-1', p_request_id: crypto.randomUUID(), p_expected_version: sc.runtime_version });
+    expect(r.error).toBeNull();
+    s = await snapOf(A);
+    expect(propOf(s, 'cl-marron-1').owner_ref).toBe(cRef);
+    expect(propOf(s, 'cl-estacion-1').owner_ref).toBe(hostRef);     // la del host intacta
+  }, 90000);
+
   it('expulsión con reparto: el host reparte el saldo entre restantes (resto a la banca) y reconcilia', async () => {
     const { host, joiners, code, gid } = await startedGame();
     const s0 = await host.rpc('get_active_snapshot_by_code', { p_code: code });

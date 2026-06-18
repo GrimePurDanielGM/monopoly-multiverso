@@ -12,6 +12,10 @@ const valid = {
   ledger_recent: [
     { ledger_ref: 'L-AAAA', seq: 2, kind: 'bank_to_player', from_ref: null, to_ref: 'P-AAAA', amount: 100, before_balance: null, after_balance: null, reason: null, actor_ref: 'P-AAAA', reverts_ref: null, created_at: '2026-06-18T00:00:00Z' },
   ],
+  properties: [
+    { property_ref: 'cl-marron-1', board_key: 'classic', group_key: 'marron', name: 'Mediterráneo', kind: 'street', price: 60, base_rent: 2, is_buyable: true, sort_order: 10, owner_ref: null },
+    { property_ref: 'cl-estacion-1', board_key: 'classic', group_key: 'estaciones', name: 'Estación Sur', kind: 'station', price: 200, base_rent: 25, is_buyable: true, sort_order: 30, owner_ref: 'P-AAAA' },
+  ],
   late_join_requests: [],
   runtime_status: 'running',
   control: { paused_by_ref: null, finished_by_ref: null, reason: null },
@@ -46,5 +50,24 @@ describe('parseActiveSnapshot', () => {
   it('rechaza tipos incorrectos en balance', () => {
     const bad = { ...valid, me: { ...valid.me, balance: 'mucho' } };
     expect(parseActiveSnapshot(bad).ok).toBe(false);
+  });
+
+  it('parsea properties con owner_ref (null = disponible)', () => {
+    const r = parseActiveSnapshot(valid);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.data.properties).toHaveLength(2);
+      expect(r.data.properties[0]!.owner_ref).toBeNull();
+      expect(r.data.properties[1]!.owner_ref).toBe('P-AAAA');
+      expect(r.data.properties[1]!.base_rent).toBe(25);
+    }
+  });
+
+  it('rechaza properties ausente o board_key inválido', () => {
+    const { properties, ...sinProps } = valid;
+    void properties;
+    expect(parseActiveSnapshot(sinProps).ok).toBe(false);
+    const badBoard = { ...valid, properties: [{ ...valid.properties[0], board_key: 'marte' }] };
+    expect(parseActiveSnapshot(badBoard).ok).toBe(false);
   });
 });

@@ -3,7 +3,8 @@ import {
   getActiveSnapshotByCode, listActiveTokens, endTurn, bankTransfer, playerTransfer,
   hostPlayerTransfer, hostAdjustBalance, hostSetTurn, hostRevertMovement,
   pauseGame, resumeGame, finishGame, resolveLateJoin,
-  leaveActiveGame, removeActivePlayer, type ApiResult, type ExitResolution,
+  leaveActiveGame, removeActivePlayer, buyProperty, payRent,
+  type ApiResult, type ExitResolution,
 } from '../lib/api';
 import { useActiveStore } from '../store/active';
 import { useRealtimeStore } from '../store/realtime';
@@ -23,6 +24,9 @@ import { RevertDialog } from '../components/active/RevertDialog';
 import { GameControlPanel, PausedBanner } from '../components/active/GameControlPanel';
 import { FinishedView } from '../components/active/FinishedView';
 import { LateJoinTray } from '../components/active/LateJoinTray';
+import { PropertiesPanel } from '../components/active/PropertiesPanel';
+import { formatMoney, ownerName } from '../lib/activeSelectors';
+import type { ActiveProperty } from '../lib/activeSnapshot';
 
 /** Pantalla de partida activa (Fase 2). El snapshot del store es la única fuente de verdad;
  *  cada acción usa runtime_version (concurrencia) y un requestId nuevo (idempotencia). */
@@ -56,6 +60,8 @@ export function ActiveGameScreen({
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<{ ref: string; name: string } | null>(null);
   const [removeMode, setRemoveMode] = useState<ExitResolution>('to_bank');
+  const [buyTarget, setBuyTarget] = useState<ActiveProperty | null>(null);
+  const [rentTarget, setRentTarget] = useState<ActiveProperty | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -135,6 +141,20 @@ export function ActiveGameScreen({
       .then(() => setRemoveTarget(null));
   }, [removeTarget, removeMode, gameId, snap?.runtime_version, runControl]);
 
+  // Compra de propiedad (jugador activo, en curso). Confirmación previa.
+  const doBuy = useCallback(() => {
+    const p = buyTarget;
+    if (!p) return;
+    void run(() => buyProperty(gameId, p.property_ref, newRequestId(), snap?.runtime_version ?? 0)).then(() => setBuyTarget(null));
+  }, [buyTarget, gameId, snap?.runtime_version, run]);
+
+  // Pago de alquiler al propietario. Confirmación previa.
+  const doPayRent = useCallback(() => {
+    const p = rentTarget;
+    if (!p) return;
+    void run(() => payRent(gameId, p.property_ref, newRequestId(), snap?.runtime_version ?? 0)).then(() => setRentTarget(null));
+  }, [rentTarget, gameId, snap?.runtime_version, run]);
+
   const ver = snap?.runtime_version ?? 0;
   const host = useMemo(() => (snap ? isHost(snap) : false), [snap]);
 
@@ -185,6 +205,7 @@ export function ActiveGameScreen({
             onRemove={(ref, name) => { setRemoveMode('to_bank'); setRemoveTarget({ ref, name }); }}
           />
           {error && <p role="alert" className="rounded-lg bg-rose-950/60 px-3 py-2 text-sm text-rose-200">{error}</p>}
+          <PropertiesPanel snap={snap} busy={busy} onBuy={(p) => setBuyTarget(p)} onPayRent={(p) => setRentTarget(p)} />
         </div>
 
         <div className="mt-3 flex flex-col gap-3 lg:mt-0">
@@ -327,6 +348,28 @@ export function ActiveGameScreen({
         cancelLabel="Cancelar"
         onConfirm={doRemove}
         onCancel={() => setRemoveTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={buyTarget !== null}
+        title="Comprar propiedad"
+        busy={busy}
+        message={buyTarget ? <>¿Comprar <span className="font-semibold">{buyTarget.name}</span> por {formatMoney(buyTarget.price)}?</> : ''}
+        confirmLabel="Comprar"
+        cancelLabel="Cancelar"
+        onConfirm={doBuy}
+        onCancel={() => setBuyTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={rentTarget !== null}
+        title="Pagar alquiler"
+        busy={busy}
+        message={rentTarget ? <>¿Pagar {formatMoney(rentTarget.base_rent)} de alquiler a <span className="font-semibold">{ownerName(rentTarget, snap)}</span> por <span className="font-semibold">{rentTarget.name}</span>?</> : ''}
+        confirmLabel="Pagar alquiler"
+        cancelLabel="Cancelar"
+        onConfirm={doPayRent}
+        onCancel={() => setRentTarget(null)}
       />
     </section>
   );

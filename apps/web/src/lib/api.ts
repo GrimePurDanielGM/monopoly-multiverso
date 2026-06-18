@@ -456,3 +456,23 @@ export async function removeActivePlayer(
   if (error) return fail(error.message);
   return { ok: true, data: true };
 }
+
+/** Compra una propiedad disponible (solo jugador activo, partida en curso). */
+export async function buyProperty(gameId: string, propertyRef: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('buy_property', {
+    p_game: gameId, p_property_ref: propertyRef, p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Paga el alquiler base de una propiedad a su propietario activo. */
+export async function payRent(gameId: string, propertyRef: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('pay_rent', {
+    p_game: gameId, p_property_ref: propertyRef, p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}

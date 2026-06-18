@@ -177,9 +177,54 @@
     anfitrión + 3 jugadores (misma cobertura). **Pendiente de validación manual.**
 - **Commits:** backend Fase 2 `d6a514f`, frontend `cb9574c`, reanudación `395080f`, control backend
   `eddb8fb`, control frontend `e64e0e2`, late-join backend `ffb4508`, late-join frontend `482d010`,
-  salida/expulsión `0019` `8b7fcff`, mínimo 2 jugadores (este commit).
+  salida/expulsión `0019` `8b7fcff`, mínimo 2 jugadores `d4b495d`.
 
-## Pendiente para fases siguientes (no en Fase 0/1/2)
+## Fase 3 — Propiedades base (catálogo, compra, alquiler, devolución) · **`Fase 3: COMPLETADA`**
+Sistema base de propiedades del tablero (migración `0020`). NO incluye casas/hoteles/hipotecas/
+subastas/cartas/cárcel/dado/movimiento por casillas/tablero visual (fases posteriores).
+- **Catálogo (`property_catalog`, referencia global por migración; deny-all):** `property_ref` opaco,
+  `board_key` (`classic` | `back_to_the_future`), `group_key`, `name`, `kind`
+  (`street`/`station`/`utility`/`special`), `price`, `base_rent`, `is_buyable`, `sort_order`. Constraint:
+  las comprables exigen `price>0` y `base_rent>0` (el ledger exige `amount>0`). Catálogo mínimo de
+  prueba: 7 propiedades por tablero (6 comprables + 1 especial), ampliable. El cliente no puede inventar
+  propiedades (FK + validación en RPC).
+- **Posesión (`property_ownership`, per-game, episódica; deny-all):** `property_ref`, `owner_ref`,
+  `acquired_at`, `acquired_by_ledger_ref`, `released_at`, `released_reason`. Único parcial: un solo
+  propietario activo por `(game, property)`. Disponible = sin fila activa. No se borra historial.
+- **`buy_property`** (jugador activo, `running`): valida existencia/comprable/libre/saldo; paga el precio
+  a la banca (ledger `property_purchase`); asigna la propiedad; `runtime_version+1`; auditada; 1 Broadcast;
+  idempotente. Errores: `PROPERTY_NOT_FOUND/NOT_BUYABLE/ALREADY_OWNED`, `INSUFFICIENT_FUNDS`,
+  `GAME_PAUSED/FINISHED`, `VERSION_CONFLICT`.
+- **`pay_rent`** (pagador activo, `running`): propietario activo, no a uno mismo (`SELF_RENT`),
+  `base_rent`, sin saldo negativo (`INSUFFICIENT_FUNDS`); transferencia pagador→propietario (ledger
+  `rent_payment`); idempotente. (Sin multiplicadores/grupos/casas: modelo preparado para ampliar.)
+- **Devolución a banca al salir/expulsar:** integrada en `_p2_remove_player` (misma transacción): las
+  propiedades activas del saliente pasan a `released_at`/`released_reason='player_exit'` y vuelven a estar
+  disponibles; **sin ledger monetario** (auditoría `properties_returned_to_bank`); no se reparten ni
+  subastan. Regla aprobada: *si un jugador sale o es expulsado, sus propiedades vuelven a la banca y
+  quedan disponibles para compra.* (Cartas conservables: documentado para fases futuras, no implementado.)
+- **Snapshot activo:** añade `properties` (catálogo activo + `owner_ref` actual, `null`=disponible),
+  saneado. La UI deriva disponible/mía/de-otro, puede-comprar/puede-pagar y propiedades por jugador.
+- **UI:** sección "Propiedades" por tablero (precio, alquiler, estado: Disponible / Propiedad de X / Tuya /
+  No comprable) con **Comprar** (disponible) y **Pagar alquiler** (de otro); bloque "Mis propiedades";
+  recuento de propiedades por jugador en la lista. Confirmaciones obligatorias (foco en Cancelar, Escape
+  cancela, sin doble envío): "¿Comprar {propiedad} por {importe}?" y "¿Pagar {importe} de alquiler a
+  {jugador} por {propiedad}?". En pausa/finalización: solo consulta, acciones deshabilitadas.
+- **Ledger:** tipos `property_purchase` (jugador→banca) y `rent_payment` (pagador→propietario),
+  reconciliables; la devolución no usa ledger monetario. Reconciliación monetaria intacta.
+- **Seguridad:** RLS deny-all en `property_catalog`/`property_ownership`; solo RPC `SECURITY DEFINER`;
+  helpers revocados; cliente sin SELECT directo; snapshot saneado; sin ids internos.
+- Validado: SQL `properties_phase3` (13) + `rent_phase3` (7) + `property_exit_phase3` (4) +
+  `reconcile_properties_phase3` (2) + `rls_properties_phase3` (6) = **32**; sin regresión en Fase 1/2
+  (`rls_phase1` se encadena tras `integration_phase1`). Unit/componente (parser, selectores de compra/
+  alquiler, agrupación, `PropertiesPanel`, diálogos): **+** sobre 186. Integración local real (comprar,
+  alquiler, pausa bloquea, salida devuelve a banca, recompra). **E2E Chromium+WebKit** (`properties`:
+  comprar→alquiler→pausa→salida-a-banca→recompra→persistencia) **34/34 suite completa**. typecheck/lint/
+  build limpios; `dist` sin secretos ni ids internos. Aplicado a `monopoly-multiverso-dev`; desplegado en
+  Vercel; smoke remota OK. **Pendiente de validación manual.**
+- **Commit:** propiedades Fase 3 `0020` (este commit).
+
+## Pendiente para fases siguientes (no en Fase 0/1/2/3)
 - Datos reales de tableros, títulos, precios, alquileres, hipotecas, stock físico.
 - Esquema definitivo de juego (propiedades, construcciones, cartas, banco, etc.).
 - Catálogo de cartas (transcripción de las fotos) + mazo especial de parking.
