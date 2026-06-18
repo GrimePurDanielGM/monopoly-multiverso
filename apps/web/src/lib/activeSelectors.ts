@@ -73,6 +73,7 @@ export function isRevertible(entry: LedgerEntry): boolean {
 
 const KIND_LABEL: Record<LedgerKind, string> = {
   seed: 'Saldo inicial',
+  late_join_seed: 'Saldo inicial (entrada tardía)',
   bank_to_player: 'Banco paga',
   player_to_bank: 'Pago al banco',
   player_to_player: 'Transferencia',

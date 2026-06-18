@@ -1,6 +1,6 @@
 // Máquina de estados de las solicitudes (recovery/reentry) y utilidades de bloqueo del PIN.
 export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'expired';
-export type RequestKind = 'recovery' | 'reentry';
+export type RequestKind = 'recovery' | 'reentry' | 'late_join';
 
 /** Estado terminal: ya no hay que seguir consultando. */
 export function isTerminal(status: RequestStatus): boolean {

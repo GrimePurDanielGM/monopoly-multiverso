@@ -7,6 +7,7 @@ export interface ConfigPatch {
   min_players: number;
   max_players: number;
   initial_money: number;
+  allow_late_join: boolean;
 }
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
   minPlayers: number;
   maxPlayers: number;
   initialMoney: number;
+  allowLateJoin: boolean;
   currentPlayers: number;
   busy: boolean;
   onSubmit: (patch: ConfigPatch) => void;
@@ -25,11 +27,12 @@ const numField = (v: string, fallback: number): number => {
 };
 
 /** Edición de la configuración del lobby (solo whitelist de update_config). */
-export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, currentPlayers, busy, onSubmit }: Props) {
+export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, allowLateJoin, currentPlayers, busy, onSubmit }: Props) {
   const [n, setN] = useState(name);
   const [min, setMin] = useState(minPlayers);
   const [max, setMax] = useState(maxPlayers);
   const [money, setMoney] = useState(initialMoney);
+  const [late, setLate] = useState(allowLateJoin);
 
   const errs = configErrors({ name: n, minPlayers: min, maxPlayers: max, initialMoney: money }, currentPlayers);
   const valid = errs.length === 0;
@@ -37,7 +40,7 @@ export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, cur
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!valid || busy) return;
-    onSubmit({ name: n.trim(), min_players: min, max_players: max, initial_money: money });
+    onSubmit({ name: n.trim(), min_players: min, max_players: max, initial_money: money, allow_late_join: late });
   }
 
   return (
@@ -59,6 +62,16 @@ export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, cur
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-slate-300">Dinero inicial</span>
         <input type="number" inputMode="numeric" min={1} value={money} onChange={(e) => setMoney(numField(e.target.value, money))} className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base" />
+      </label>
+
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" checked={late} onChange={(e) => setLate(e.target.checked)} className="mt-1 h-4 w-4" />
+        <span className="flex flex-col">
+          <span className="text-slate-200">Permitir que entren jugadores después de iniciar</span>
+          <span className="text-xs text-slate-500">
+            Las nuevas incorporaciones necesitarán aprobación del anfitrión y entrarán con el saldo inicial, sin propiedades ni compensaciones.
+          </span>
+        </span>
       </label>
 
       {!valid && (

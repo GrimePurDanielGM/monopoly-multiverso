@@ -8,10 +8,11 @@ import { BankPanel } from './BankPanel';
 import { HostCorrections } from './HostCorrections';
 import { LedgerList } from './LedgerList';
 import { RevertDialog } from './RevertDialog';
+import { LateJoinTray } from './LateJoinTray';
 
 function makeSnap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
   return {
-    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 6, max_players: 16 } },
+    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 6, max_players: 16, allow_late_join: false } },
     me: { public_ref: 'P-BBBB', is_host: true, balance: 1000, is_current: false },
     turn: { turn_number: 5, current_player_ref: 'P-AAAA', order: ['P-AAAA', 'P-BBBB'] },
     players: [
@@ -19,6 +20,7 @@ function makeSnap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
       { public_ref: 'P-BBBB', display_name: 'Beto', token_id: 'boot', balance: 1000, is_current: false },
     ],
     ledger_recent: [],
+    late_join_requests: [],
     runtime_status: 'running',
     control: { paused_by_ref: null, finished_by_ref: null, reason: null },
     runtime_version: 7,
@@ -107,6 +109,27 @@ describe('LedgerList', () => {
   it('no-host no ve botones de revertir', () => {
     render(<LedgerList snap={snap} isHost={false} busy={false} onRevert={vi.fn()} />);
     expect(screen.queryByRole('button', { name: 'Revertir' })).toBeNull();
+  });
+});
+
+describe('LateJoinTray', () => {
+  const snap = makeSnap({
+    late_join_requests: [{ request_ref: 'L-REQ1', name: 'Nuevo', token: 'cat', device_label: 'iPad' }],
+  });
+  it('muestra la solicitud separada con aviso de saldo/orden y resuelve', () => {
+    const onResolve = vi.fn();
+    render(<LateJoinTray snap={snap} icons={{ cat: '🐱' }} busy={false} onResolve={onResolve} />);
+    expect(screen.getByText(/Solicitudes para entrar en la partida/)).toBeInTheDocument();
+    expect(screen.getByText(/se añadirán al final del orden/)).toBeInTheDocument();
+    expect(screen.getByText('Nuevo')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Aceptar' }));
+    expect(onResolve).toHaveBeenCalledWith('L-REQ1', true);
+    fireEvent.click(screen.getByRole('button', { name: 'Rechazar' }));
+    expect(onResolve).toHaveBeenCalledWith('L-REQ1', false);
+  });
+  it('sin solicitudes no renderiza nada', () => {
+    const { container } = render(<LateJoinTray snap={makeSnap()} icons={{}} busy={false} onResolve={vi.fn()} />);
+    expect(container).toBeEmptyDOMElement();
   });
 });
 

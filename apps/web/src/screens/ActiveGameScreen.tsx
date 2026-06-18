@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   getActiveSnapshotByCode, listActiveTokens, endTurn, bankTransfer, playerTransfer,
   hostPlayerTransfer, hostAdjustBalance, hostSetTurn, hostRevertMovement,
-  pauseGame, resumeGame, finishGame, type ApiResult,
+  pauseGame, resumeGame, finishGame, resolveLateJoin, type ApiResult,
 } from '../lib/api';
 import { useActiveStore } from '../store/active';
 import { useRealtimeStore } from '../store/realtime';
@@ -21,6 +21,7 @@ import { HostCorrections } from '../components/active/HostCorrections';
 import { RevertDialog } from '../components/active/RevertDialog';
 import { GameControlPanel, PausedBanner } from '../components/active/GameControlPanel';
 import { FinishedView } from '../components/active/FinishedView';
+import { LateJoinTray } from '../components/active/LateJoinTray';
 
 /** Pantalla de partida activa (Fase 2). El snapshot del store es la única fuente de verdad;
  *  cada acción usa runtime_version (concurrencia) y un requestId nuevo (idempotencia). */
@@ -165,6 +166,7 @@ export function ActiveGameScreen({
               onFinish={() => setFinishOpen(true)}
             />
           )}
+          {host && <LateJoinTray snap={snap} icons={icons} busy={controlBusy} onResolve={(ref, accept) => void runControl(() => resolveLateJoin(ref, accept, ver))} />}
           {host && <RecoveryRequestsTray requests={requests} players={lobbyPlayers} reload={onReload} />}
           {/* En pausa, fieldset deshabilita TODAS las acciones de forma accesible sin alterar etiquetas. */}
           <fieldset disabled={paused} className="m-0 flex min-w-0 flex-col gap-3 border-0 p-0">

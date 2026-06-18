@@ -172,16 +172,25 @@ export function JoinScreen() {
             </p>
           )}
 
-          {/* Partida en curso: no se puede unir. Si ya jugabas, recupera tu jugador. */}
+          {/* Partida en curso: no se puede unir por el flujo normal. Tres opciones distintas. */}
           {peek.status === 'active' && (
             <div className="flex flex-col gap-2">
               <p role="status" className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-300">
-                Esta partida ya ha comenzado. Si ya formabas parte, recupera tu jugador.
+                Esta partida ya ha comenzado.
               </p>
+              {peek.allow_late_join && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/sala/${code}/entrar`)}
+                  className="min-h-[44px] rounded-xl bg-indigo-600 px-4 text-base font-semibold active:bg-indigo-700"
+                >
+                  Solicitar entrar como nuevo jugador
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => navigate(`/sala/${code}/recuperar-jugador`)}
-                className="min-h-[44px] rounded-xl bg-indigo-600 px-4 text-base font-semibold active:bg-indigo-700"
+                className={`min-h-[44px] rounded-xl px-4 text-base font-semibold ${peek.allow_late_join ? 'border border-slate-600 active:bg-slate-800' : 'bg-indigo-600 active:bg-indigo-700'}`}
               >
                 Recuperar mi jugador
               </button>

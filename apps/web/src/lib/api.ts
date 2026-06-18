@@ -45,6 +45,7 @@ export interface PeekGameResult {
   max_players: number;
   open_slots: number;
   accepts_entries: boolean;
+  allow_late_join: boolean;
   available_tokens: PublicToken[];
   players: PublicPlayer[];
 }
@@ -409,6 +410,24 @@ export async function resumeGame(gameId: string, requestId: string, expectedVers
 export async function finishGame(gameId: string, reason: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
   if (!supabase) return fail('UNCONFIGURED');
   const { error } = await supabase.rpc('finish_game_runtime', { p_game: gameId, p_reason: reason, p_request_id: requestId, p_expected_version: expectedVersion });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Incorporación tardía: una sesión nueva solicita entrar en una partida activa. */
+export async function requestLateJoin(
+  code: string, name: string, token: string, deviceLabel: string | null,
+): Promise<ApiResult<{ request_ref: string; status: RequestStatus }>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { data, error } = await supabase.rpc('request_late_join', { p_code: code, p_name: name, p_token: token, p_device_label: deviceLabel });
+  if (error) return fail(error.message);
+  return { ok: true, data: data as { request_ref: string; status: RequestStatus } };
+}
+
+/** Incorporación tardía: el anfitrión aprueba/rechaza una solicitud (con runtime_version). */
+export async function resolveLateJoin(requestRef: string, accept: boolean, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('resolve_late_join', { p_request_ref: requestRef, p_accept: accept, p_expected_version: expectedVersion });
   if (error) return fail(error.message);
   return { ok: true, data: true };
 }

@@ -17,14 +17,19 @@ async function authed(): Promise<SupabaseClient> {
   return c;
 }
 
-/** Crea una partida y la lleva a 'active' con 6 jugadores. Devuelve clientes + code/gid. */
-async function startedGame() {
+/** Crea una partida y la lleva a 'active' con 6 jugadores. Devuelve clientes + code/gid.
+ *  `cfg` aplica un update_config en lobby (p. ej. { allow_late_join: true, max_players: 7 }). */
+async function startedGame(cfg?: Record<string, unknown>) {
   const host = await authed();
   const cg = await host.functions.invoke('create_game', {
     body: { name: 'Activa IT', host_name: 'Host', host_token: 'penguin', config: {}, request_id: crypto.randomUUID(), pin: '482915' },
   });
   const code = cg.data.code as string;
   const gid = cg.data.game_id as string;
+  if (cfg) {
+    const v = await host.rpc('get_lobby_snapshot_by_code', { p_code: code });
+    await host.rpc('update_config', { p_game: gid, p_patch: cfg, p_expected_version: v.data.game.version });
+  }
   const toks = ['cat', 'boot', 'thimble', 'top_hat', 'iron'];
   const joiners: SupabaseClient[] = [];
   for (let i = 0; i < 5; i++) {
@@ -175,4 +180,49 @@ describe.skipIf(!enabled)('Partida activa — integración local real', () => {
     const after = await host.rpc('bank_transfer', { p_game: gid, p_player_ref: sf.data.turn.order[1], p_direction: 'to_player', p_amount: 10, p_request_id: crypto.randomUUID(), p_expected_version: sf.data.runtime_version });
     expect(after.error?.message).toBe('GAME_FINISHED');
   }, 60000);
+
+  it('incorporación tardía: solicitar, aprobar (al final del orden), rechazar y finished bloquea', async () => {
+    const { host, code, gid } = await startedGame({ allow_late_join: true, max_players: 8 });
+    const s0 = await host.rpc('get_active_snapshot_by_code', { p_code: code });
+    const cur0 = s0.data.turn.current_player_ref as string;
+    const order0 = (s0.data.turn.order as string[]).slice();
+
+    // Solicitud de una sesión nueva.
+    const D = await authed();
+    const rr = await D.rpc('request_late_join', { p_code: code, p_name: 'Tardío', p_token: 'clock_tower', p_device_label: 'iPad' });
+    expect(rr.error).toBeNull();
+    expect(rr.data.status).toBe('pending');
+
+    // El anfitrión la ve en el snapshot.
+    const sh = await host.rpc('get_active_snapshot_by_code', { p_code: code });
+    expect(sh.data.late_join_requests.some((x: { request_ref: string }) => x.request_ref === rr.data.request_ref)).toBe(true);
+
+    // Aprobar: el nuevo jugador entra con saldo inicial, al final del orden; turno actual intacto.
+    const res = await host.rpc('resolve_late_join', { p_request_ref: rr.data.request_ref, p_accept: true, p_expected_version: sh.data.runtime_version });
+    expect(res.error).toBeNull();
+    const np = res.data.new_public_ref as string;
+    const dS = await D.rpc('get_active_snapshot_by_code', { p_code: code });
+    expect(dS.data.me.public_ref).toBe(np);
+    expect(dS.data.me.balance).toBe(3000);
+    expect(dS.data.turn.order[dS.data.turn.order.length - 1]).toBe(np);     // al final
+    expect(dS.data.turn.order.slice(0, order0.length)).toEqual(order0);     // sin reordenar
+    expect(dS.data.turn.current_player_ref).toBe(cur0);                      // turno actual intacto
+
+    // Rechazo: una segunda solicitud rechazada no crea nada.
+    const E = await authed();
+    const rr2 = await E.rpc('request_late_join', { p_code: code, p_name: 'Octavo', p_token: 'einstein_dog', p_device_label: 'x' });
+    const s2 = await host.rpc('get_active_snapshot_by_code', { p_code: code });
+    await host.rpc('resolve_late_join', { p_request_ref: rr2.data.request_ref, p_accept: false, p_expected_version: s2.data.runtime_version });
+    const st = await E.rpc('get_request_status', { p_request_ref: rr2.data.request_ref });
+    expect(st.data.status).toBe('rejected');
+    const eS = await E.rpc('get_active_snapshot_by_code', { p_code: code });
+    expect(eS.error?.message).toBe('NOT_ACTIVE_MEMBER'); // no se creó jugador
+
+    // Finalizar: nuevas solicitudes -> GAME_FINISHED.
+    const s3 = await host.rpc('get_active_snapshot_by_code', { p_code: code });
+    await host.rpc('finish_game_runtime', { p_game: gid, p_reason: 'fin', p_request_id: crypto.randomUUID(), p_expected_version: s3.data.runtime_version });
+    const F = await authed();
+    const blocked = await F.rpc('request_late_join', { p_code: code, p_name: 'Tarde', p_token: 'rider', p_device_label: 'x' });
+    expect(blocked.error?.message).toBe('GAME_FINISHED');
+  }, 90000);
 });

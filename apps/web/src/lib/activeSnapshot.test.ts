@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { parseActiveSnapshot } from './activeSnapshot';
 
 const valid = {
-  game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 6, max_players: 16 } },
+  game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 6, max_players: 16, allow_late_join: false } },
   me: { public_ref: 'P-AAAA', is_host: true, balance: 3000, is_current: true },
   turn: { turn_number: 1, current_player_ref: 'P-AAAA', order: ['P-AAAA', 'P-BBBB'] },
   players: [
@@ -12,6 +12,7 @@ const valid = {
   ledger_recent: [
     { ledger_ref: 'L-AAAA', seq: 2, kind: 'bank_to_player', from_ref: null, to_ref: 'P-AAAA', amount: 100, before_balance: null, after_balance: null, reason: null, actor_ref: 'P-AAAA', reverts_ref: null, created_at: '2026-06-18T00:00:00Z' },
   ],
+  late_join_requests: [],
   runtime_status: 'running',
   control: { paused_by_ref: null, finished_by_ref: null, reason: null },
   runtime_version: 3,

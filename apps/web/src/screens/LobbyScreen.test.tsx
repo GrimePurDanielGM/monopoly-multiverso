@@ -146,11 +146,12 @@ describe('LobbyScreen', () => {
     activeMock.mockResolvedValue({
       ok: true,
       data: {
-        game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 6, max_players: 16 } },
+        game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 6, max_players: 16, allow_late_join: false } },
         me: { public_ref: 'P-1', is_host: true, balance: 3000, is_current: true },
         turn: { turn_number: 1, current_player_ref: 'P-1', order: ['P-1'] },
         players: [{ public_ref: 'P-1', display_name: 'Anfitrión', token_id: 'delorean', balance: 3000, is_current: true }],
         ledger_recent: [],
+        late_join_requests: [],
         runtime_status: 'running',
         control: { paused_by_ref: null, finished_by_ref: null, reason: null },
         runtime_version: 0,

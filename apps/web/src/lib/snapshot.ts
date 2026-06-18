@@ -10,6 +10,7 @@ export interface SnapConfig {
   max_players: number;
   initial_money: number;
   token_catalog_version: number;
+  allow_late_join?: boolean;
 }
 export interface SnapGame {
   id: string;
@@ -165,6 +166,7 @@ export function parseSnapshot(raw: unknown): ParseResult {
           max_players: cfg.max_players,
           initial_money: cfg.initial_money,
           token_catalog_version: cfg.token_catalog_version,
+          allow_late_join: cfg.allow_late_join === true,
         },
       },
       players,

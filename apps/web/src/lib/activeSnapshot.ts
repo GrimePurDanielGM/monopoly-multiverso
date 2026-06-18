@@ -3,13 +3,20 @@
 import { hasForbiddenKey } from './snapshot';
 
 export type LedgerKind =
-  | 'seed' | 'bank_to_player' | 'player_to_bank' | 'player_to_player'
+  | 'seed' | 'late_join_seed' | 'bank_to_player' | 'player_to_bank' | 'player_to_player'
   | 'host_player_transfer' | 'host_adjust' | 'host_revert';
 
 export interface ActiveConfig {
   initial_money: number;
   min_players: number;
   max_players: number;
+  allow_late_join: boolean;
+}
+export interface LateJoinRequest {
+  request_ref: string;
+  name: string;
+  token: string;
+  device_label: string | null;
 }
 export interface ActiveGameInfo {
   code: string;
@@ -60,6 +67,7 @@ export interface ActiveSnapshot {
   turn: ActiveTurn;
   players: ActivePlayer[];
   ledger_recent: LedgerEntry[];
+  late_join_requests: LateJoinRequest[];
   runtime_status: RuntimeStatus;
   control: ActiveControl;
   runtime_version: number;
@@ -75,7 +83,7 @@ const isStrOrNull = (v: unknown): v is string | null => v === null || typeof v =
 const isNumOrNull = (v: unknown): v is number | null => v === null || isNum(v);
 
 const KINDS: ReadonlySet<string> = new Set([
-  'seed', 'bank_to_player', 'player_to_bank', 'player_to_player', 'host_player_transfer', 'host_adjust', 'host_revert',
+  'seed', 'late_join_seed', 'bank_to_player', 'player_to_bank', 'player_to_player', 'host_player_transfer', 'host_adjust', 'host_revert',
 ]);
 
 export type ParseActiveResult = { ok: true; data: ActiveSnapshot } | { ok: false; reason: string };
@@ -90,7 +98,7 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
   if (!isObj(g) || !isObj(g.config)) return bad('game/config ausente');
   if (!isStr(g.code) || g.status !== 'active') return bad('game inválido');
   const cfg = g.config;
-  if (!isNum(cfg.initial_money) || !isNum(cfg.min_players) || !isNum(cfg.max_players)) return bad('config inválida');
+  if (!isNum(cfg.initial_money) || !isNum(cfg.min_players) || !isNum(cfg.max_players) || !isBool(cfg.allow_late_join)) return bad('config inválida');
 
   const m = raw.me;
   if (!isObj(m) || !isStr(m.public_ref) || !isBool(m.is_host) || !isNum(m.balance) || !isBool(m.is_current)) return bad('me inválido');
@@ -127,6 +135,14 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
     });
   }
 
+  if (!Array.isArray(raw.late_join_requests)) return bad('late_join_requests ausente');
+  const late: LateJoinRequest[] = [];
+  for (const l of raw.late_join_requests) {
+    if (!isObj(l) || !isStr(l.request_ref) || !isStr(l.name) || !isStr(l.token) || !isStrOrNull(l.device_label)) {
+      return bad('late_join inválido');
+    }
+    late.push({ request_ref: l.request_ref, name: l.name, token: l.token, device_label: l.device_label });
+  }
   if (!isNum(raw.runtime_version)) return bad('runtime_version inválido');
   const rs = raw.runtime_status;
   if (rs !== 'running' && rs !== 'paused' && rs !== 'finished') return bad('runtime_status inválido');
@@ -138,11 +154,12 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
   return {
     ok: true,
     data: {
-      game: { code: g.code, status: 'active', config: { initial_money: cfg.initial_money, min_players: cfg.min_players, max_players: cfg.max_players } },
+      game: { code: g.code, status: 'active', config: { initial_money: cfg.initial_money, min_players: cfg.min_players, max_players: cfg.max_players, allow_late_join: cfg.allow_late_join } },
       me: { public_ref: m.public_ref, is_host: m.is_host, balance: m.balance, is_current: m.is_current },
       turn: { turn_number: t.turn_number, current_player_ref: t.current_player_ref, order: t.order as string[] },
       players,
       ledger_recent: ledger,
+      late_join_requests: late,
       runtime_status: rs,
       control: { paused_by_ref: ctl.paused_by_ref, finished_by_ref: ctl.finished_by_ref, reason: ctl.reason },
       runtime_version: raw.runtime_version,

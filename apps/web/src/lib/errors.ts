@@ -64,6 +64,7 @@ const MESSAGES: Record<string, string> = {
   SNAPSHOT_INVALID: 'No se pudo leer el estado de la partida. Vuelve a intentarlo.',
   GAME_PAUSED: 'La partida está en pausa. El anfitrión debe reanudarla.',
   GAME_FINISHED: 'La partida ha finalizado.',
+  LATE_JOIN_DISABLED: 'Esta partida no admite incorporaciones después de iniciar.',
 };
 
 /** Mensaje legible para un código de error conocido (o genérico si no lo es). */
