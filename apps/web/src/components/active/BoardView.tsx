@@ -48,6 +48,10 @@ export function BoardView({
     [snap.properties],
   );
 
+  const spaceName = (b: BoardKey, idx: number): string =>
+    snap.spaces.find((s) => s.board_key === b && s.space_index === idx)?.name ?? `#${idx}`;
+  const guardianToll = snap.spaces.find((s) => s.guardian && s.guardian_toll != null)?.guardian_toll ?? 100;
+
   const spaces = spacesOfBoard(snap, board);
   const size = ringSize(snap, board);
   const grid = boardGrid(size);
@@ -146,11 +150,12 @@ export function BoardView({
             ))}
           </ul>
 
-          {/* Montaje de doble tablero: guardianes en las esquinas de Parking conectan ambos tableros. */}
+          {/* Montaje EN CRUZ: la cárcel de un tablero coincide con el Parking del otro; guardián en cada cárcel. */}
           {snap.board_links.length > 0 && (
             <p role="note" className="mt-3 rounded-lg bg-amber-950/40 px-3 py-1.5 text-[11px] text-amber-200">
-              🛡️ Los dos tableros se montan por sus esquinas: un guardián en cada Parking permitirá pasar de
-              {' '}{BOARD_LABEL.classic} a {BOARD_LABEL.back_to_the_future} (cruce automático en una fase posterior).
+              🛡️ Los dos tableros se montan en cruz: la cárcel/solo-visitas de un tablero coincide con el Parking
+              del otro. Un guardián en cada cárcel custodia el paso (peaje {guardianToll}) hacia el otro tablero o
+              hacia su propia calle; pasar por la entrada libre es gratis (cruce automático en fase posterior).
             </p>
           )}
         </div>
@@ -171,7 +176,12 @@ export function BoardView({
                   <p className="text-xs text-slate-400">Esta casilla se resolverá en una fase posterior.</p>
                 )}
                 {sel.guardian && sel.links_to_board && (
-                  <p className="text-xs text-amber-300">🛡️ Guardián: punto de montaje con {BOARD_LABEL[sel.links_to_board]} (cruce en fase posterior).</p>
+                  <p className="text-xs text-amber-300">
+                    🛡️ Guardián (peaje {sel.guardian_toll ?? 100}): custodia el paso entre{' '}
+                    <span className="font-semibold">{spaceName(sel.board_key, sel.space_index + 1)}</span> (este tablero) y{' '}
+                    <span className="font-semibold">{spaceName(sel.links_to_board, sel.links_to_index ?? -1)}</span> ({BOARD_LABEL[sel.links_to_board]}).
+                    Pasar por la entrada libre es gratis; por la custodiada, pagas el peaje (cruce en fase posterior).
+                  </p>
                 )}
                 <p className="mt-1 text-xs text-slate-400">
                   Jugadores aquí: {selPlayers.length ? selPlayers.map((r) => nameOf[r]).join(', ') : '—'}

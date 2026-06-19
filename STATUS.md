@@ -1,6 +1,19 @@
 # Estado del proyecto — lista viva
 
 ## Fase 4 — Movimiento y tablero (base) · **`Fase 4: COMPLETADA` (pendiente validación manual)**
+- **Corrección ampliada 3 (2026-06-19) — montaje en cruz + guardianes:** los dos tableros se montan
+  DESPLAZADOS, haciendo coincidir esquinas opuestas (`0032`): **Cárcel/Solo-visitas del Classic ↔ Parking del
+  RdF** y **Parking del Classic ↔ Cárcel/Solo-visitas del RdF** (antes Parking↔Parking; corregido). Cada
+  **guardián vive en la cárcel** de su tablero y custodia DOS entradas: el Classic en su cárcel (Glorieta de
+  Bilbao ó Parking del RdF) y el RdF en la suya (Autocine Pohatchee ó Parking del Classic), con **peaje 100**
+  (ajustable). Columnas `links_to_index`/`guardian_toll`; el snapshot expone `spaces.links_to_index/guardian_toll`
+  y `board_links` con las 4 esquinas (`0033`); la vista visual marca el guardián en la cárcel y, al tocarla,
+  muestra sus dos entradas protegidas y el peaje, con la nota de montaje en cruz. **Mecánica dinámica
+  (pasar gratis por la entrada libre → el guardián se desplaza a ella; pasar por la custodiada → pagas el
+  peaje y se queda) queda MODELADA, VISUALIZADA y documentada**: su activación durante el juego forma parte
+  del motor de cruce entre tableros (intersecciones), diferido. `board_phase4` actualizada; unit
+  `BoardView` (guardián en cárcel, peaje, montaje en cruz); E2E `movement.spec`. Aplicado a dev
+  (`0032`,`0033`). **No se avanza a Fase 5.**
 - **Corrección ampliada 2 (2026-06-19):** **safe area iOS** en los modales a pantalla completa (`Ver tablero`
   y `Tablero de propiedades`): cabecera con `padding-top: max(.75rem, env(safe-area-inset-top))`, footer con
   `safe-area-inset-bottom` y `100dvh`; `Cerrar` y el selector de tablero ya no quedan bajo la Dynamic

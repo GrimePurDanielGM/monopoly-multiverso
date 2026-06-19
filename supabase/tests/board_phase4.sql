@@ -67,14 +67,18 @@ do $$ declare ok boolean; begin
   perform pg_temp._rec('B3d) naranja RdF: Strickland 180/14, Instituto 1985 200/16', ok);
 end $$;
 
--- B3e) guardianes en las esquinas de Parking de ambos tableros, cada uno enlaza al otro.
-do $$ declare ok boolean; n int; begin
-  select count(*) into n from public.board_spaces where guardian and active;
-  select (select links_to_board from public.board_spaces where board_key='classic' and guardian)='back_to_the_future'
-     and (select links_to_board from public.board_spaces where board_key='back_to_the_future' and guardian)='classic'
-     and (select bool_and(space_type='parking') from public.board_spaces where guardian)
+-- B3e) montaje EN CRUZ: cárcel(10)↔Parking(20) del otro tablero; un guardián en cada cárcel (peaje 100).
+do $$ declare ok boolean; ng int; nl int; begin
+  select count(*) into ng from public.board_spaces where guardian and space_type='jail' and active;
+  select count(*) into nl from public.board_spaces where links_to_board is not null and active;
+  select (select links_to_index from public.board_spaces where board_key='classic' and space_index=10)=20            -- cárcel Classic → Parking RdF
+     and (select links_to_index from public.board_spaces where board_key='classic' and space_index=20)=10            -- Parking Classic → cárcel RdF
+     and (select links_to_index from public.board_spaces where board_key='back_to_the_future' and space_index=10)=20
+     and (select links_to_index from public.board_spaces where board_key='back_to_the_future' and space_index=20)=10
+     and (select bool_and(space_type='jail') from public.board_spaces where guardian)                                -- guardianes en las cárceles
+     and (select guardian_toll from public.board_spaces where board_key='classic' and guardian)=100
     into ok;
-  perform pg_temp._rec('B3e) un guardián por tablero en Parking, enlazando al otro', n=2 and ok);
+  perform pg_temp._rec('B3e) montaje en cruz (cárcel↔parking); 1 guardián por cárcel con peaje 100', ng=2 and nl=4 and ok);
 end $$;
 
 -- B4) cada propiedad COMPRABLE tiene exactamente una casilla 'property' que la referencia.

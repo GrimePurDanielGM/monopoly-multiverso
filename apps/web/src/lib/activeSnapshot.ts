@@ -82,15 +82,19 @@ export interface BoardSpace {
   property_ref: string | null;
   is_start: boolean;
   provisional?: boolean;
-  guardian?: boolean;               // esquina con guardián/centinela (montaje de doble tablero)
-  links_to_board?: BoardKey | null; // tablero al que conecta ese guardián
+  guardian?: boolean;               // cárcel con guardián/centinela (montaje de doble tablero)
+  links_to_board?: BoardKey | null; // tablero del otro lado del montaje (en cruz)
+  links_to_index?: number | null;   // casilla del otro tablero con la que coincide esta esquina
+  guardian_toll?: number | null;    // peaje del guardián (si esta casilla tiene guardián)
 }
-// Enlace de montaje entre tableros (esquina con guardián).
+// Enlace de montaje entre tableros (esquina que coincide con otra del otro tablero).
 export interface BoardLink {
   board_key: BoardKey;
   space_index: number;
   space_type: SpaceType;
   links_to_board: BoardKey | null;
+  links_to_index: number | null;
+  guardian: boolean;
 }
 export interface PlayerPosition {
   player_ref: string;
@@ -238,6 +242,8 @@ function parseSpaceLike(s: Record<string, unknown>): BoardSpace | null {
     provisional: isBool(s.provisional) ? s.provisional : false,
     guardian: isBool(s.guardian) ? s.guardian : false,
     links_to_board: isBoard(s.links_to_board) ? s.links_to_board : null,
+    links_to_index: isNum(s.links_to_index) ? s.links_to_index : null,
+    guardian_toll: isNum(s.guardian_toll) ? s.guardian_toll : null,
   };
 }
 
@@ -372,10 +378,14 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
   if (Array.isArray(raw.board_links)) {
     for (const l of raw.board_links) {
       if (!isObj(l) || !isBoard(l.board_key) || !isNum(l.space_index) || !isStr(l.space_type) || !SPACE_TYPES.has(l.space_type) ||
-          !(l.links_to_board === null || isBoard(l.links_to_board))) {
+          !(l.links_to_board === null || isBoard(l.links_to_board)) || !isNumOrNull(l.links_to_index)) {
         return bad('board_link inválido');
       }
-      boardLinks.push({ board_key: l.board_key, space_index: l.space_index, space_type: l.space_type as SpaceType, links_to_board: (l.links_to_board ?? null) as BoardKey | null });
+      boardLinks.push({
+        board_key: l.board_key, space_index: l.space_index, space_type: l.space_type as SpaceType,
+        links_to_board: (l.links_to_board ?? null) as BoardKey | null, links_to_index: l.links_to_index,
+        guardian: isBool(l.guardian) ? l.guardian : false,
+      });
     }
   }
   const positions: PlayerPosition[] = [];

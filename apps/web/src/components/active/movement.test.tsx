@@ -122,16 +122,20 @@ describe('BoardView (tablero visual)', () => {
     expect(screen.getByRole('tab', { name: 'Clásico' })).toBeVisible();
   });
 
-  it('muestra los guardianes y la nota de montaje de doble tablero', () => {
+  it('muestra el guardián en la cárcel y la nota de montaje en cruz', () => {
     const s = snap({
       spaces: [
         { space_ref: 'cl-0', board_key: 'classic', space_index: 0, name: 'Salida', space_type: 'start', property_ref: null, is_start: true },
-        { space_ref: 'cl-1', board_key: 'classic', space_index: 1, name: 'Parking gratuito', space_type: 'parking', property_ref: null, is_start: false, guardian: true, links_to_board: 'back_to_the_future' },
+        { space_ref: 'cl-1', board_key: 'classic', space_index: 1, name: 'Cárcel / Solo visitas', space_type: 'jail', property_ref: null, is_start: false, guardian: true, links_to_board: 'back_to_the_future', links_to_index: 20, guardian_toll: 100 },
+        { space_ref: 'cl-2', board_key: 'classic', space_index: 2, name: 'Glorieta de Bilbao', space_type: 'property', property_ref: 'cl-bilbao', is_start: false },
+        { space_ref: 'bf-20', board_key: 'back_to_the_future', space_index: 20, name: 'Parking gratuito', space_type: 'parking', property_ref: null, is_start: false },
       ],
-      board_links: [{ board_key: 'classic', space_index: 1, space_type: 'parking', links_to_board: 'back_to_the_future' }],
+      board_links: [{ board_key: 'classic', space_index: 1, space_type: 'jail', links_to_board: 'back_to_the_future', links_to_index: 20, guardian: true }],
     });
     render(<BoardView snap={s} onClose={vi.fn()} onRequestPurchase={vi.fn()} />);
-    expect(screen.getByText(/Los dos tableros se montan/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Parking gratuito \(guardián\)/ })).toBeInTheDocument();
+    expect(screen.getByText(/montan en cruz/)).toBeInTheDocument();
+    // El guardián está en la cárcel; al tocarla, su detalle muestra las dos entradas y el peaje.
+    fireEvent.click(screen.getByRole('button', { name: /Cárcel \/ Solo visitas \(guardián\)/ }));
+    expect(screen.getByText(/Guardián \(peaje 100\)/)).toBeInTheDocument();
   });
 });
