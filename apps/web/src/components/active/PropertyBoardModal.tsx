@@ -102,8 +102,9 @@ export function PropertyBoardModal({
       aria-modal="true"
       aria-label="Tablero de propiedades"
     >
-      <div className="flex h-full w-full flex-col overflow-hidden bg-slate-950 sm:h-auto sm:max-h-[90vh] sm:max-w-3xl sm:rounded-2xl sm:border sm:border-slate-700">
-        <header className="flex shrink-0 items-center justify-between border-b border-slate-700 px-4 py-3">
+      <div className="flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-slate-950 sm:h-auto sm:max-h-[90vh] sm:max-w-3xl sm:rounded-2xl sm:border sm:border-slate-700">
+        {/* Cabecera respeta el safe area superior (Dynamic Island / notch / barra de estado). */}
+        <header className="flex shrink-0 items-center justify-between border-b border-slate-700 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <h2 className="text-base font-bold">Tablero de propiedades</h2>
           <button
             ref={closeRef}
@@ -168,7 +169,7 @@ export function PropertyBoardModal({
           ))}
         </div>
 
-        <footer className="shrink-0 border-t border-slate-700 px-4 py-3 sm:hidden">
+        <footer className="shrink-0 border-t border-slate-700 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:hidden">
           <button
             type="button"
             onClick={onClose}

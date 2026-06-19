@@ -1,6 +1,22 @@
 # Estado del proyecto — lista viva
 
 ## Fase 4 — Movimiento y tablero (base) · **`Fase 4: COMPLETADA` (pendiente validación manual)**
+- **Corrección ampliada 2 (2026-06-19):** **safe area iOS** en los modales a pantalla completa (`Ver tablero`
+  y `Tablero de propiedades`): cabecera con `padding-top: max(.75rem, env(safe-area-inset-top))`, footer con
+  `safe-area-inset-bottom` y `100dvh`; `Cerrar` y el selector de tablero ya no quedan bajo la Dynamic
+  Island/notch (viewport-fit=cover ya estaba). **Tablero RdF DEFINITIVO** (`0030`): 40 casillas con el orden
+  exacto del tablero físico (28 propiedades reales — incl. Coche de Biff y Cines Essex/Holomax —, Futuro/
+  Pasado, Mecánico/Dona, cárcel/parking/ir-a-la-cárcel); corrige el naranja (Strickland 180, Instituto 1985
+  = 200) y fija los nombres con su año; **ya no es provisional**. **Guardianes/centinelas** (`0030`/`0031`):
+  columnas `guardian`/`links_to_board`; un guardián por tablero en la esquina de **Parking** que enlaza con
+  el otro (montaje Parking↔Parking; la otra unión Ve-a-la-cárcel↔Solo-visitas y el cruce automático quedan
+  para fase posterior). El snapshot expone `spaces.guardian/links_to_board` y `board_links`; la vista visual
+  marca los guardianes (🛡️) y muestra la nota de montaje de doble tablero. **Sonido** intermedio "ti-cling"
+  (tick agudo + dos campanitas con leve brillo metálico), sigue con `HTMLAudioElement`+asset+iOS. Privacidad
+  de saldos, restricción de compra (turno + casilla) y corrección de posición del anfitrión mantenidas.
+  Suites: `board_phase4` ampliada (RdF definitivo, naranja, guardianes); unit con safe-area y guardianes;
+  E2E `movement.spec` (safe area, cambio de tablero, casilla real de RdF, montaje). Aplicado a dev
+  (`0030`,`0031`). **No se avanza a Fase 5.**
 - **Corrección ampliada (2026-06-19):** sonido más suave (WAV "ding-cling" senoidal); **tablero Classic con el
   orden REAL de 40 casillas** (`0028`, extraído de las fotos: salida, propiedades en su sitio, impuestos,
   Caja de Comunidad, Suerte, cárcel/solo-visitas, parking, ir-a-la-cárcel; índice 1 = Ronda de Valencia,

@@ -23,11 +23,10 @@ do $$ declare n int; begin
   perform pg_temp._rec('B2) una única salida por tablero', n=2);
 end $$;
 
--- B3) Classic = anillo real de 40 casillas (orden físico); RdF = derivado provisional (1 + nº props).
-do $$ declare rc int; rb int; pb int; begin
+-- B3) Classic y RdF = anillos reales de 40 casillas (orden físico).
+do $$ declare rc int; rb int; begin
   rc := public._p4_ring_size('classic'); rb := public._p4_ring_size('back_to_the_future');
-  select count(*) into pb from public.property_catalog where board_key='back_to_the_future' and active;
-  perform pg_temp._rec('B3) Classic=40 casillas; RdF=derivado (1 + nº props)', rc = 40 and rb = pb+1);
+  perform pg_temp._rec('B3) Classic=40 y RdF=40 casillas (orden real)', rc = 40 and rb = 40);
 end $$;
 
 -- B3b) Classic: índices clave del orden real (no debe confundir Ronda de Valencia con Bilbao).
@@ -43,10 +42,39 @@ do $$ declare ok boolean; begin
   perform pg_temp._rec('B3b) Classic: orden real (1 Ronda, 2 Comunidad, 11 Bilbao, 10 cárcel, 30 ir-cárcel, 39 Prado)', ok);
 end $$;
 
--- B3c) RdF marcado como provisional (orden por confirmar).
-do $$ declare allprov boolean; begin
-  select bool_and(provisional) into allprov from public.board_spaces where board_key='back_to_the_future' and active;
-  perform pg_temp._rec('B3c) RdF marcado provisional', allprov);
+-- B3c) RdF DEFINITIVO (no provisional) con su orden exacto (Cines Essex en 13, Coche de Biff en 15,
+--      corners cárcel/parking/ir-a-la-cárcel, Torre del Reloj 1955 en 39).
+do $$ declare anyprov boolean; ok boolean; begin
+  select bool_or(provisional) into anyprov from public.board_spaces where board_key='back_to_the_future' and active;
+  select (select property_ref from public.board_spaces where board_key='back_to_the_future' and space_index=1)='bf-jones-a'
+     and (select property_ref from public.board_spaces where board_key='back_to_the_future' and space_index=13)='bf-essex'
+     and (select property_ref from public.board_spaces where board_key='back_to_the_future' and space_index=15)='bf-coche-biff'
+     and (select space_type from public.board_spaces where board_key='back_to_the_future' and space_index=10)='jail'
+     and (select space_type from public.board_spaces where board_key='back_to_the_future' and space_index=20)='parking'
+     and (select space_type from public.board_spaces where board_key='back_to_the_future' and space_index=30)='go_to_jail'
+     and (select property_ref from public.board_spaces where board_key='back_to_the_future' and space_index=39)='bf-torre-reloj-2'
+    into ok;
+  perform pg_temp._rec('B3c) RdF definitivo (no provisional) y orden exacto', (anyprov is not true) and ok);
+end $$;
+
+-- B3d) precios del naranja RdF corregidos: Strickland 180, Instituto 1985 = 200 (espeja Classic).
+do $$ declare ok boolean; begin
+  select (select price from public.property_catalog where property_ref='bf-strickland')=180
+     and (select base_rent from public.property_catalog where property_ref='bf-strickland')=14
+     and (select price from public.property_catalog where property_ref='bf-instituto-hv-2')=200
+     and (select base_rent from public.property_catalog where property_ref='bf-instituto-hv-2')=16
+    into ok;
+  perform pg_temp._rec('B3d) naranja RdF: Strickland 180/14, Instituto 1985 200/16', ok);
+end $$;
+
+-- B3e) guardianes en las esquinas de Parking de ambos tableros, cada uno enlaza al otro.
+do $$ declare ok boolean; n int; begin
+  select count(*) into n from public.board_spaces where guardian and active;
+  select (select links_to_board from public.board_spaces where board_key='classic' and guardian)='back_to_the_future'
+     and (select links_to_board from public.board_spaces where board_key='back_to_the_future' and guardian)='classic'
+     and (select bool_and(space_type='parking') from public.board_spaces where guardian)
+    into ok;
+  perform pg_temp._rec('B3e) un guardián por tablero en Parking, enlazando al otro', n=2 and ok);
 end $$;
 
 -- B4) cada propiedad COMPRABLE tiene exactamente una casilla 'property' que la referencia.

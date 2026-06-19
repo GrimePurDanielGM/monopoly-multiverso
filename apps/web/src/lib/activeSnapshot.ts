@@ -82,6 +82,15 @@ export interface BoardSpace {
   property_ref: string | null;
   is_start: boolean;
   provisional?: boolean;
+  guardian?: boolean;               // esquina con guardián/centinela (montaje de doble tablero)
+  links_to_board?: BoardKey | null; // tablero al que conecta ese guardián
+}
+// Enlace de montaje entre tableros (esquina con guardián).
+export interface BoardLink {
+  board_key: BoardKey;
+  space_index: number;
+  space_type: SpaceType;
+  links_to_board: BoardKey | null;
 }
 export interface PlayerPosition {
   player_ref: string;
@@ -187,6 +196,7 @@ export interface ActiveSnapshot {
   late_join_requests: LateJoinRequest[];
   boards: BoardInfo[];
   spaces: BoardSpace[];
+  board_links: BoardLink[];
   positions: PlayerPosition[];
   my_position: MyPosition | null;
   current_space: CurrentSpace | null;
@@ -226,6 +236,8 @@ function parseSpaceLike(s: Record<string, unknown>): BoardSpace | null {
     space_ref: s.space_ref, board_key: s.board_key, space_index: s.space_index, name: s.name,
     space_type: s.space_type as SpaceType, property_ref: s.property_ref, is_start: s.is_start,
     provisional: isBool(s.provisional) ? s.provisional : false,
+    guardian: isBool(s.guardian) ? s.guardian : false,
+    links_to_board: isBoard(s.links_to_board) ? s.links_to_board : null,
   };
 }
 
@@ -356,6 +368,16 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
       spaces.push(sp);
     }
   }
+  const boardLinks: BoardLink[] = [];
+  if (Array.isArray(raw.board_links)) {
+    for (const l of raw.board_links) {
+      if (!isObj(l) || !isBoard(l.board_key) || !isNum(l.space_index) || !isStr(l.space_type) || !SPACE_TYPES.has(l.space_type) ||
+          !(l.links_to_board === null || isBoard(l.links_to_board))) {
+        return bad('board_link inválido');
+      }
+      boardLinks.push({ board_key: l.board_key, space_index: l.space_index, space_type: l.space_type as SpaceType, links_to_board: (l.links_to_board ?? null) as BoardKey | null });
+    }
+  }
   const positions: PlayerPosition[] = [];
   if (Array.isArray(raw.positions)) {
     for (const p of raw.positions) {
@@ -420,6 +442,7 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
       late_join_requests: late,
       boards,
       spaces,
+      board_links: boardLinks,
       positions,
       my_position: myPosition,
       current_space: currentSpace,

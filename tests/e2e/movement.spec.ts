@@ -87,14 +87,19 @@ test('Fase 4 corrección: tablero visual, privacidad, restricción de compra, al
   await host.getByRole('button', { name: 'Iniciar', exact: true }).click();
   await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
 
-  // ── Tablero visual: pestañas de ambos tableros + nombres de jugadores; ver RdF (provisional).
+  // ── Tablero visual: safe area (Cerrar/selector accesibles), nombres de jugadores y cambio de tablero.
   await movement(host).getByRole('button', { name: 'Ver tablero', exact: true }).click();
   await expect(visualBoard(host)).toBeVisible({ timeout: 20_000 });
+  // Cabecera con safe area superior: Cerrar y el selector quedan accesibles (no tapados por el notch).
+  await expect(visualBoard(host).getByRole('button', { name: 'Cerrar' })).toBeVisible();
   await expect(visualBoard(host).getByRole('tab', { name: 'Clásico' })).toBeVisible();
   await expect(visualBoard(host).getByRole('tab', { name: 'Regreso al futuro' })).toBeVisible();
   await expect(visualBoard(host).getByText('Marty')).toBeVisible();          // nombre, no ficha
+  // Montaje de doble tablero (guardianes) visible.
+  await expect(visualBoard(host).getByText(/Los dos tableros se montan/)).toBeVisible();
+  // Cambiar al tablero RdF (definitivo) y ver una de sus casillas reales.
   await visualBoard(host).getByRole('tab', { name: 'Regreso al futuro' }).click();
-  await expect(visualBoard(host).getByText(/provisional/)).toBeVisible();
+  await expect(visualBoard(host).getByRole('button', { name: /Cines Essex 1985/ })).toBeVisible();
   await visualBoard(host).getByRole('button', { name: 'Cerrar' }).click();
 
   // ── Privacidad: cada uno solo ve su saldo; el ajeno aparece "Saldo oculto".

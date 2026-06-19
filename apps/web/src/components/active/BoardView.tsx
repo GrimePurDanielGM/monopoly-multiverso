@@ -70,8 +70,9 @@ export function BoardView({
   return (
     <div className="fixed inset-0 z-40 flex flex-col bg-slate-950/95 sm:items-center sm:justify-center sm:bg-slate-950/80 sm:p-4"
       role="dialog" aria-modal="true" aria-label="Tablero">
-      <div className="flex h-full w-full flex-col overflow-hidden bg-slate-950 sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-2xl sm:border sm:border-slate-700">
-        <header className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-700 px-4 py-3">
+      <div className="flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-slate-950 sm:h-auto sm:max-h-[92vh] sm:max-w-2xl sm:rounded-2xl sm:border sm:border-slate-700">
+        {/* Cabecera respeta el safe area superior (Dynamic Island / notch / barra de estado). */}
+        <header className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-700 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <h2 className="text-base font-bold">Tablero</h2>
           <div className="flex gap-1" role="tablist" aria-label="Elegir tablero">
             {(['classic', 'back_to_the_future'] as BoardKey[]).map((b) => (
@@ -105,11 +106,13 @@ export function BoardView({
               return (
                 <button key={s.space_ref} type="button"
                   onClick={() => setSelected(cell.index)}
-                  aria-label={`Casilla ${cell.index}: ${s.name}`}
+                  aria-label={`Casilla ${cell.index}: ${s.name}${s.guardian ? ' (guardián)' : ''}`}
                   style={{ gridRow: cell.row, gridColumn: cell.col }}
                   className={`relative flex min-h-0 flex-col overflow-hidden rounded-[3px] border text-left ${
-                    isMine ? 'border-emerald-400 ring-1 ring-emerald-400' : 'border-slate-700'} bg-slate-900`}>
+                    isMine ? 'border-emerald-400 ring-1 ring-emerald-400'
+                      : s.guardian ? 'border-amber-400 ring-1 ring-amber-400' : 'border-slate-700'} bg-slate-900`}>
                   <span className="h-1.5 w-full shrink-0" style={{ backgroundColor: tileColor(s) }} />
+                  {s.guardian && <span aria-hidden className="absolute right-0 top-1 text-[7px] sm:text-[9px]">🛡️</span>}
                   <span className="flex-1 px-0.5 pt-0.5 text-[6px] leading-[1.05] text-slate-200 line-clamp-3 sm:text-[8px]">{s.name}</span>
                   {prop && <span className="px-0.5 text-[6px] text-slate-400 sm:text-[8px]">{prop.price}</span>}
                   {here.length > 0 && (
@@ -142,6 +145,14 @@ export function BoardView({
               </li>
             ))}
           </ul>
+
+          {/* Montaje de doble tablero: guardianes en las esquinas de Parking conectan ambos tableros. */}
+          {snap.board_links.length > 0 && (
+            <p role="note" className="mt-3 rounded-lg bg-amber-950/40 px-3 py-1.5 text-[11px] text-amber-200">
+              🛡️ Los dos tableros se montan por sus esquinas: un guardián en cada Parking permitirá pasar de
+              {' '}{BOARD_LABEL.classic} a {BOARD_LABEL.back_to_the_future} (cruce automático en una fase posterior).
+            </p>
+          )}
         </div>
 
         {/* Detalle de casilla (panel inferior) */}
@@ -156,8 +167,11 @@ export function BoardView({
                     {selProp.owner_ref && <> · Propiedad de {ownerName(selProp, snap)}</>}
                   </p>
                 )}
-                {!selProp && sel.space_type !== 'start' && (
+                {!selProp && sel.space_type !== 'start' && !sel.guardian && (
                   <p className="text-xs text-slate-400">Esta casilla se resolverá en una fase posterior.</p>
+                )}
+                {sel.guardian && sel.links_to_board && (
+                  <p className="text-xs text-amber-300">🛡️ Guardián: punto de montaje con {BOARD_LABEL[sel.links_to_board]} (cruce en fase posterior).</p>
                 )}
                 <p className="mt-1 text-xs text-slate-400">
                   Jugadores aquí: {selPlayers.length ? selPlayers.map((r) => nameOf[r]).join(', ') : '—'}
@@ -174,7 +188,7 @@ export function BoardView({
           </div>
         )}
 
-        <footer className="shrink-0 border-t border-slate-700 px-4 py-3 sm:hidden">
+        <footer className="shrink-0 border-t border-slate-700 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:hidden">
           <button type="button" onClick={onClose} className="min-h-[44px] w-full rounded-xl bg-slate-800 text-sm font-semibold">
             Volver a la partida
           </button>

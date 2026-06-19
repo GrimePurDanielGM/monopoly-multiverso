@@ -33,7 +33,7 @@ function makeSnap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     bankruptcy_requests: [],
     late_join_requests: [],
     boards: [{ board_key: 'classic', ring_size: 40, start_bonus: 200, provisional: false }, { board_key: 'back_to_the_future', ring_size: 29, start_bonus: 200, provisional: true }],
-    spaces: [], positions: [], my_position: null, current_space: null, last_roll: null, last_move: null,
+    spaces: [], board_links: [], positions: [], my_position: null, current_space: null, last_roll: null, last_move: null,
     runtime_status: 'running',
     control: { paused_by_ref: null, finished_by_ref: null, reason: null },
     runtime_version: 7,
@@ -262,6 +262,12 @@ describe('PropertyBoardModal (tablero de propiedades)', () => {
     expect(screen.getByText('Marrón')).toBeInTheDocument();
     expect(screen.getByText('Mediterráneo')).toBeInTheDocument();
     expect(screen.getByText('60 ₥')).toBeInTheDocument();
+  });
+
+  it('la cabecera respeta el safe area superior (iPhone)', () => {
+    const { container } = render0(withProps([prop()]));
+    expect(container.querySelector('header')?.className).toContain('safe-area-inset-top');
+    expect(screen.getByRole('button', { name: 'Cerrar' })).toBeVisible();
   });
 
   it('agrupa también el tablero Regreso al futuro', () => {
