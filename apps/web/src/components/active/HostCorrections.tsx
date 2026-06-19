@@ -26,6 +26,8 @@ export function HostCorrections({
   const [pIndex, setPIndex] = useState(0);
   const [pReason, setPReason] = useState('');
   const pMax = ringSize(snap, pBoard) - 1;
+  // Casillas del tablero elegido (índice + nombre), ordenadas, para elegir por nombre y no solo por nº.
+  const pSpaces = snap.spaces.filter((s) => s.board_key === pBoard).sort((a, b) => a.space_index - b.space_index);
   const pOk = !!pRef && pIndex >= 0 && pIndex <= pMax && isValidReason(pReason) && !busy;
   // Ajuste de saldo
   const [aRef, setARef] = useState(refs[0]?.public_ref ?? '');
@@ -123,10 +125,13 @@ export function HostCorrections({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-slate-400">Casilla (0–{pMax})</span>
-          <input value={pIndex} onChange={(e) => setPIndex(Math.max(0, Math.min(pMax, Number(e.target.value) || 0)))}
-            inputMode="numeric" type="number" min={0} max={pMax}
-            className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base" />
+          <span className="text-slate-400">Casilla (por nombre)</span>
+          <select aria-label="Casilla" value={pIndex} onChange={(e) => setPIndex(Number(e.target.value))}
+            className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base">
+            {pSpaces.map((s) => (
+              <option key={s.space_index} value={s.space_index}>{s.space_index} — {s.name}</option>
+            ))}
+          </select>
         </label>
         {reasonInput(pReason, setPReason)}
         <button type="submit" disabled={!pOk} className="min-h-[44px] rounded-xl bg-amber-600 px-4 text-sm font-semibold disabled:opacity-40">

@@ -65,7 +65,7 @@ async function hostPosicion(host: Page, name: string, index: number) {
     await host.reload(); await openCorrections(host);
     const form = host.locator('form', { has: host.getByRole('button', { name: 'Actualizar posición' }) });
     await form.getByLabel('Jugador', { exact: true }).selectOption({ label: name });
-    await form.getByLabel(/Casilla/).fill(String(index));
+    await form.getByLabel(/Casilla/).selectOption(String(index));
     await form.getByLabel('Motivo (obligatorio)').fill('situar (prueba)');
     await form.getByRole('button', { name: 'Actualizar posición' }).click();
     await expect(host.getByRole('alert')).toHaveCount(0, { timeout: 3_000 });

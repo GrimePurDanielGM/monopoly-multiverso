@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ActiveProperty, ActiveSnapshot, PropertyAuction } from '../../lib/activeSnapshot';
 import {
   formatMoney, propertyStatus, canRequestPurchase, canPayRent, ownerName,
   propertyGroupsByBoard, purchaseBlockReason,
 } from '../../lib/activeSelectors';
 import { AuctionsPanel } from './AuctionsPanel';
+import { PropertyCardModal } from './PropertyCardModal';
 
 const KIND_LABEL: Record<string, string> = {
   street: 'Calle', station: 'Estación', transport: 'Transporte', utility: 'Servicio', special: 'Especial',
@@ -12,7 +13,7 @@ const KIND_LABEL: Record<string, string> = {
 
 /** Tarjeta compacta de una propiedad: franja de color del grupo, precio, alquiler, estado y acción. */
 function PropertyCard({
-  p, snap, busy, blocked, onRequestPurchase, onPayRent,
+  p, snap, busy, blocked, onRequestPurchase, onPayRent, onViewCard,
 }: {
   p: ActiveProperty;
   snap: ActiveSnapshot;
@@ -20,6 +21,7 @@ function PropertyCard({
   blocked: boolean;
   onRequestPurchase: (p: ActiveProperty) => void;
   onPayRent: (p: ActiveProperty) => void;
+  onViewCard: (p: ActiveProperty) => void;
 }) {
   const status = propertyStatus(p, snap);
   return (
@@ -39,6 +41,13 @@ function PropertyCard({
           : 'No comprable'}
       </p>
       {status === 'owned' && <p className="text-[11px] text-amber-300">Propiedad de {ownerName(p, snap)}</p>}
+      <button
+        type="button"
+        onClick={() => onViewCard(p)}
+        className="mt-0.5 min-h-[36px] rounded-lg border border-slate-600 px-3 text-[11px] font-semibold text-slate-300"
+      >
+        Ver tarjeta
+      </button>
       {status === 'available' && !blocked && (
         canRequestPurchase(p, snap) ? (
           <button
@@ -87,6 +96,7 @@ export function PropertyBoardModal({
   const boards = propertyGroupsByBoard(snap);
   const blocked = snap.runtime_status !== 'running' || snap.me.is_spectator;
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [card, setCard] = useState<ActiveProperty | null>(null);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -159,6 +169,7 @@ export function PropertyBoardModal({
                           blocked={blocked}
                           onRequestPurchase={onRequestPurchase}
                           onPayRent={onPayRent}
+                          onViewCard={setCard}
                         />
                       ))}
                     </ul>
@@ -179,6 +190,8 @@ export function PropertyBoardModal({
           </button>
         </footer>
       </div>
+
+      {card && <PropertyCardModal property={card} snap={snap} onClose={() => setCard(null)} />}
     </div>
   );
 }

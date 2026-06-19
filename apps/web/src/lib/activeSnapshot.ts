@@ -25,6 +25,17 @@ export interface ActiveProperty {
   sort_order: number;
   owner_ref: string | null; // null = disponible en banca
   in_auction: boolean;
+  // Campos de la tarjeta de título (solo consulta). Opcionales (snapshots antiguos no los traen);
+  // null/undefined = no aplica / pendiente de confirmar. El parser siempre los rellena (número o null).
+  rent_1?: number | null;
+  rent_2?: number | null;
+  rent_3?: number | null;
+  rent_4?: number | null;
+  rent_hotel?: number | null;
+  house_cost?: number | null;
+  hotel_cost?: number | null;
+  mortgage_value?: number | null;
+  unmortgage_cost?: number | null;
 }
 
 export interface PropertyAuction {
@@ -323,10 +334,15 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
     ) {
       return bad('property inválida');
     }
+    // Campos de la tarjeta: opcionales y nullables (no rompen el snapshot si faltan o no aplican).
+    const card = (v: unknown): number | null => (isNum(v) ? v : null);
     properties.push({
       property_ref: p.property_ref, board_key: p.board_key as BoardKey, group_key: p.group_key, name: p.name,
       kind: p.kind as PropertyKind, price: p.price, base_rent: p.base_rent, is_buyable: p.is_buyable,
       sort_order: p.sort_order, owner_ref: p.owner_ref, in_auction: p.in_auction,
+      rent_1: card(p.rent_1), rent_2: card(p.rent_2), rent_3: card(p.rent_3), rent_4: card(p.rent_4),
+      rent_hotel: card(p.rent_hotel), house_cost: card(p.house_cost), hotel_cost: card(p.hotel_cost),
+      mortgage_value: card(p.mortgage_value), unmortgage_cost: card(p.unmortgage_cost),
     });
   }
 

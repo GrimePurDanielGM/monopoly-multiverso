@@ -1,6 +1,33 @@
 # Estado del proyecto — lista viva
 
 ## Fase 4 — Movimiento y tablero (base) · **`Fase 4: COMPLETADA` (pendiente validación manual)**
+- **Pulido Fase 4 (2026-06-19) — UX y consulta antes de Fase 5 (5 mejoras):**
+  1. **Historial de partidas local** (`lib/gameHistory.ts`): al crear/unirse/recuperar/late-join/volver, se
+     guarda en `localStorage` una referencia SANEADA (code, rol aproximado, nombre, estado, título,
+     `last_seen_at`) — nunca PIN, host_token, id de sesión ni ids internos. Home muestra **"Mis partidas"**
+     con código, estado, nombre y fecha relativa; **Entrar** vuelve a `/sala/{code}`, **Quitar** la elimina;
+     las finalizadas se etiquetan **Finalizada**. El registro se hace al cargar la sala (`LobbyScreen.load`,
+     cubre todas las vías) y se afina el estado (en curso/pausa/finalizada) desde la partida activa.
+  2. **Input manual de dados móvil**: el `<input type=number>` se sustituye por un **selector de pasos 1–12
+     con botones grandes** (cómodo en iPhone Safari/PWA); 1–12 válidos, **Mover deshabilitado** hasta elegir
+     (no 0/negativos/>12).
+  3. **Corrección de posición por nombre**: el campo Casilla del anfitrión ahora es un **selector
+     "índice — nombre"** por tablero (se actualiza al cambiar de tablero) en vez de solo número; el backend
+     sigue recibiendo `space_index`. El tablero visual muestra el **número de casilla** (`#1`, `#2`…) discreto.
+  4. **Ficha completa de propiedad** (solo CONSULTA): modal **"Ver tarjeta"** desde Mis propiedades, tablero
+     de propiedades, tablero visual y la casilla en la que caes; muestra precio, **alquileres con 1/2/3/4
+     casas y hotel**, coste de casa/hotel, hipoteca y **deshipoteca (hipoteca + 10%)**, y el estado. Datos
+     transcritos de las cartas (`0037`, 56 props; `price = 2×hipoteca`); expuestos en el snapshot (`0038`);
+     campos no disponibles muestran **"Pendiente de confirmar"** (no se inventan). **Sin** acciones de
+     construir/hipotecar (fase posterior).
+  5. **Banner de dinero recibido**: tarjeta central ~3s (`role=status`, `aria-live`, no bloquea) con el
+     importe y un texto derivado del ledger ("Has cobrado X al pasar por salida", "{jugador} te ha pagado X",
+     "Has recibido X de la banca"). No salta en el primer snapshot, al recargar, por saldo ajeno ni dos veces
+     por el mismo `runtime_version`; el sonido se mantiene igual.
+  Suites: SQL `property_card_phase4` (4/4) + batería 33/33 tras `db reset`; unit 283 (gameHistory,
+  receiveMoney/banner, MovementPanel 1–12, HostCorrections por nombre, PropertyCardModal, HomeScreen);
+  E2E `home_history`, `movement` (1–12, posición por nombre, Ver tarjeta), `junction`. Aplicado a dev
+  (`0037`,`0038`). **No se avanza a Fase 5.**
 - **Corrección ampliada 4 (2026-06-19) — cruce entre tableros (intersecciones), IMPLEMENTADO:** al alcanzar
   la esquina de **cárcel/solo-visitas con pasos restantes**, el movimiento **se DETIENE y obliga a ELEGIR**
   destino — ya no avanza solo (antes un 12 desde Salida cruzaba directo a Electricidad sin preguntar). Hay

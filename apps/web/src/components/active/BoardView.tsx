@@ -5,6 +5,7 @@ import {
   formatMoney, ownerName, canRequestPurchase,
 } from '../../lib/activeSelectors';
 import { boardGrid } from '../../lib/boardLayout';
+import { PropertyCardModal } from './PropertyCardModal';
 
 const TYPE_COLOR: Record<string, string> = {
   start: '#10b981', tax: '#f43f5e', card: '#38bdf8', jail: '#64748b',
@@ -26,6 +27,7 @@ export function BoardView({
   const closeRef = useRef<HTMLButtonElement>(null);
   const [board, setBoard] = useState<BoardKey>(snap.my_position?.board_key ?? 'classic');
   const [selected, setSelected] = useState<number | null>(null);
+  const [card, setCard] = useState<ActiveProperty | null>(null);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -116,6 +118,8 @@ export function BoardView({
                     isMine ? 'border-emerald-400 ring-1 ring-emerald-400'
                       : s.guardian ? 'border-amber-400 ring-1 ring-amber-400' : 'border-slate-700'} bg-slate-900`}>
                   <span className="h-1.5 w-full shrink-0" style={{ backgroundColor: tileColor(s) }} />
+                  {/* Número de casilla, discreto, para que el anfitrión la localice rápido. */}
+                  <span aria-hidden className="absolute left-0.5 top-1.5 text-[6px] font-semibold text-slate-500 sm:text-[8px]">#{cell.index}</span>
                   {s.guardian && <span aria-hidden className="absolute right-0 top-1 text-[7px] sm:text-[9px]">🛡️</span>}
                   <span className="flex-1 px-0.5 pt-0.5 text-[6px] leading-[1.05] text-slate-200 line-clamp-3 sm:text-[8px]">{s.name}</span>
                   {prop && <span className="px-0.5 text-[6px] text-slate-400 sm:text-[8px]">{prop.price}</span>}
@@ -195,6 +199,12 @@ export function BoardView({
               </div>
               <button type="button" onClick={() => setSelected(null)} className="min-h-[36px] rounded-lg border border-slate-600 px-2 text-xs">Cerrar</button>
             </div>
+            {selProp && (
+              <button type="button" onClick={() => setCard(selProp)}
+                className="mt-2 min-h-[40px] w-full rounded-lg border border-slate-600 px-3 text-xs font-semibold text-slate-300">
+                Ver tarjeta
+              </button>
+            )}
             {selProp && canRequestPurchase(selProp, snap) && (
               <button type="button" onClick={() => { onRequestPurchase(selProp); setSelected(null); }}
                 className="mt-2 min-h-[40px] w-full rounded-lg bg-emerald-600 px-3 text-xs font-semibold">
@@ -210,6 +220,8 @@ export function BoardView({
           </button>
         </footer>
       </div>
+
+      {card && <PropertyCardModal property={card} snap={snap} onClose={() => setCard(null)} />}
     </div>
   );
 }

@@ -56,7 +56,7 @@ async function hostPosicion(host: Page, name: string, index: number) {
     await openCorrections(host);
     const form = host.locator('form', { has: host.getByRole('button', { name: 'Actualizar posición' }) });
     await form.getByLabel('Jugador', { exact: true }).selectOption({ label: name });
-    await form.getByLabel(/Casilla/).fill(String(index));
+    await form.getByLabel(/Casilla/).selectOption(String(index));
     await form.getByLabel('Motivo (obligatorio)').fill('situar (prueba)');
     await form.getByRole('button', { name: 'Actualizar posición' }).click();
     await expect(host.getByRole('alert')).toHaveCount(0, { timeout: 3_000 });
@@ -107,6 +107,12 @@ test('Fase 4 corrección: tablero visual, privacidad, restricción de compra, al
   await B.reload();
   await expect(B.getByText('Saldo oculto').first()).toBeVisible({ timeout: 20_000 });
 
+  // ── Corrección de posición POR NOMBRE: el selector de casilla muestra "índice — nombre".
+  await host.reload();
+  await openCorrections(host);
+  const posForm = host.locator('form', { has: host.getByRole('button', { name: 'Actualizar posición' }) });
+  await expect(posForm.getByLabel(/Casilla/).locator('option', { hasText: `${RONDA_IX} — ${RONDA}` })).toHaveCount(1);
+
   // ── El anfitrión pone el turno a Marty y lo sitúa en Ronda de Valencia; Marty solicita compra.
   await hostFijarTurno(host, 'Marty');
   await hostPosicion(host, 'Marty', RONDA_IX);
@@ -124,6 +130,13 @@ test('Fase 4 corrección: tablero visual, privacidad, restricción de compra, al
   const propBoard = B.getByRole('dialog', { name: 'Tablero de propiedades' });
   await expect(propBoard.getByText(/Solo puedes solicitar comprar la propiedad en la que has caído/).first()).toBeVisible({ timeout: 20_000 });
   await expect(propBoard.getByRole('button', { name: 'Solicitar compra' })).toHaveCount(0);
+  // ── Ficha completa de propiedad (consulta): "Ver tarjeta" abre la tarjeta con alquileres e hipoteca.
+  await propBoard.getByRole('button', { name: 'Ver tarjeta' }).first().click();
+  const ficha = B.getByRole('dialog', { name: /^Ficha de / });
+  await expect(ficha).toBeVisible({ timeout: 10_000 });
+  await expect(ficha.getByText('Con hotel')).toBeVisible();
+  await expect(ficha.getByText('Valor de hipoteca')).toBeVisible();
+  await ficha.getByRole('button', { name: 'Cerrar' }).click();
   await propBoard.getByRole('button', { name: 'Cerrar' }).click();
 
   // ── El anfitrión (actual) se coloca en Ronda (de Marty) y paga alquiler desde el contexto.
@@ -136,8 +149,8 @@ test('Fase 4 corrección: tablero visual, privacidad, restricción de compra, al
   // ── Pasar por salida: el anfitrión (actual) en la última casilla avanza 1 y cobra.
   await hostPosicion(host, 'Anfitrión', LAST_IX);
   await reloadUntil(host, () => movement(host).getByRole('button', { name: /Tirar dados/ }));
-  await movement(host).getByLabel('Casillas a mover').fill('1');
-  await movement(host).getByRole('button', { name: 'Mover' }).click();
+  await movement(host).getByRole('button', { name: '1 casilla', exact: true }).click();
+  await movement(host).getByRole('button', { name: 'Mover 1', exact: true }).click();
   await expect(movement(host).getByText(/pasó por salida/)).toBeVisible({ timeout: 20_000 });
 
   // ── Recargar y confirmar persistencia: el anfitrión quedó en la Salida.

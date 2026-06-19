@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { computeReceive, initialReceiveTracker, type ReceiveTracker } from './receiveMoney';
+import { computeReceive, describeReceive, initialReceiveTracker, type ReceiveTracker } from './receiveMoney';
 import { isCashSoundEnabled, setCashSoundEnabled, playCashSound } from './cashSound';
-import type { ActiveSnapshot } from './activeSnapshot';
+import type { ActiveSnapshot, LedgerEntry, ActivePlayer } from './activeSnapshot';
 
 // Snapshot mínimo: solo importan me.balance, me.is_spectator y runtime_version.
 function snap(balance: number, version: number, spectator = false): ActiveSnapshot {
@@ -55,6 +55,53 @@ describe('computeReceive', () => {
     const prev: ReceiveTracker = { lastBalance: 0, lastVersion: 5 };
     const r = computeReceive(prev, snap(100, 6, true));
     expect(r.play).toBe(false);
+  });
+});
+
+describe('describeReceive — mensaje del banner derivado del ledger', () => {
+  const led = (over: Partial<LedgerEntry>): LedgerEntry => ({
+    ledger_ref: 'L-1', seq: 1, kind: 'bank_to_player', from_ref: null, to_ref: 'P-1', amount: 200,
+    before_balance: null, after_balance: null, reason: null, actor_ref: null, reverts_ref: null,
+    created_at: '2026-06-19T00:00:00Z', ...over,
+  });
+  const withLedger = (entries: LedgerEntry[], players: ActivePlayer[] = []): ActiveSnapshot => ({
+    ...snap(3500, 6), ledger_recent: entries, players,
+  });
+  const beto: ActivePlayer = { public_ref: 'P-2', display_name: 'Beto', token_id: null, balance: 0, is_current: false, status: 'active' };
+
+  it('paso por salida → "al pasar por salida"', () => {
+    const m = describeReceive(withLedger([led({ kind: 'pass_start_bonus', from_ref: null, to_ref: 'P-1', amount: 200 })]), 200);
+    expect(m).toMatch(/al pasar por salida/i);
+    expect(m).toContain('200');
+  });
+
+  it('alquiler de otro jugador → "{nombre} te ha pagado … de alquiler"', () => {
+    const m = describeReceive(withLedger([led({ kind: 'rent_payment', from_ref: 'P-2', to_ref: 'P-1', amount: 50 })], [beto]), 50);
+    expect(m).toMatch(/Beto te ha pagado .*alquiler/i);
+  });
+
+  it('transferencia entre jugadores → "{nombre} te ha pagado"', () => {
+    const m = describeReceive(withLedger([led({ kind: 'player_to_player', from_ref: 'P-2', to_ref: 'P-1', amount: 50 })], [beto]), 50);
+    expect(m).toMatch(/Beto te ha pagado/i);
+  });
+
+  it('pago de la banca → "de la banca"', () => {
+    const m = describeReceive(withLedger([led({ kind: 'bank_to_player', from_ref: null, to_ref: 'P-1', amount: 200 })]), 200);
+    expect(m).toMatch(/de la banca/i);
+  });
+
+  it('sin asiento que me abone → texto genérico con el importe', () => {
+    const m = describeReceive(withLedger([]), 200);
+    expect(m).toMatch(/Has recibido/i);
+    expect(m).toContain('200');
+  });
+
+  it('elige el asiento más reciente (mayor seq) que me abona', () => {
+    const m = describeReceive(withLedger([
+      led({ seq: 1, kind: 'bank_to_player', to_ref: 'P-1', amount: 100 }),
+      led({ seq: 2, kind: 'pass_start_bonus', to_ref: 'P-1', amount: 200 }),
+    ]), 200);
+    expect(m).toMatch(/al pasar por salida/i);
   });
 });
 

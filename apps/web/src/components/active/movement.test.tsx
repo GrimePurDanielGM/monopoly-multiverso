@@ -48,12 +48,24 @@ describe('MovementPanel', () => {
     expect(c.onRoll).toHaveBeenCalledTimes(1);
   });
 
-  it('mover manualmente llama onMoveManual con el número de casillas', () => {
+  it('mover manualmente: elegir 1–12 con botones y Mover llama onMoveManual', () => {
     const c = cbs();
     render(<MovementPanel snap={snap()} busy={false} {...c} />);
-    fireEvent.change(screen.getByLabelText('Casillas a mover'), { target: { value: '4' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Mover' }));
-    expect(c.onMoveManual).toHaveBeenCalledWith(4);
+    // Mover está deshabilitado hasta elegir un valor válido (no se puede mover con 0).
+    expect(screen.getByRole('button', { name: 'Mover' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: '7 casillas' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mover 7' }));
+    expect(c.onMoveManual).toHaveBeenCalledWith(7);
+  });
+
+  it('mover manualmente: 1 casilla (singular) y dígitos 8–12 disponibles', () => {
+    const c = cbs();
+    render(<MovementPanel snap={snap()} busy={false} {...c} />);
+    expect(screen.getByRole('button', { name: '1 casilla' })).toBeInTheDocument();
+    [8, 9, 10, 11, 12].forEach((n) => expect(screen.getByRole('button', { name: `${n} casillas` })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: '11 casillas' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mover 11' }));
+    expect(c.onMoveManual).toHaveBeenCalledWith(11);
   });
 
   it('al caer en propiedad disponible ofrece "Solicitar compra" desde el contexto', () => {

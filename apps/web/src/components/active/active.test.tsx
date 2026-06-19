@@ -157,10 +157,21 @@ describe('HostCorrections', () => {
     expect(onAdjust).toHaveBeenCalledWith('P-AAAA', 9000, 'corrección válida');
   });
 
-  it('corregir posición: tablero + casilla + motivo → onSetPosition', () => {
+  it('corregir posición: el selector de casilla muestra "índice — nombre" y envía el índice', () => {
     const onSetPosition = vi.fn();
-    render(<HostCorrections snap={makeSnap()} busy={false} onAdjust={vi.fn()} onSetTurn={vi.fn()} onHostTransfer={vi.fn()} onSetPosition={onSetPosition} />);
-    fireEvent.change(screen.getByLabelText(/Casilla/), { target: { value: '5' } });
+    const snap = makeSnap({
+      spaces: [
+        { space_ref: 'cl-0', board_key: 'classic', space_index: 0, name: 'Salida', space_type: 'start', property_ref: null, is_start: true },
+        { space_ref: 'cl-1', board_key: 'classic', space_index: 1, name: 'Ronda de Valencia', space_type: 'property', property_ref: 'cl-1', is_start: false },
+        { space_ref: 'cl-5', board_key: 'classic', space_index: 5, name: 'Plaza de España', space_type: 'property', property_ref: 'cl-5', is_start: false },
+      ],
+    });
+    render(<HostCorrections snap={snap} busy={false} onAdjust={vi.fn()} onSetTurn={vi.fn()} onHostTransfer={vi.fn()} onSetPosition={onSetPosition} />);
+    const casilla = screen.getByLabelText(/Casilla/) as HTMLSelectElement;
+    // Se puede elegir por nombre: la opción muestra índice + nombre.
+    expect(screen.getByRole('option', { name: '1 — Ronda de Valencia' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '5 — Plaza de España' })).toBeInTheDocument();
+    fireEvent.change(casilla, { target: { value: '5' } });
     // El formulario de posición es el último; su "Motivo" es el último de la lista.
     const posReasons = screen.getAllByLabelText('Motivo (obligatorio)');
     fireEvent.change(posReasons[posReasons.length - 1]!, { target: { value: 'recolocar ficha' } });

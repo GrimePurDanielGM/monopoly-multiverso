@@ -14,6 +14,8 @@ import {
 import { useActiveStore } from '../store/active';
 import { ActiveGameScreen } from './ActiveGameScreen';
 import { ensureAnonSession } from '../lib/session';
+import { rememberGame, statusFromLobby } from '../lib/gameHistory';
+import type { LobbySnapshot } from '../lib/snapshot';
 import { normalizeCode } from '../lib/codes';
 import { useLobbyStore } from '../store/lobby';
 import { useRealtimeStore } from '../store/realtime';
@@ -35,6 +37,19 @@ const STATUS_LABEL: Record<string, string> = {
   active: 'Partida en curso',
   cancelled: 'Cancelada',
 };
+
+/** Apunta esta partida en el historial local (saneado) a partir del snapshot de sala. Cubre de forma
+ *  uniforme todas las vías de entrada (crear/unirse/recuperar/late-join/volver), pues todas pasan por aquí. */
+function recordLobbyHistory(s: LobbySnapshot): void {
+  const meName = s.players.find((p) => p.public_ref === s.me.public_ref)?.name ?? null;
+  rememberGame({
+    code: s.game.code,
+    role: s.me.is_host ? 'host' : 'player',
+    display_name: meName,
+    status: statusFromLobby(s.game.status),
+    game_title: s.game.name,
+  });
+}
 
 /** Sala sincronizada (Bloque 4): + controles del anfitrión, expulsión, configuración, cancelación, inicio. */
 export function LobbyScreen() {
@@ -108,6 +123,7 @@ export function LobbyScreen() {
       return;
     }
     replaceSnapshot(r.data, Date.now());
+    recordLobbyHistory(r.data);
     const tk = await listActiveTokens(r.data.game.config.token_catalog_version);
     if (tk.ok) setTokens(tk.data);
     await loadActiveIfNeeded(r.data.game.status);
@@ -119,6 +135,7 @@ export function LobbyScreen() {
     const r = await getLobbySnapshotByCode(code);
     if (r.ok) {
       replaceSnapshot(r.data, Date.now());
+      recordLobbyHistory(r.data);
       await loadActiveIfNeeded(r.data.game.status);
     } else if (r.code === 'NOT_ACTIVE_MEMBER') await applyNotMember(prevGameId);
   }, [code, replaceSnapshot, applyNotMember, loadActiveIfNeeded]);

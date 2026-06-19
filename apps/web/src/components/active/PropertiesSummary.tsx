@@ -1,5 +1,7 @@
-import type { ActiveSnapshot } from '../../lib/activeSnapshot';
+import { useState } from 'react';
+import type { ActiveProperty, ActiveSnapshot } from '../../lib/activeSnapshot';
 import { formatMoney, myProperties, propertiesOf } from '../../lib/activeSelectors';
+import { PropertyCardModal } from './PropertyCardModal';
 
 /** Resumen LIGERO de propiedades en la pantalla principal: mis propiedades + recuento por jugador.
  *  No lista el catálogo completo ni incluye acciones de compra: esas viven en "Tablero de propiedades",
@@ -16,6 +18,7 @@ export function PropertiesSummary({
     .filter((pl) => pl.public_ref !== snap.me.public_ref)
     .map((pl) => ({ player: pl, items: propertiesOf(pl.public_ref, snap) }))
     .filter((x) => x.items.length > 0);
+  const [card, setCard] = useState<ActiveProperty | null>(null);
 
   return (
     <section aria-label="Propiedades" className="flex flex-col gap-3 rounded-xl border border-slate-700 p-4">
@@ -40,11 +43,14 @@ export function PropertiesSummary({
         ) : (
           <ul className="flex flex-col gap-0.5">
             {mine.map((p) => (
-              <li key={p.property_ref} className="flex justify-between gap-2 text-sm">
-                <span className="truncate">{p.name}</span>
-                <span className="shrink-0 text-xs text-slate-400">
-                  {p.base_rent > 0 ? <>Alquiler {formatMoney(p.base_rent)}</> : 'Servicio'}
-                </span>
+              <li key={p.property_ref}>
+                <button type="button" onClick={() => setCard(p)}
+                  className="flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1 text-left text-sm active:bg-slate-800">
+                  <span className="truncate underline decoration-slate-600 decoration-dotted underline-offset-2">{p.name}</span>
+                  <span className="shrink-0 text-xs text-slate-400">
+                    {p.base_rent > 0 ? <>Alquiler {formatMoney(p.base_rent)}</> : 'Servicio'}
+                  </span>
+                </button>
               </li>
             ))}
           </ul>
@@ -67,7 +73,12 @@ export function PropertiesSummary({
                   </summary>
                   <ul className="flex flex-col gap-0.5 px-3 pb-2 text-xs text-slate-300">
                     {items.map((p) => (
-                      <li key={p.property_ref} className="truncate">{p.name}</li>
+                      <li key={p.property_ref}>
+                        <button type="button" onClick={() => setCard(p)}
+                          className="w-full truncate text-left underline decoration-slate-600 decoration-dotted underline-offset-2 active:text-slate-100">
+                          {p.name}
+                        </button>
+                      </li>
                     ))}
                   </ul>
                 </details>
@@ -76,6 +87,8 @@ export function PropertiesSummary({
           </ul>
         </div>
       )}
+
+      {card && <PropertyCardModal property={card} snap={snap} onClose={() => setCard(null)} />}
     </section>
   );
 }

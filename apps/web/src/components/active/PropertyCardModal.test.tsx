@@ -1,0 +1,70 @@
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import type { ActiveProperty, ActiveSnapshot } from '../../lib/activeSnapshot';
+import { PropertyCardModal } from './PropertyCardModal';
+
+function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
+  return {
+    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200 } },
+    me: { public_ref: 'P-1', is_host: false, balance: 3000, is_current: true, is_spectator: false },
+    turn: { turn_number: 1, current_player_ref: 'P-1', order: ['P-1', 'P-2'] },
+    players: [
+      { public_ref: 'P-1', display_name: 'Ana', token_id: 'cat', balance: 3000, is_current: true, status: 'active' },
+      { public_ref: 'P-2', display_name: 'Beto', token_id: 'boot', balance: 3000, is_current: false, status: 'active' },
+    ],
+    ledger_recent: [], properties: [], auctions: [], purchase_requests: [],
+    leave_requests: [], bankruptcy_requests: [], late_join_requests: [],
+    boards: [], spaces: [], board_links: [], guardians: [], pending_junction: null, positions: [], my_position: null, current_space: null, last_roll: null, last_move: null,
+    runtime_status: 'running', control: { paused_by_ref: null, finished_by_ref: null, reason: null }, runtime_version: 1,
+    ...over,
+  };
+}
+
+const street: ActiveProperty = {
+  property_ref: 'cl-ronda-valencia', board_key: 'classic', group_key: 'marron', name: 'Ronda de Valencia',
+  kind: 'street', price: 60, base_rent: 2, is_buyable: true, sort_order: 1, owner_ref: null, in_auction: false,
+  rent_1: 10, rent_2: 30, rent_3: 90, rent_4: 160, rent_hotel: 250, house_cost: 50, hotel_cost: 50,
+  mortgage_value: 30, unmortgage_cost: 33,
+};
+
+describe('PropertyCardModal', () => {
+  it('muestra precio, alquileres, construcción e hipoteca', () => {
+    render(<PropertyCardModal property={street} snap={snap()} onClose={vi.fn()} />);
+    const dialog = screen.getByRole('dialog', { name: 'Ficha de Ronda de Valencia' });
+    expect(dialog).toHaveTextContent('Ronda de Valencia');
+    expect(dialog).toHaveTextContent('Con 1 casa');
+    expect(dialog).toHaveTextContent('Con hotel');
+    expect(dialog).toHaveTextContent('250 ₥');   // alquiler con hotel
+    expect(dialog).toHaveTextContent('Coste por casa');
+    expect(dialog).toHaveTextContent('Valor de hipoteca');
+    expect(dialog).toHaveTextContent('Deshipotecar');
+  });
+
+  it('NO muestra acciones de construir/hipotecar (solo consulta)', () => {
+    render(<PropertyCardModal property={street} snap={snap()} onClose={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /construir|edificar|hipotecar/i })).toBeNull();
+  });
+
+  it('campos ausentes se muestran como "Pendiente de confirmar"', () => {
+    const utility: ActiveProperty = {
+      ...street, property_ref: 'cl-cia-aguas', name: 'Compañía de Aguas', kind: 'utility', group_key: 'servicios',
+      base_rent: 0, rent_1: null, rent_2: null, rent_3: null, rent_4: null, rent_hotel: null, house_cost: null, hotel_cost: null,
+      mortgage_value: 75, unmortgage_cost: 83,
+    };
+    render(<PropertyCardModal property={utility} snap={snap()} onClose={vi.fn()} />);
+    expect(screen.getAllByText('Pendiente de confirmar').length).toBeGreaterThan(0);
+  });
+
+  it('estado refleja al propietario', () => {
+    const owned: ActiveProperty = { ...street, owner_ref: 'P-2' };
+    render(<PropertyCardModal property={owned} snap={snap()} onClose={vi.fn()} />);
+    expect(screen.getByRole('dialog')).toHaveTextContent('De otro jugador (Beto)');
+  });
+
+  it('"Cerrar" llama onClose', () => {
+    const onClose = vi.fn();
+    render(<PropertyCardModal property={street} snap={snap()} onClose={onClose} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});

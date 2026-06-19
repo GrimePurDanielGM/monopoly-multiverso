@@ -45,7 +45,7 @@ async function hostPosicion(host: Page, name: string, index: number) {
     await host.reload(); await openCorrections(host);
     const form = host.locator('form', { has: host.getByRole('button', { name: 'Actualizar posición' }) });
     await form.getByLabel('Jugador', { exact: true }).selectOption({ label: name });
-    await form.getByLabel(/Casilla/).fill(String(index));
+    await form.getByLabel(/Casilla/).selectOption(String(index));
     await form.getByLabel('Motivo (obligatorio)').fill('situar (prueba)');
     await form.getByRole('button', { name: 'Actualizar posición' }).click();
     await expect(host.getByRole('alert')).toHaveCount(0, { timeout: 3_000 });
@@ -81,9 +81,9 @@ test('cruce: la cárcel-guardián obliga a elegir; cruzar paga peaje y cambia de
   await hostPosicion(host, 'Marty', 9);
 
   // Marty mueve 2: alcanza la cárcel (10) con 1 restante → debe ELEGIR (no avanza solo).
-  await reloadUntil(B, () => movement(B).getByRole('button', { name: 'Mover' }));
-  await movement(B).getByLabel('Casillas a mover').fill('2');
-  await movement(B).getByRole('button', { name: 'Mover' }).click();
+  await reloadUntil(B, () => movement(B).getByRole('button', { name: '2 casillas', exact: true }));
+  await movement(B).getByRole('button', { name: '2 casillas', exact: true }).click();
+  await movement(B).getByRole('button', { name: 'Mover 2', exact: true }).click();
   await reloadUntil(B, () => movement(B).getByText(/Has llegado a la cárcel/));
   // Hay dos destinos: seguir (gratis) y cruzar (peaje).
   await expect(movement(B).getByRole('button', { name: /Seguir.*Glorieta de Bilbao.*gratis/ })).toBeVisible();

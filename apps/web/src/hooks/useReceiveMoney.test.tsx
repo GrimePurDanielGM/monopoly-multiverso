@@ -37,7 +37,8 @@ describe('useReceiveMoney', () => {
     const { result, rerender } = renderHook(({ s }) => useReceiveMoney(s), { initialProps: { s: snap(3000, 5) } });
     rerender({ s: snap(3500, 6) });
     expect(playMock).toHaveBeenCalledTimes(1);
-    expect(result.current).toBe(500);
+    expect(result.current?.amount).toBe(500);
+    expect(result.current?.message).toMatch(/recibido|pagado|cobrado/i);
   });
 
   it('no suena si la preferencia está desactivada', () => {

@@ -4,6 +4,7 @@ import {
   formatMoney, currentPlayerName, BOARD_LABEL, spaceTypeLabel, canRoll, currentSpaceProperty,
   propertyStatus, canRequestPurchase, canPayRent, ownerName, purchaseBlockReason, junctionChoice,
 } from '../../lib/activeSelectors';
+import { PropertyCardModal } from './PropertyCardModal';
 
 const DICE = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 const face = (n: number) => DICE[n - 1] ?? '🎲';
@@ -24,7 +25,8 @@ export function MovementPanel({
   onPayRent: (p: ActiveProperty) => void;
   onResolveJunction: (dir: 'own' | 'cross') => void;
 }) {
-  const [steps, setSteps] = useState(1);
+  const [steps, setSteps] = useState<number | null>(null);
+  const [card, setCard] = useState<ActiveProperty | null>(null);
   const choice = junctionChoice(snap);
   const mine = canRoll(snap);
   const myPos = snap.my_position;
@@ -108,23 +110,35 @@ export function MovementPanel({
           >
             🎲 Tirar dados
           </button>
-          <div className="flex items-end gap-2">
-            <label className="flex flex-col text-[11px] text-slate-400">
-              Mover manualmente
-              <input
-                type="number" min={1} max={12} value={steps}
-                onChange={(e) => setSteps(Math.max(1, Math.min(12, Number(e.target.value) || 1)))}
-                className="mt-0.5 w-20 rounded-lg border border-slate-600 bg-slate-900 px-2 py-1 text-sm text-slate-100"
-                aria-label="Casillas a mover"
-              />
-            </label>
+          {/* Mover manualmente: selector de pasos 1–12 con botones grandes (cómodo en iPhone, sin
+              depender de <input type="number">, que en Safari móvil no ofrece flechas y complica los
+              dígitos). El botón Mover queda deshabilitado hasta elegir un valor válido (1–12). */}
+          <div role="group" aria-label="Mover manualmente" className="flex flex-col gap-2">
+            <p className="text-[11px] text-slate-400">Mover manualmente (casillas)</p>
+            <div className="grid grid-cols-6 gap-1">
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  aria-label={`${n} ${n === 1 ? 'casilla' : 'casillas'}`}
+                  aria-pressed={steps === n}
+                  onClick={() => setSteps(n)}
+                  disabled={busy}
+                  className={`min-h-[44px] rounded-lg text-sm font-semibold tabular-nums disabled:opacity-40 ${
+                    steps === n ? 'bg-sky-600 text-white' : 'border border-slate-600 text-slate-200 active:bg-slate-800'
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
             <button
               type="button"
-              onClick={() => onMoveManual(steps)}
-              disabled={busy}
-              className="min-h-[40px] rounded-lg border border-slate-600 px-3 text-sm font-semibold disabled:opacity-40"
+              onClick={() => steps !== null && onMoveManual(steps)}
+              disabled={busy || steps === null}
+              className="min-h-[44px] rounded-xl border border-slate-600 px-3 text-sm font-semibold disabled:opacity-40"
             >
-              Mover
+              {steps !== null ? `Mover ${steps}` : 'Mover'}
             </button>
           </div>
         </div>
@@ -169,6 +183,13 @@ export function MovementPanel({
             </>
           )}
           {status === 'in_auction' && <p>{prop.name} está en subasta.</p>}
+          <button
+            type="button"
+            onClick={() => setCard(prop)}
+            className="min-h-[36px] rounded-lg border border-slate-600 px-3 text-[11px] font-semibold text-slate-300"
+          >
+            Ver tarjeta
+          </button>
         </div>
       )}
       {cur && !prop && cur.space_type !== 'start' && (
@@ -179,6 +200,8 @@ export function MovementPanel({
       {cur && cur.space_type === 'start' && (
         <p className="rounded-lg bg-slate-800 px-3 py-2 text-xs text-slate-300">Estás en la casilla de salida.</p>
       )}
+
+      {card && <PropertyCardModal property={card} snap={snap} onClose={() => setCard(null)} />}
     </section>
   );
 }

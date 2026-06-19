@@ -19,6 +19,7 @@ import { isMyTurn, isHost, isPaused, isFinished, canAct, newRequestId } from '..
 import { ConnectionBar } from '../components/ConnectionBar';
 import { LiveRegion } from '../components/LiveRegion';
 import { TurnBanner } from '../components/active/TurnBanner';
+import { MoneyBanner } from '../components/active/MoneyBanner';
 import { PlayerBalances } from '../components/active/PlayerBalances';
 import { LedgerList } from '../components/active/LedgerList';
 import { PlayerTransferForm } from '../components/active/PlayerTransferForm';
@@ -37,6 +38,7 @@ import { PurchaseRequestsTray, LeaveRequestsTray, BankruptcyRequestsTray } from 
 import { BankruptcyDialog } from '../components/active/BankruptcyDialog';
 import { formatMoney, ownerName } from '../lib/activeSelectors';
 import { useReceiveMoney } from '../hooks/useReceiveMoney';
+import { rememberGame } from '../lib/gameHistory';
 import { isCashSoundEnabled, setCashSoundEnabled, primeCashSound } from '../lib/cashSound';
 import type { ActiveProperty } from '../lib/activeSnapshot';
 
@@ -81,6 +83,21 @@ export function ActiveGameScreen({
 
   // Efecto "dinero recibido": suena + flash cuando MI saldo aumenta (no en el primer snapshot).
   const receivedFlash = useReceiveMoney(snap);
+
+  // Historial local: afina el estado (en curso/pausa/finalizada) y el rol con el snapshot activo.
+  const histStatus = snap ? (snap.runtime_status === 'running' ? 'active' : snap.runtime_status) : null;
+  const histRole = snap ? (snap.me.is_host ? 'host' : snap.me.is_spectator ? 'spectator' : 'player') : null;
+  useEffect(() => {
+    if (!snap || !histStatus || !histRole) return;
+    rememberGame({
+      code: snap.game.code,
+      role: histRole,
+      display_name: snap.players.find((p) => p.public_ref === snap.me.public_ref)?.display_name ?? null,
+      status: histStatus,
+    });
+    // Solo reescribimos cuando cambia el estado/rol relevante, no en cada snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snap?.game.code, histStatus, histRole]);
   // Desbloquear el audio dentro de la primera interacción REAL del usuario. iOS solo lo permite
   // dentro del gesto, así que escuchamos varios eventos de gesto (el primero que llegue desbloquea;
   // primeCashSound es idempotente). passive: no bloquea el scroll/tap.
@@ -230,6 +247,7 @@ export function ActiveGameScreen({
 
   return (
     <section className="flex flex-col gap-3">
+      <MoneyBanner flash={receivedFlash} />
       <ConnectionBar status={channelStatus} onRetry={onReconnect} />
 
       <header className="rounded-xl border border-slate-700 p-4">
@@ -247,11 +265,6 @@ export function ActiveGameScreen({
       <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-5">
         <div className="flex flex-col gap-3">
           <TurnBanner snap={snap} />
-          {receivedFlash !== null && receivedFlash > 0 && (
-            <p role="status" className="rounded-lg bg-emerald-900/60 px-3 py-2 text-sm font-semibold text-emerald-200">
-              +{formatMoney(receivedFlash)} recibidos
-            </p>
-          )}
           {canAct(snap) && !snap.me.is_spectator && isMyTurn(snap) && (
             <button
               type="button"

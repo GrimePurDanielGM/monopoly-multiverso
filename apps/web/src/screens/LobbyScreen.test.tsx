@@ -157,6 +157,8 @@ describe('LobbyScreen', () => {
         leave_requests: [],
         bankruptcy_requests: [],
         late_join_requests: [],
+        boards: [], spaces: [], board_links: [], guardians: [], pending_junction: null,
+        positions: [], my_position: null, current_space: null, last_roll: null, last_move: null,
         runtime_status: 'running',
         control: { paused_by_ref: null, finished_by_ref: null, reason: null },
         runtime_version: 0,
