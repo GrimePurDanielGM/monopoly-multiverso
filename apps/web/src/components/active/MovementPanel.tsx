@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { ActiveProperty, ActiveSnapshot } from '../../lib/activeSnapshot';
 import {
   formatMoney, currentPlayerName, BOARD_LABEL, spaceTypeLabel, canRoll, currentSpaceProperty,
-  propertyStatus, canRequestPurchase, canPayRent, ownerName,
+  propertyStatus, canRequestPurchase, canPayRent, ownerName, purchaseBlockReason,
 } from '../../lib/activeSelectors';
 
 const DICE = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
@@ -119,14 +119,18 @@ export function MovementPanel({
           {status === 'available' && (
             <>
               <p>Has caído en <span className="font-semibold">{prop.name}</span> · Disponible para compra ({formatMoney(prop.price)}).</p>
-              <button
-                type="button"
-                onClick={() => onRequestPurchase(prop)}
-                disabled={busy || !canRequestPurchase(prop, snap)}
-                className="min-h-[40px] rounded-lg bg-emerald-600 px-3 text-xs font-semibold disabled:opacity-40"
-              >
-                Solicitar compra
-              </button>
+              {canRequestPurchase(prop, snap) ? (
+                <button
+                  type="button"
+                  onClick={() => onRequestPurchase(prop)}
+                  disabled={busy}
+                  className="min-h-[40px] rounded-lg bg-emerald-600 px-3 text-xs font-semibold disabled:opacity-40"
+                >
+                  Solicitar compra
+                </button>
+              ) : (
+                <p className="text-[11px] text-slate-400">{purchaseBlockReason(prop, snap)}</p>
+              )}
             </>
           )}
           {status === 'mine' && <p>Has caído en <span className="font-semibold">tu propiedad</span> ({prop.name}).</p>}

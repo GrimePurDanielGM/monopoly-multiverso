@@ -71,6 +71,7 @@ export interface BoardInfo {
   board_key: BoardKey;
   ring_size: number;
   start_bonus: number;
+  provisional: boolean; // true = orden por confirmar (RdF en Fase 4)
 }
 export interface BoardSpace {
   space_ref: string;
@@ -80,6 +81,7 @@ export interface BoardSpace {
   space_type: SpaceType;
   property_ref: string | null;
   is_start: boolean;
+  provisional?: boolean;
 }
 export interface PlayerPosition {
   player_ref: string;
@@ -147,7 +149,7 @@ export interface ActivePlayer {
   public_ref: string;
   display_name: string;
   token_id: string | null;
-  balance: number;
+  balance: number | null; // null = saldo ajeno oculto (privacidad: solo ves el tuyo)
   is_current: boolean;
   status: PlayerStatus;
 }
@@ -223,6 +225,7 @@ function parseSpaceLike(s: Record<string, unknown>): BoardSpace | null {
   return {
     space_ref: s.space_ref, board_key: s.board_key, space_index: s.space_index, name: s.name,
     space_type: s.space_type as SpaceType, property_ref: s.property_ref, is_start: s.is_start,
+    provisional: isBool(s.provisional) ? s.provisional : false,
   };
 }
 
@@ -251,7 +254,7 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
   if (!Array.isArray(raw.players)) return bad('players ausente');
   const players: ActivePlayer[] = [];
   for (const p of raw.players) {
-    if (!isObj(p) || !isStr(p.public_ref) || !isStr(p.display_name) || !isStrOrNull(p.token_id) || !isNum(p.balance) || !isBool(p.is_current) ||
+    if (!isObj(p) || !isStr(p.public_ref) || !isStr(p.display_name) || !isStrOrNull(p.token_id) || !isNumOrNull(p.balance) || !isBool(p.is_current) ||
         (p.status !== 'active' && p.status !== 'bankrupt')) {
       return bad('player inválido');
     }
@@ -341,7 +344,7 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
   if (Array.isArray(raw.boards)) {
     for (const b of raw.boards) {
       if (!isObj(b) || !isBoard(b.board_key) || !isNum(b.ring_size) || !isNum(b.start_bonus)) return bad('board inválido');
-      boards.push({ board_key: b.board_key, ring_size: b.ring_size, start_bonus: b.start_bonus });
+      boards.push({ board_key: b.board_key, ring_size: b.ring_size, start_bonus: b.start_bonus, provisional: isBool(b.provisional) ? b.provisional : false });
     }
   }
   const spaces: BoardSpace[] = [];

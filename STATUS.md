@@ -1,6 +1,22 @@
 # Estado del proyecto — lista viva
 
 ## Fase 4 — Movimiento y tablero (base) · **`Fase 4: COMPLETADA` (pendiente validación manual)**
+- **Corrección ampliada (2026-06-19):** sonido más suave (WAV "ding-cling" senoidal); **tablero Classic con el
+  orden REAL de 40 casillas** (`0028`, extraído de las fotos: salida, propiedades en su sitio, impuestos,
+  Caja de Comunidad, Suerte, cárcel/solo-visitas, parking, ir-a-la-cárcel; índice 1 = Ronda de Valencia,
+  30 = ir a la cárcel). **RdF se mantiene con su catálogo completo (28 props) y orden DERIVADO PROVISIONAL**
+  (`provisional=true`): las fotos muestran propiedades — Coche de Biff, Cines Essex/Holomax — que el listado
+  físico facilitado omitía; el orden definitivo de RdF se fijará al confirmarlo (no se desactivó nada).
+  **Privacidad de saldos** (`0029`): el snapshot solo expone MI saldo; los ajenos van ocultos (ni el
+  anfitrión los ve); los movimientos siguen mostrando importes; la subasta rechaza pujas sin fondos con
+  error saneado. **Restricción de compra** (`0029`): `request_property_purchase` exige ser el jugador actual
+  y estar EN la casilla de esa propiedad (`NOT_CURRENT_PLAYER`/`NOT_ON_PROPERTY`); pujar no exige turno.
+  **Tablero visual interactivo** (`BoardView`): cuadrado con 4 lados/esquinas, fichas **por nombre de
+  jugador**, tocar casilla → detalle, pestañas Clásico/RdF, usable en móvil. **Corrección de posición del
+  anfitrión** trasladada al panel "Correcciones del anfitrión" (tablero+casilla+motivo). Suites nuevas
+  `privacy_phase4` (4) y `purchase_restriction_phase4` (6); `board_phase4` ampliada. Aplicado a dev
+  (`0028`,`0029`); E2E `movement.spec` reescrito (tablero visual, privacidad, restricción, alquiler, salida)
+  y `properties.spec` adaptado a la nueva regla de compra. **No se avanza a Fase 5.**
 - **Estado:** backend local + **dev remoto aplicado**, frontend, SQL Fases 1–4, integración local, E2E
   Chromium+WebKit y build verdes; desplegado en Vercel. Cierre 2026-06-19. **No se avanza a Fase 5.**
 - **Alcance:** sistema base de posiciones y movimiento que conecta el núcleo económico con la posición

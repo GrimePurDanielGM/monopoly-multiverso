@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import type { ActiveSnapshot, BoardSpace, PlayerPosition } from '../../lib/activeSnapshot';
 import { MovementPanel } from './MovementPanel';
-import { BoardModal } from './BoardModal';
+import { BoardView } from './BoardView';
 
 function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
   const spaces: BoardSpace[] = [
@@ -24,7 +24,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
       { property_ref: 'cl-1', board_key: 'classic', group_key: 'marron', name: 'Mediterráneo', kind: 'street', price: 60, base_rent: 2, is_buyable: true, sort_order: 1, owner_ref: null, in_auction: false },
     ],
     auctions: [], purchase_requests: [], leave_requests: [], bankruptcy_requests: [], late_join_requests: [],
-    boards: [{ board_key: 'classic', ring_size: 2, start_bonus: 200 }, { board_key: 'back_to_the_future', ring_size: 1, start_bonus: 200 }],
+    boards: [{ board_key: 'classic', ring_size: 2, start_bonus: 200, provisional: false }, { board_key: 'back_to_the_future', ring_size: 1, start_bonus: 200, provisional: false }],
     spaces, positions,
     my_position: { board_key: 'classic', space_index: 1 },
     current_space: { space_ref: 'cl-1', board_key: 'classic', space_index: 1, name: 'Mediterráneo', space_type: 'property', property_ref: 'cl-1', is_start: false },
@@ -89,32 +89,28 @@ describe('MovementPanel', () => {
   });
 });
 
-describe('BoardModal', () => {
-  const icons = { cat: '🐱', boot: '🥾' };
-
-  it('agrupa por tablero y muestra la ficha del jugador en su casilla', () => {
-    render(<BoardModal snap={snap()} icons={icons} busy={false} onClose={vi.fn()} onSetPosition={vi.fn()} />);
-    expect(screen.getByText('Clásico')).toBeInTheDocument();
-    expect(screen.getByText('Regreso al futuro')).toBeInTheDocument();
-    // La ficha de Ana (🐱) aparece en su casilla.
-    expect(screen.getByTitle('Ana')).toHaveTextContent('🐱');
+describe('BoardView (tablero visual)', () => {
+  it('muestra pestañas de ambos tableros y los nombres de los jugadores (no la ficha)', () => {
+    render(<BoardView snap={snap()} onClose={vi.fn()} onRequestPurchase={vi.fn()} />);
+    expect(screen.getByRole('tab', { name: 'Clásico' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Regreso al futuro' })).toBeInTheDocument();
+    // La leyenda muestra los NOMBRES de los jugadores.
+    expect(screen.getByText('Ana')).toBeInTheDocument();
+    expect(screen.getByText('Beto')).toBeInTheDocument();
   });
 
-  it('no anfitrión: no ve el formulario de corrección; "Cerrar" cierra', () => {
+  it('tocar una casilla abre su detalle con los jugadores presentes por nombre', () => {
+    render(<BoardView snap={snap()} onClose={vi.fn()} onRequestPurchase={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Casilla 1: Mediterráneo' }));
+    expect(screen.getByRole('dialog', { name: 'Detalle de Mediterráneo' })).toBeInTheDocument();
+    expect(screen.getByText(/Jugadores aquí: Ana/)).toBeInTheDocument();
+  });
+
+  it('puede cambiar al tablero Regreso al futuro y "Cerrar" cierra', () => {
     const onClose = vi.fn();
-    render(<BoardModal snap={snap()} icons={icons} busy={false} onClose={onClose} onSetPosition={vi.fn()} />);
-    expect(screen.queryByText(/Corregir posición \(anfitrión\)/)).toBeNull();
+    render(<BoardView snap={snap()} onClose={onClose} onRequestPurchase={vi.fn()} />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Regreso al futuro' }));
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
     expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('anfitrión: corrige posición con motivo (llama onSetPosition)', () => {
-    const onSet = vi.fn();
-    const s = snap({ me: { public_ref: 'P-1', is_host: true, balance: 3000, is_current: true, is_spectator: false } });
-    render(<BoardModal snap={s} icons={icons} busy={false} onClose={vi.fn()} onSetPosition={onSet} />);
-    fireEvent.change(screen.getByLabelText(/Casilla/), { target: { value: '1' } });
-    fireEvent.change(screen.getByLabelText('Motivo (obligatorio)'), { target: { value: 'recolocar ficha' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Corregir posición' }));
-    expect(onSet).toHaveBeenCalledWith('P-1', 'classic', 1, 'recolocar ficha');
   });
 });

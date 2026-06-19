@@ -183,10 +183,16 @@ describe('ActiveGameScreen — abandonar/expulsar', () => {
 });
 
 describe('ActiveGameScreen — propiedades', () => {
+  // Fase 4: solo puedo solicitar comprar la casilla en la que estoy, en mi turno.
+  const onProp = {
+    me: { public_ref: 'P-1', is_host: true, balance: 3000, is_current: true, is_spectator: false } as const,
+    current_space: { space_ref: 'sp', board_key: 'classic' as const, space_index: 1, name: 'Mediterráneo', space_type: 'property' as const, property_ref: 'cl-marron-1', is_start: false },
+  };
   it('solicitar compra abre confirmación; confirmar llama requestPropertyPurchase una vez', async () => {
-    renderScreen(snap({ properties: [PROP({ price: 60 })] }));
+    renderScreen(snap({ properties: [PROP({ price: 60 })], ...onProp }));
     fireEvent.click(screen.getByRole('button', { name: 'Ver tablero de propiedades' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Solicitar compra' }));
+    const board = screen.getByRole('dialog', { name: 'Tablero de propiedades' });
+    fireEvent.click(within(board).getByRole('button', { name: 'Solicitar compra' }));
     const dlg = screen.getByRole('dialog', { name: 'Solicitar compra' });
     expect(dlg).toBeInTheDocument();
     expect(buyMock).not.toHaveBeenCalled();
@@ -198,9 +204,10 @@ describe('ActiveGameScreen — propiedades', () => {
   });
 
   it('cancelar la solicitud no llama a la RPC', () => {
-    renderScreen(snap({ properties: [PROP({ price: 60 })] }));
+    renderScreen(snap({ properties: [PROP({ price: 60 })], ...onProp }));
     fireEvent.click(screen.getByRole('button', { name: 'Ver tablero de propiedades' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Solicitar compra' }));
+    const board = screen.getByRole('dialog', { name: 'Tablero de propiedades' });
+    fireEvent.click(within(board).getByRole('button', { name: 'Solicitar compra' }));
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Solicitar compra' })).getByRole('button', { name: 'Cancelar' }));
     expect(buyMock).not.toHaveBeenCalled();
   });

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type Locator } from '@playwright/test';
 
 // Propiedades (Fase 3 corrección): compra con aprobación del anfitrión, subasta, alquiler,
 // bancarrota frente a jugador y estado espectador. Anfitrión + 1 jugador (mínimo 2).
@@ -48,8 +48,36 @@ async function requestPurchase(page: Page, name: string) {
   await boardCard(page, name).getByRole('button', { name: 'Solicitar compra' }).click();
   await page.getByRole('dialog', { name: 'Solicitar compra' }).getByRole('button', { name: 'Solicitar compra' }).click();
 }
+// Fase 4: comprar exige turno + estar en la casilla. El anfitrión prepara al comprador.
+async function openCorrections(host: Page) { await host.getByText('Correcciones del anfitrión').click(); }
+async function hostFijarTurno(host: Page, name: string) {
+  await expect(async () => {
+    await host.reload(); await openCorrections(host);
+    const form = host.locator('form', { has: host.getByRole('button', { name: 'Fijar turno' }) });
+    await form.getByLabel('Jugador en turno').selectOption({ label: name });
+    await form.getByLabel('Motivo (obligatorio)').fill('fijar turno (prueba)');
+    await form.getByRole('button', { name: 'Fijar turno' }).click();
+    await expect(host.getByRole('alert')).toHaveCount(0, { timeout: 3_000 });
+  }).toPass({ timeout: 60_000 });
+}
+async function hostPosicion(host: Page, name: string, index: number) {
+  await expect(async () => {
+    await host.reload(); await openCorrections(host);
+    const form = host.locator('form', { has: host.getByRole('button', { name: 'Actualizar posición' }) });
+    await form.getByLabel('Jugador', { exact: true }).selectOption({ label: name });
+    await form.getByLabel(/Casilla/).fill(String(index));
+    await form.getByLabel('Motivo (obligatorio)').fill('situar (prueba)');
+    await form.getByRole('button', { name: 'Actualizar posición' }).click();
+    await expect(host.getByRole('alert')).toHaveCount(0, { timeout: 3_000 });
+  }).toPass({ timeout: 60_000 });
+}
+async function reloadUntilVisible(page: Page, loc: () => Locator, timeout = 45_000) {
+  await expect(async () => { await page.reload(); await expect(loc()).toBeVisible({ timeout: 5_000 }); }).toPass({ timeout });
+}
 const ESTACION = 'Estación del Norte';
+const ESTACION_IX = 35;
 const PRADO = 'Paseo del Prado';
+const PRADO_IX = 39;
 
 test('propiedades: compra con aprobación, subasta, bancarrota y espectador', async ({ browser }) => {
   test.setTimeout(180_000);
@@ -72,7 +100,10 @@ test('propiedades: compra con aprobación, subasta, bancarrota y espectador', as
   await host.getByRole('button', { name: 'Iniciar', exact: true }).click();
   await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
 
-  // ── B abre el tablero, solicita comprar la estación; el anfitrión la aprueba.
+  // ── El anfitrión pone el turno a Marty y lo sitúa en la estación; B solicita comprarla.
+  await hostFijarTurno(host, 'Marty');
+  await hostPosicion(host, 'Marty', ESTACION_IX);
+  await reloadUntilVisible(B, () => B.getByRole('region', { name: 'Movimiento', exact: true }).getByText(new RegExp(`Has caído en ${ESTACION}`)));
   await requestPurchase(B, ESTACION);
   await host.reload();
   await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
@@ -84,8 +115,10 @@ test('propiedades: compra con aprobación, subasta, bancarrota y espectador', as
   await openBoard(B);
   await expect(boardCard(B, ESTACION).getByText('Tuya')).toBeVisible({ timeout: 20_000 });
 
-  // ── B solicita Paseo del Prado; el anfitrión inicia subasta en vez de aprobar.
-  await B.reload();
+  // ── El anfitrión sitúa a Marty en Paseo del Prado; B lo solicita; el anfitrión subasta en vez de aprobar.
+  await hostFijarTurno(host, 'Marty');
+  await hostPosicion(host, 'Marty', PRADO_IX);
+  await reloadUntilVisible(B, () => B.getByRole('region', { name: 'Movimiento', exact: true }).getByText(new RegExp(`Has caído en ${PRADO}`)));
   await requestPurchase(B, PRADO);
   await host.reload();
   await expect(host.getByText('Solicitudes de compra')).toBeVisible({ timeout: 20_000 });

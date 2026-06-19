@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { ActiveProperty, ActiveSnapshot, PropertyAuction } from '../../lib/activeSnapshot';
 import {
   formatMoney, propertyStatus, canRequestPurchase, canPayRent, ownerName,
-  propertyGroupsByBoard,
+  propertyGroupsByBoard, purchaseBlockReason,
 } from '../../lib/activeSelectors';
 import { AuctionsPanel } from './AuctionsPanel';
 
@@ -40,14 +40,18 @@ function PropertyCard({
       </p>
       {status === 'owned' && <p className="text-[11px] text-amber-300">Propiedad de {ownerName(p, snap)}</p>}
       {status === 'available' && !blocked && (
-        <button
-          type="button"
-          onClick={() => onRequestPurchase(p)}
-          disabled={busy || !canRequestPurchase(p, snap)}
-          className="mt-0.5 min-h-[40px] rounded-lg bg-emerald-600 px-3 text-xs font-semibold disabled:opacity-40"
-        >
-          Solicitar compra
-        </button>
+        canRequestPurchase(p, snap) ? (
+          <button
+            type="button"
+            onClick={() => onRequestPurchase(p)}
+            disabled={busy}
+            className="mt-0.5 min-h-[40px] rounded-lg bg-emerald-600 px-3 text-xs font-semibold disabled:opacity-40"
+          >
+            Solicitar compra
+          </button>
+        ) : (
+          <p className="mt-0.5 text-[11px] text-slate-400">{purchaseBlockReason(p, snap)}</p>
+        )
       )}
       {status === 'owned' && !blocked && p.owner_ref !== snap.me.public_ref && p.base_rent > 0 && (
         <button

@@ -34,8 +34,8 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     ],
     auctions: [], purchase_requests: [], leave_requests: [], bankruptcy_requests: [], late_join_requests: [],
     boards: [
-      { board_key: 'classic', ring_size: 3, start_bonus: 200 },
-      { board_key: 'back_to_the_future', ring_size: 2, start_bonus: 200 },
+      { board_key: 'classic', ring_size: 3, start_bonus: 200, provisional: false },
+      { board_key: 'back_to_the_future', ring_size: 2, start_bonus: 200, provisional: false },
     ],
     spaces, positions,
     my_position: { board_key: 'classic', space_index: 1 },

@@ -31,7 +31,7 @@ import { LateJoinTray } from '../components/active/LateJoinTray';
 import { PropertiesSummary } from '../components/active/PropertiesSummary';
 import { PropertyBoardModal } from '../components/active/PropertyBoardModal';
 import { MovementPanel } from '../components/active/MovementPanel';
-import { BoardModal } from '../components/active/BoardModal';
+import { BoardView } from '../components/active/BoardView';
 import type { BoardKey } from '../lib/activeSnapshot';
 import { PurchaseRequestsTray, LeaveRequestsTray, BankruptcyRequestsTray } from '../components/active/HostRequestTrays';
 import { BankruptcyDialog } from '../components/active/BankruptcyDialog';
@@ -321,7 +321,8 @@ export function ActiveGameScreen({
               <HostCorrections snap={snap} busy={busy}
                 onAdjust={(t, b, reason) => void run(() => hostAdjustBalance(gameId, t, b, reason, newRequestId(), ver))}
                 onSetTurn={(t, reason) => void run(() => hostSetTurn(gameId, t, reason, newRequestId(), ver))}
-                onHostTransfer={(f, t, amt, reason) => void run(() => hostPlayerTransfer(gameId, f, t, amt, reason, newRequestId(), ver))} />
+                onHostTransfer={(f, t, amt, reason) => void run(() => hostPlayerTransfer(gameId, f, t, amt, reason, newRequestId(), ver))}
+                onSetPosition={doSetPosition} />
             )}
           </fieldset>
           <section aria-label="Movimientos" className="flex flex-col gap-2 rounded-xl border border-slate-700 p-4">
@@ -489,12 +490,10 @@ export function ActiveGameScreen({
       )}
 
       {boardViewOpen && (
-        <BoardModal
+        <BoardView
           snap={snap}
-          icons={icons}
-          busy={busy}
           onClose={() => setBoardViewOpen(false)}
-          onSetPosition={doSetPosition}
+          onRequestPurchase={(p) => { setBoardViewOpen(false); setBuyTarget(p); }}
         />
       )}
     </section>

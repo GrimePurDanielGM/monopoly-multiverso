@@ -138,9 +138,25 @@ export function propertyStatus(p: ActiveProperty, snap: ActiveSnapshot): Propert
   return 'available';
 }
 
-/** ¿Puedo SOLICITAR la compra ahora? (en curso, comprable, libre, sin subasta, no espectador). */
+/** ¿Estoy (mi ficha) en la casilla de esta propiedad? */
+export function amOnProperty(snap: ActiveSnapshot, propertyRef: string): boolean {
+  return snap.current_space?.property_ref === propertyRef;
+}
+
+/** ¿Puedo SOLICITAR la compra ahora? Solo la propiedad en la que he caído, en mi turno, activo,
+ *  en curso, comprable, libre y sin subasta. */
 export function canRequestPurchase(p: ActiveProperty, snap: ActiveSnapshot): boolean {
-  return canActAsMe(snap) && p.is_buyable && p.owner_ref === null && !p.in_auction;
+  return canActAsMe(snap) && snap.me.is_current && amOnProperty(snap, p.property_ref)
+    && p.is_buyable && p.owner_ref === null && !p.in_auction;
+}
+
+/** Explicación breve de por qué (no) puedo solicitar comprar una propiedad disponible. null = sí puedo. */
+export function purchaseBlockReason(p: ActiveProperty, snap: ActiveSnapshot): string | null {
+  if (canRequestPurchase(p, snap)) return null;
+  if (p.owner_ref !== null || p.in_auction || !p.is_buyable) return null; // no es "disponible" comprable
+  if (snap.me.is_spectator) return 'Estás en bancarrota: no puedes comprar.';
+  if (!isRunning(snap)) return 'La partida no está en curso.';
+  return 'Solo puedes solicitar comprar la propiedad en la que has caído durante tu turno.';
 }
 
 /** ¿Puedo pagar el alquiler de esta propiedad? (en curso, de otro jugador, con alquiler y saldo). */
@@ -214,10 +230,10 @@ export function canHostSetPosition(snap: ActiveSnapshot): boolean {
   return snap.me.is_host && isRunning(snap);
 }
 
-/** Tamaño del anillo de un tablero (según el snapshot). */
+/** Tamaño del anillo de un tablero (según el snapshot). Defensivo ante snapshots sin tablero. */
 export function ringSize(snap: ActiveSnapshot, board: BoardKey): number {
-  return snap.boards.find((b) => b.board_key === board)?.ring_size
-    ?? snap.spaces.filter((s) => s.board_key === board).length;
+  return (snap.boards ?? []).find((b) => b.board_key === board)?.ring_size
+    ?? (snap.spaces ?? []).filter((s) => s.board_key === board).length;
 }
 
 /** Casilla resultante de avanzar `steps` desde `from` en un anillo de tamaño `ring` (espejo del backend). */

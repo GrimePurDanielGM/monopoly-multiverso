@@ -32,7 +32,8 @@ function makeSnap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     leave_requests: [],
     bankruptcy_requests: [],
     late_join_requests: [],
-    boards: [], spaces: [], positions: [], my_position: null, current_space: null, last_roll: null, last_move: null,
+    boards: [{ board_key: 'classic', ring_size: 40, start_bonus: 200, provisional: false }, { board_key: 'back_to_the_future', ring_size: 29, start_bonus: 200, provisional: true }],
+    spaces: [], positions: [], my_position: null, current_space: null, last_roll: null, last_move: null,
     runtime_status: 'running',
     control: { paused_by_ref: null, finished_by_ref: null, reason: null },
     runtime_version: 7,
@@ -88,6 +89,19 @@ describe('PlayerBalances', () => {
     expect(screen.getByRole('button', { name: 'Abandonar partida' })).toBeDisabled();
   });
 
+  it('privacidad: muestra mi saldo y oculta el ajeno (balance null → "Saldo oculto")', () => {
+    // me = P-BBBB (saldo 1000); el otro (P-AAAA) llega con balance null.
+    const s = makeSnap({
+      players: [
+        { public_ref: 'P-AAAA', display_name: 'Ana', token_id: 'cat', balance: null, is_current: true, status: 'active' },
+        { public_ref: 'P-BBBB', display_name: 'Beto', token_id: 'boot', balance: 1000, is_current: false, status: 'active' },
+      ],
+    });
+    render(<PlayerBalances snap={s} icons={{}} />);
+    expect(screen.getByText('Saldo oculto')).toBeInTheDocument();
+    expect(screen.getByText(/1\.000/)).toBeInTheDocument(); // mi saldo sí
+  });
+
   it('muestra cuántas propiedades tiene cada jugador', () => {
     const snap = makeSnap({
       properties: [
@@ -132,7 +146,7 @@ describe('BankPanel', () => {
 describe('HostCorrections', () => {
   it('ajustar saldo exige motivo (deshabilitado sin él)', () => {
     const onAdjust = vi.fn();
-    render(<HostCorrections snap={makeSnap()} busy={false} onAdjust={onAdjust} onSetTurn={vi.fn()} onHostTransfer={vi.fn()} />);
+    render(<HostCorrections snap={makeSnap()} busy={false} onAdjust={onAdjust} onSetTurn={vi.fn()} onHostTransfer={vi.fn()} onSetPosition={vi.fn()} />);
     const balInput = screen.getByLabelText('Nuevo saldo');
     fireEvent.change(balInput, { target: { value: '9000' } });
     const btn = screen.getByRole('button', { name: 'Ajustar saldo' });
@@ -141,6 +155,17 @@ describe('HostCorrections', () => {
     fireEvent.change(reason, { target: { value: 'corrección válida' } });
     fireEvent.click(btn);
     expect(onAdjust).toHaveBeenCalledWith('P-AAAA', 9000, 'corrección válida');
+  });
+
+  it('corregir posición: tablero + casilla + motivo → onSetPosition', () => {
+    const onSetPosition = vi.fn();
+    render(<HostCorrections snap={makeSnap()} busy={false} onAdjust={vi.fn()} onSetTurn={vi.fn()} onHostTransfer={vi.fn()} onSetPosition={onSetPosition} />);
+    fireEvent.change(screen.getByLabelText(/Casilla/), { target: { value: '5' } });
+    // El formulario de posición es el último; su "Motivo" es el último de la lista.
+    const posReasons = screen.getAllByLabelText('Motivo (obligatorio)');
+    fireEvent.change(posReasons[posReasons.length - 1]!, { target: { value: 'recolocar ficha' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Actualizar posición' }));
+    expect(onSetPosition).toHaveBeenCalledWith('P-AAAA', 'classic', 5, 'recolocar ficha');
   });
 });
 
@@ -248,13 +273,24 @@ describe('PropertyBoardModal (tablero de propiedades)', () => {
     expect(screen.getByText('Regreso al futuro')).toBeInTheDocument();
   });
 
-  it('disponible: "Solicitar compra" llama onRequestPurchase', () => {
+  it('disponible y estoy en la casilla en mi turno: "Solicitar compra" llama onRequestPurchase', () => {
     const onReq = vi.fn();
-    render0(withProps([prop()]), { onRequestPurchase: onReq });
+    // Fase 4: solo se ofrece comprar la propiedad en la que estoy, en mi turno.
+    const s = withProps([prop()], {
+      me: { public_ref: 'P-BBBB', is_host: true, balance: 1000, is_current: true, is_spectator: false },
+      current_space: { space_ref: 'sp', board_key: 'classic', space_index: 1, name: 'Mediterráneo', space_type: 'property', property_ref: 'cl-marron-1', is_start: false },
+    });
+    render0(s, { onRequestPurchase: onReq });
     const btn = screen.getByRole('button', { name: 'Solicitar compra' });
     expect(btn).toBeEnabled();
     fireEvent.click(btn);
     expect(onReq).toHaveBeenCalledTimes(1);
+  });
+
+  it('disponible pero NO estoy en la casilla: no ofrece "Solicitar compra" (explica por qué)', () => {
+    render0(withProps([prop()]));  // me no es current y current_space null
+    expect(screen.queryByRole('button', { name: 'Solicitar compra' })).toBeNull();
+    expect(screen.getByText(/Solo puedes solicitar comprar la propiedad en la que has caído/)).toBeInTheDocument();
   });
 
   it('mía: muestra "Tuya" y no ofrece comprar/pagar', () => {

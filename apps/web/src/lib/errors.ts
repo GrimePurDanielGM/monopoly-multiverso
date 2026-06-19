@@ -92,6 +92,7 @@ const MESSAGES: Record<string, string> = {
   INVALID_BANKRUPTCY_KIND: 'Tipo de bancarrota no válido.',
   // Fase 4 — movimiento y tablero
   INVALID_STEPS: 'El número de casillas debe estar entre 1 y 12.',
+  NOT_ON_PROPERTY: 'Solo puedes solicitar comprar la propiedad en la que has caído durante tu turno.',
   NO_POSITION: 'Ese jugador todavía no tiene posición en el tablero.',
   INVALID_SPACE: 'Esa casilla no existe en el tablero.',
   INVALID_BOARD: 'Ese tablero no es válido.',

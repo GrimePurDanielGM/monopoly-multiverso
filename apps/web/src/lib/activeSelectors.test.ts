@@ -97,18 +97,29 @@ describe('propiedades (Fase 3)', () => {
     expect(propertyStatus(s.properties[3]!, s)).toBe('not_buyable');
   });
 
-  it('canRequestPurchase: libre, comprable, sin subasta, en curso y no espectador (sin gate de saldo)', () => {
-    const ok = withProps([prop({ price: 60 })]);
+  it('canRequestPurchase: mi turno + en esa casilla + libre/comprable/sin subasta/en curso (Fase 4)', () => {
+    // Contexto "estoy en la casilla de cl-marron-1 y es mi turno".
+    const here = (ref = 'cl-marron-1'): Partial<ActiveSnapshot> => ({
+      me: { ...snap.me, is_current: true },
+      current_space: { space_ref: 'sp', board_key: 'classic', space_index: 1, name: 'x', space_type: 'property', property_ref: ref, is_start: false },
+    });
+    const ok = withProps([prop({ price: 60 })], here());
     expect(canRequestPurchase(ok.properties[0]!, ok)).toBe(true);
-    const caro = withProps([prop({ price: 5000 })]);                      // solicitar no exige saldo
+    const caro = withProps([prop({ price: 5000 })], here());              // solicitar no exige saldo
     expect(canRequestPurchase(caro.properties[0]!, caro)).toBe(true);
-    const ocupada = withProps([prop({ owner_ref: 'P-AAAA' })]);
+    // No es mi turno → no puedo (aunque esté en la casilla).
+    const noTurno = withProps([prop({ price: 60 })], { ...here(), me: { ...snap.me, is_current: false } });
+    expect(canRequestPurchase(noTurno.properties[0]!, noTurno)).toBe(false);
+    // Mi turno pero NO en esa casilla → no puedo.
+    const fuera = withProps([prop({ price: 60 })], { me: { ...snap.me, is_current: true }, current_space: null });
+    expect(canRequestPurchase(fuera.properties[0]!, fuera)).toBe(false);
+    const ocupada = withProps([prop({ owner_ref: 'P-AAAA' })], here());
     expect(canRequestPurchase(ocupada.properties[0]!, ocupada)).toBe(false);
-    const subasta = withProps([prop({ in_auction: true })]);
+    const subasta = withProps([prop({ in_auction: true })], here());
     expect(canRequestPurchase(subasta.properties[0]!, subasta)).toBe(false);
-    const pausada = withProps([prop({ price: 60 })], { runtime_status: 'paused' });
+    const pausada = withProps([prop({ price: 60 })], { ...here(), runtime_status: 'paused' });
     expect(canRequestPurchase(pausada.properties[0]!, pausada)).toBe(false);
-    const espectador = withProps([prop({ price: 60 })], { me: { ...snap.me, is_spectator: true } });
+    const espectador = withProps([prop({ price: 60 })], { ...here(), me: { ...snap.me, is_current: true, is_spectator: true } });
     expect(canRequestPurchase(espectador.properties[0]!, espectador)).toBe(false);
   });
 

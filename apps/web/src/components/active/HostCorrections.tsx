@@ -1,23 +1,32 @@
 import { useState } from 'react';
-import type { ActiveSnapshot } from '../../lib/activeSnapshot';
-import { parseAmount, parseBalance, isValidReason } from '../../lib/activeSelectors';
+import type { ActiveSnapshot, BoardKey } from '../../lib/activeSnapshot';
+import { parseAmount, parseBalance, isValidReason, ringSize, BOARD_LABEL } from '../../lib/activeSelectors';
 
 /** Correcciones del anfitrión (auditadas, motivo obligatorio): ajustar saldo, fijar turno,
- *  y transferir en nombre de otro jugador. */
+ *  transferir en nombre de otro jugador y corregir posición (tablero + casilla). */
 export function HostCorrections({
   snap,
   busy,
   onAdjust,
   onSetTurn,
   onHostTransfer,
+  onSetPosition,
 }: {
   snap: ActiveSnapshot;
   busy: boolean;
   onAdjust: (targetRef: string, newBalance: number, reason: string) => void;
   onSetTurn: (targetRef: string, reason: string) => void;
   onHostTransfer: (fromRef: string, toRef: string, amount: number, reason: string) => void;
+  onSetPosition: (playerRef: string, board: BoardKey, index: number, reason: string) => void;
 }) {
   const refs = snap.players;
+  // Corregir posición
+  const [pRef, setPRef] = useState(refs[0]?.public_ref ?? '');
+  const [pBoard, setPBoard] = useState<BoardKey>('classic');
+  const [pIndex, setPIndex] = useState(0);
+  const [pReason, setPReason] = useState('');
+  const pMax = ringSize(snap, pBoard) - 1;
+  const pOk = !!pRef && pIndex >= 0 && pIndex <= pMax && isValidReason(pReason) && !busy;
   // Ajuste de saldo
   const [aRef, setARef] = useState(refs[0]?.public_ref ?? '');
   const [aBal, setABal] = useState('');
@@ -39,7 +48,7 @@ export function HostCorrections({
   const sel = (value: string, set: (v: string) => void, label: string) => (
     <label className="flex flex-col gap-1 text-sm">
       <span className="text-slate-400">{label}</span>
-      <select value={value} onChange={(e) => set(e.target.value)} className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base">
+      <select aria-label={label} value={value} onChange={(e) => set(e.target.value)} className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base">
         {refs.map((p) => (<option key={p.public_ref} value={p.public_ref}>{p.display_name}</option>))}
       </select>
     </label>
@@ -97,6 +106,31 @@ export function HostCorrections({
         {reasonInput(hReason, setHReason)}
         <button type="submit" disabled={!hOk} className="min-h-[44px] rounded-xl bg-amber-600 px-4 text-sm font-semibold disabled:opacity-40">
           {busy ? 'Aplicando…' : 'Transferir (corrección)'}
+        </button>
+      </form>
+
+      <form className="mt-4 flex flex-col gap-2 border-t border-slate-800 pt-3"
+        onSubmit={(e) => { e.preventDefault(); if (pOk) onSetPosition(pRef, pBoard, pIndex, pReason.trim()); }}>
+        <p className="text-sm font-medium text-slate-300">Corregir posición de jugador</p>
+        <p className="text-xs text-slate-500">No cobra salida, no compra ni paga alquiler y no avanza turno; solo coloca la ficha.</p>
+        {sel(pRef, setPRef, 'Jugador')}
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-slate-400">Tablero</span>
+          <select aria-label="Tablero" value={pBoard} onChange={(e) => { setPBoard(e.target.value as BoardKey); setPIndex(0); }}
+            className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base">
+            <option value="classic">{BOARD_LABEL.classic}</option>
+            <option value="back_to_the_future">{BOARD_LABEL.back_to_the_future}</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-slate-400">Casilla (0–{pMax})</span>
+          <input value={pIndex} onChange={(e) => setPIndex(Math.max(0, Math.min(pMax, Number(e.target.value) || 0)))}
+            inputMode="numeric" type="number" min={0} max={pMax}
+            className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base" />
+        </label>
+        {reasonInput(pReason, setPReason)}
+        <button type="submit" disabled={!pOk} className="min-h-[44px] rounded-xl bg-amber-600 px-4 text-sm font-semibold disabled:opacity-40">
+          {busy ? 'Aplicando…' : 'Actualizar posición'}
         </button>
       </form>
     </details>

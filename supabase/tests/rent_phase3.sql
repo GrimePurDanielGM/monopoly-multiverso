@@ -15,6 +15,17 @@ begin insert into _t values (p_name,p_ok) on conflict (name) do update set ok=ex
   raise notice '%: %', case when p_ok then 'PASS' else 'FAIL' end, p_name; end $f$;
 create or replace function pg_temp._ctx(k text) returns text language sql as $f$ select v from _ctx where k=$1 $f$;
 create or replace function pg_temp._ver(gid uuid) returns bigint language sql security definer as $f$ select runtime_version from public.game_runtime where game_id=gid $f$;
+-- Fase 4: solicitar compra exige ser el jugador actual y estar en la casilla de esa propiedad.
+create or replace function pg_temp._onprop(gid uuid, hostuid text, requ_uid text, prop text) returns void language plpgsql as $f$
+declare bk text; ix int; ref text; begin
+  perform pg_temp._as_admin();
+  select board_key, space_index into bk, ix from public.board_spaces where property_ref=prop and active limit 1;
+  select public_ref into ref from public.players where auth_uid=requ_uid::uuid and game_id=gid;
+  perform pg_temp._as_user(hostuid);
+  perform host_set_turn(gid, ref, 'turno para compra (test)', gen_random_uuid(), pg_temp._ver(gid));
+  perform host_set_player_position(gid, ref, bk, ix, 'situar en la casilla (test)', gen_random_uuid(), pg_temp._ver(gid));
+  perform pg_temp._as_admin();
+end $f$;
 
 create or replace function pg_temp._build() returns void language plpgsql as $f$
 declare host text:='ac000000-0000-0000-0000-0000000000a1'; j1 text:='ac000000-0000-0000-0000-000000000001';
@@ -36,6 +47,7 @@ do $$ begin perform pg_temp._build(); end $$;
 
 -- p1 adquiere cl-bailen (260, alquiler 22) vía aprobación del anfitrión.
 do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host'); p1u text:=pg_temp._ctx('p1_uid'); rref text; begin
+  perform pg_temp._onprop(gid, host, p1u, 'cl-bailen');
   perform pg_temp._as_user(p1u); perform request_property_purchase(gid,'cl-bailen',gen_random_uuid());
   perform pg_temp._as_admin(); select public_ref into rref from property_purchase_requests where game_id=gid and property_ref='cl-bailen' and status='pending';
   perform pg_temp._as_user(host); perform resolve_property_purchase(rref,true,pg_temp._ver(gid)); perform pg_temp._as_admin();
@@ -61,6 +73,7 @@ end $$;
 
 -- R3) utility sin alquiler por dados en esta fase: pay_rent no aplica (NO_RENT_DUE) aunque tenga dueño.
 do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host'); p1u text:=pg_temp._ctx('p1_uid'); rref text; ok boolean:=false; begin
+  perform pg_temp._onprop(gid, host, p1u, 'cl-cia-aguas');
   perform pg_temp._as_user(p1u); perform request_property_purchase(gid,'cl-cia-aguas',gen_random_uuid());
   perform pg_temp._as_admin(); select public_ref into rref from property_purchase_requests where game_id=gid and property_ref='cl-cia-aguas' and status='pending';
   perform pg_temp._as_user(host); perform resolve_property_purchase(rref,true,pg_temp._ver(gid));

@@ -1,7 +1,7 @@
 import type { ActiveSnapshot } from '../../lib/activeSnapshot';
 import { formatMoney, propertyCountByPlayer, propertiesOf } from '../../lib/activeSelectors';
 
-/** Lista de jugadores con saldo visible para todos, ficha, indicador de turno y "Tú".
+/** Lista de jugadores. Por privacidad, solo se muestra MI saldo; los ajenos aparecen ocultos.
  *  Acciones de salida por fila: "Abandonar partida" (mi propia fila, si no soy anfitrión)
  *  y "Sacar jugador" (solo el anfitrión, sobre otros jugadores). No se muestran a no-anfitriones
  *  sobre otros, ni sobre la fila del anfitrión (no puede salir sin dejar la partida sin control). */
@@ -50,7 +50,9 @@ export function PlayerBalances({
                 {nProps} {nProps === 1 ? 'propiedad' : 'propiedades'}
               </span>
             )}
-            <span className="text-sm font-semibold tabular-nums">{formatMoney(p.balance)}</span>
+            {p.balance === null
+              ? <span className="text-xs italic text-slate-500" title="Solo ves tu propio saldo">Saldo oculto</span>
+              : <span className="text-sm font-semibold tabular-nums">{formatMoney(p.balance)}</span>}
             {canLeave && (
               <button
                 type="button"

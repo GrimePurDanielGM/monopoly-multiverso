@@ -23,12 +23,30 @@ do $$ declare n int; begin
   perform pg_temp._rec('B2) una única salida por tablero', n=2);
 end $$;
 
--- B3) ring = 1 salida + nº de propiedades del catálogo (classic=29, bf=29).
-do $$ declare rc int; rb int; pc int; pb int; begin
+-- B3) Classic = anillo real de 40 casillas (orden físico); RdF = derivado provisional (1 + nº props).
+do $$ declare rc int; rb int; pb int; begin
   rc := public._p4_ring_size('classic'); rb := public._p4_ring_size('back_to_the_future');
-  select count(*) into pc from public.property_catalog where board_key='classic' and active;
   select count(*) into pb from public.property_catalog where board_key='back_to_the_future' and active;
-  perform pg_temp._rec('B3) ring = 1 + nº propiedades (classic y bf)', rc = pc+1 and rb = pb+1);
+  perform pg_temp._rec('B3) Classic=40 casillas; RdF=derivado (1 + nº props)', rc = 40 and rb = pb+1);
+end $$;
+
+-- B3b) Classic: índices clave del orden real (no debe confundir Ronda de Valencia con Bilbao).
+do $$ declare ok boolean; begin
+  select (select property_ref from public.board_spaces where board_key='classic' and space_index=1)='cl-ronda-valencia'
+     and (select name from public.board_spaces where board_key='classic' and space_index=2)='Caja de Comunidad'
+     and (select property_ref from public.board_spaces where board_key='classic' and space_index=11)='cl-bilbao'
+     and (select space_type from public.board_spaces where board_key='classic' and space_index=10)='jail'
+     and (select space_type from public.board_spaces where board_key='classic' and space_index=30)='go_to_jail'
+     and (select space_type from public.board_spaces where board_key='classic' and space_index=20)='parking'
+     and (select property_ref from public.board_spaces where board_key='classic' and space_index=39)='cl-prado'
+    into ok;
+  perform pg_temp._rec('B3b) Classic: orden real (1 Ronda, 2 Comunidad, 11 Bilbao, 10 cárcel, 30 ir-cárcel, 39 Prado)', ok);
+end $$;
+
+-- B3c) RdF marcado como provisional (orden por confirmar).
+do $$ declare allprov boolean; begin
+  select bool_and(provisional) into allprov from public.board_spaces where board_key='back_to_the_future' and active;
+  perform pg_temp._rec('B3c) RdF marcado provisional', allprov);
 end $$;
 
 -- B4) cada propiedad COMPRABLE tiene exactamente una casilla 'property' que la referencia.

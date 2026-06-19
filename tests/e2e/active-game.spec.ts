@@ -95,7 +95,8 @@ test('partida activa: banco, turnos, correcciones, reversión y sincronización'
   await adjustForm.getByLabel('Nuevo saldo').fill('9000');
   await adjustForm.getByLabel('Motivo (obligatorio)').fill('ajuste de prueba');
   await adjustForm.getByRole('button', { name: 'Ajustar saldo' }).click();
-  await expect(host.getByText('9.000 ₥').first()).toBeVisible({ timeout: 20_000 });
+  // Privacidad (Fase 4): el anfitrión NO ve saldos ajenos; George lo verifica en su propia vista.
+  await expect(pages[4]!.getByText('9.000 ₥').first()).toBeVisible({ timeout: 30_000 });
 
   // 10) Revertir el pago del banco a Marty (vuelve a 3.000).
   await host.getByRole('button', { name: 'Revertir' }).first().click();

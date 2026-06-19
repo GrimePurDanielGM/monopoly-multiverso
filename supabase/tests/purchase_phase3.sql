@@ -22,6 +22,18 @@ create or replace function pg_temp._reconciles(p_gid uuid) returns boolean langu
   select not exists (select 1 from public.player_balances b where b.game_id=p_gid and b.balance <> (
     coalesce((select sum(amount) from public.ledger where game_id=p_gid and to_ref=b.player_ref),0)
     - coalesce((select sum(amount) from public.ledger where game_id=p_gid and from_ref=b.player_ref),0))); $f$;
+-- Fase 4: solicitar compra exige ser el jugador actual Y estar en la casilla de esa propiedad.
+-- Helper de test: el anfitrión pone el turno al solicitante y lo sitúa en la casilla de la propiedad.
+create or replace function pg_temp._onprop(gid uuid, hostuid text, requ_uid text, prop text) returns void language plpgsql as $f$
+declare bk text; ix int; ref text; begin
+  perform pg_temp._as_admin();
+  select board_key, space_index into bk, ix from public.board_spaces where property_ref=prop and active limit 1;
+  select public_ref into ref from public.players where auth_uid=requ_uid::uuid and game_id=gid;
+  perform pg_temp._as_user(hostuid);
+  perform host_set_turn(gid, ref, 'turno para compra (test)', gen_random_uuid(), pg_temp._ver(gid));
+  perform host_set_player_position(gid, ref, bk, ix, 'situar en la casilla (test)', gen_random_uuid(), pg_temp._ver(gid));
+  perform pg_temp._as_admin();
+end $f$;
 
 create or replace function pg_temp._build3() returns void language plpgsql as $f$
 declare host text:='aa000000-0000-0000-0000-0000000000a1';
@@ -56,6 +68,7 @@ end $$;
 -- A2) solicitar compra no cambia saldo ni propietario; el anfitrión la ve.
 do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; p1 text:=pg_temp._ctx('p1'); p1u text:=pg_temp._ctx('p1_uid');
             code text:=pg_temp._ctx('code'); host text:=pg_temp._ctx('host'); bal bigint; own text; snap jsonb; seen boolean; begin
+  perform pg_temp._onprop(gid, host, p1u, 'cl-ronda-valencia');
   perform pg_temp._as_user(p1u); perform request_property_purchase(gid,'cl-ronda-valencia',gen_random_uuid());
   perform pg_temp._as_admin(); select balance into bal from player_balances where game_id=gid and player_ref=p1;
   own := pg_temp._owner(gid,'cl-ronda-valencia');
@@ -78,17 +91,20 @@ do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; p1 text:=pg_temp._ctx('p1'); 
 end $$;
 
 -- A4) no-host no puede aprobar; propiedad ocupada no se puede volver a solicitar.
-do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; p2u text:=pg_temp._ctx('p2_uid'); ok1 boolean:=false; ok2 boolean:=false; rref text; begin
+do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host'); p2u text:=pg_temp._ctx('p2_uid'); ok1 boolean:=false; ok2 boolean:=false; rref text; begin
   perform pg_temp._as_admin(); select public_ref into rref from property_purchase_requests where game_id=gid and property_ref='cl-ronda-valencia' limit 1;
   perform pg_temp._as_user(p2u);
   begin perform resolve_property_purchase(rref, true, pg_temp._ver(gid)); exception when others then ok1:=(sqlerrm='NOT_HOST'); end;
+  perform pg_temp._onprop(gid, host, p2u, 'cl-ronda-valencia');  -- p2 actual y en la casilla, pero ya está ocupada
+  perform pg_temp._as_user(p2u);
   begin perform request_property_purchase(gid,'cl-ronda-valencia',gen_random_uuid()); exception when others then ok2:=(sqlerrm='PROPERTY_ALREADY_OWNED'); end;
   perform pg_temp._as_admin();
   perform pg_temp._rec('A4) no-host no aprueba (NOT_HOST); ocupada no se solicita (ALREADY_OWNED)', ok1 and ok2);
 end $$;
 
 -- A5) idempotencia: misma request_id de solicitud no duplica.
-do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; p2u text:=pg_temp._ctx('p2_uid'); rid uuid:=gen_random_uuid(); n int; begin
+do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host'); p2u text:=pg_temp._ctx('p2_uid'); rid uuid:=gen_random_uuid(); n int; begin
+  perform pg_temp._onprop(gid, host, p2u, 'cl-alcala');
   perform pg_temp._as_user(p2u);
   perform request_property_purchase(gid,'cl-alcala',rid); perform request_property_purchase(gid,'cl-alcala',rid);
   perform pg_temp._as_admin(); select count(*) into n from property_purchase_requests where game_id=gid and property_ref='cl-alcala' and status='pending';
@@ -117,6 +133,7 @@ end $$;
 do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host'); p1u text:=pg_temp._ctx('p1_uid'); aref text; ok boolean:=false; begin
   perform pg_temp._as_user(host); perform start_property_auction(gid,'cl-gran-via',gen_random_uuid(),pg_temp._ver(gid));
   perform pg_temp._as_admin(); select public_ref into aref from property_auctions where game_id=gid and property_ref='cl-gran-via' and status='active';
+  perform pg_temp._onprop(gid, host, p1u, 'cl-gran-via');  -- p1 actual y en la casilla, pero está en subasta
   perform pg_temp._as_user(p1u);
   begin perform request_property_purchase(gid,'cl-gran-via',gen_random_uuid()); exception when others then ok:=(sqlerrm='PROPERTY_IN_AUCTION'); end;
   -- cancelar deja disponible
