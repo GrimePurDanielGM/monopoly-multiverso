@@ -1,6 +1,25 @@
 # Estado del proyecto — lista viva
 
 ## Fase 4 — Movimiento y tablero (base) · **`Fase 4: COMPLETADA` (pendiente validación manual)**
+- **Corrección ampliada 4 (2026-06-19) — cruce entre tableros (intersecciones), IMPLEMENTADO:** al alcanzar
+  la esquina de **cárcel/solo-visitas con pasos restantes**, el movimiento **se DETIENE y obliga a ELEGIR**
+  destino — ya no avanza solo (antes un 12 desde Salida cruzaba directo a Electricidad sin preguntar). Hay
+  **dos destinos**: **seguir** en el propio tablero (Glorieta de Bilbao en Classic / Autocine Pohatchee en
+  RdF) o **cruzar** al Parking gratuito del otro tablero; **uno es gratis** (la entrada que el guardián NO
+  custodia) y **el otro paga peaje** (donde está el guardián). Pasar por la entrada libre **desplaza** el
+  guardián a custodiarla; pasar por la custodiada **paga el peaje** (ledger `guardian_toll`) y el guardián
+  se queda. La **cárcel/solo-visitas es solo de paso** (no descuenta del número); el **Parking sí cuenta**
+  como casilla de aterrizaje. Modelo: tabla `game_guardians` (posición dinámica del guardián por partida,
+  `own`/`cross`), `game_runtime.pending_junction` (pausa el movimiento a mitad), RPC `resolve_junction`
+  (`0034`/`0035`); `move_player`/`roll_and_move`/`end_turn` rechazan acciones con cruce pendiente
+  (`JUNCTION_PENDING`) y siembran guardianes. El snapshot expone `pending_junction` y `guardians` (`0036`);
+  el frontend muestra el bloque de decisión con los dos destinos (gratis/peaje) y oculta tirar/mover hasta
+  resolver. **Fix clave:** el parser del snapshot rechazaba el `kind` `guardian_toll` (ledger nuevo) →
+  `SNAPSHOT_INVALID` tras cruzar; añadido a `LedgerKind`/`KINDS`/`kindLabel`. Suites: SQL `junction_phase4`
+  (6/6: detención, `JUNCTION_PENDING`, seguir-gratis, cruzar-libre, cruzar-con-peaje, `NO_PENDING_JUNCTION`);
+  unit `movement` (decisión de cruce: dos destinos, no deja tirar, `onResolveJunction`) y parser
+  (`guardian_toll`); E2E `junction.spec` (cruce completo Chromium). Aplicado a dev (`0034`,`0035`,`0036`).
+  **No se avanza a Fase 5.**
 - **Corrección ampliada 3 (2026-06-19) — montaje en cruz + guardianes:** los dos tableros se montan
   DESPLAZADOS, haciendo coincidir esquinas opuestas (`0032`): **Cárcel/Solo-visitas del Classic ↔ Parking del
   RdF** y **Parking del Classic ↔ Cárcel/Solo-visitas del RdF** (antes Parking↔Parking; corregido). Cada
@@ -51,8 +70,9 @@
 - **Alcance:** sistema base de posiciones y movimiento que conecta el núcleo económico con la posición
   real. Catálogo de casillas, posición por jugador, mover manual, tirar dados, paso por salida (cobro),
   caer en propiedad (disponible/mía/de otro/no comprable), visualización de tablero, auditoría e
-  historial, sincronización multiusuario. **Fuera de alcance (diferido):** cartas, cárcel, parking,
-  guardianes, ruleta, casas, hoteles, hipotecas, intersecciones de dos tableros.
+  historial, sincronización multiusuario, guardianes y **cruce/intersecciones entre los dos tableros**
+  (decisión en la cárcel-guardián con peaje; ver Corrección 4). **Fuera de alcance (diferido):** cartas,
+  cárcel (reclusión), parking (premio), ruleta, casas, hoteles, hipotecas.
 - **Modelo de tablero (`0025`):** tabla `board_spaces` (catálogo global, deny-all) **derivada del catálogo
   real** sin inventar topología: anillo por tablero = 1 casilla `start` (Salida, índice 0) + 1 casilla
   `property` por propiedad del catálogo en orden de `sort_order` (Clásico 29, RdF 29; **58 casillas**). El

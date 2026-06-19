@@ -57,12 +57,14 @@ do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; cur text:=pg_temp._cur(gid); 
 end $$;
 
 -- M3) límites: 0, negativo y >12 rechazados (INVALID_STEPS); 1 y 12 válidos.
-do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; cur text; uid text; ok0 boolean:=false; okn boolean:=false; ok13 boolean:=false; ok1 boolean:=false; ok12 boolean:=false; old int; begin
+-- (Se coloca en una zona sin la bifurcación de la cárcel-guardián para probar el avance simple.)
+do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host'); cur text; uid text; ok0 boolean:=false; okn boolean:=false; ok13 boolean:=false; ok1 boolean:=false; ok12 boolean:=false; old int; begin
   cur:=pg_temp._cur(gid); uid:=pg_temp._uid(gid,cur);
   perform pg_temp._as_user(uid);
   begin perform move_player(gid,0,gen_random_uuid(),pg_temp._ver(gid)); exception when others then ok0:=(sqlerrm='INVALID_STEPS'); end;
   begin perform move_player(gid,-3,gen_random_uuid(),pg_temp._ver(gid)); exception when others then okn:=(sqlerrm='INVALID_STEPS'); end;
   begin perform move_player(gid,13,gen_random_uuid(),pg_temp._ver(gid)); exception when others then ok13:=(sqlerrm='INVALID_STEPS'); end;
+  perform pg_temp._as_user(host); perform host_set_player_position(gid,cur,'classic',21,'situar lejos cárcel',gen_random_uuid(),pg_temp._ver(gid));
   perform pg_temp._as_admin(); old:=pg_temp._pos(gid,cur);
   perform pg_temp._as_user(uid); perform move_player(gid,1,gen_random_uuid(),pg_temp._ver(gid));
   perform pg_temp._as_admin(); ok1:=(pg_temp._pos(gid,cur)=(old+1)%public._p4_ring_size('classic'));

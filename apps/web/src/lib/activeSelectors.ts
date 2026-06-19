@@ -100,6 +100,7 @@ const KIND_LABEL: Record<LedgerKind, string> = {
   bankruptcy_cash_to_bank: 'Bancarrota: efectivo a la banca',
   bankruptcy_cash_to_player: 'Bancarrota: efectivo al acreedor',
   pass_start_bonus: 'Bonus por pasar por salida',
+  guardian_toll: 'Peaje del guardián',
 };
 export function kindLabel(kind: LedgerKind): string {
   return KIND_LABEL[kind];
@@ -267,6 +268,28 @@ export function spacesByBoard(snap: ActiveSnapshot): { board: BoardKey; label: s
   const order: BoardKey[] = [];
   for (const s of snap.spaces) if (!order.includes(s.board_key)) order.push(s.board_key);
   return order.map((board) => ({ board, label: BOARD_LABEL[board] ?? board, items: spacesOfBoard(snap, board) }));
+}
+
+export interface JunctionOption { dir: 'own' | 'cross'; board: BoardKey; name: string; guarded: boolean; toll: number; }
+export interface JunctionChoice { board: BoardKey; remaining: number; own: JunctionOption; cross: JunctionOption; }
+
+/** Si el jugador local tiene una decisión de cruce pendiente, devuelve los dos destinos (seguir/cruzar),
+ *  cuál está custodiado (peaje) y cuál es libre. null si no hay decisión pendiente para mí. */
+export function junctionChoice(snap: ActiveSnapshot): JunctionChoice | null {
+  const pj = snap.pending_junction;
+  if (!pj || pj.player_ref !== snap.me.public_ref) return null;
+  const jail = snap.spaces.find((s) => s.board_key === pj.board_key && s.guardian && s.space_index === pj.junction_index);
+  if (!jail || !jail.links_to_board || jail.links_to_index == null) return null;
+  const guards = snap.guardians.find((g) => g.board_key === pj.board_key)?.guards ?? 'cross';
+  const toll = jail.guardian_toll ?? 0;
+  const nameAt = (b: BoardKey, idx: number): string =>
+    snap.spaces.find((s) => s.board_key === b && s.space_index === idx)?.name ?? `#${idx}`;
+  return {
+    board: pj.board_key,
+    remaining: pj.remaining,
+    own: { dir: 'own', board: pj.board_key, name: nameAt(pj.board_key, pj.junction_index + 1), guarded: guards === 'own', toll },
+    cross: { dir: 'cross', board: jail.links_to_board, name: nameAt(jail.links_to_board, jail.links_to_index), guarded: guards === 'cross', toll },
+  };
 }
 
 /** La propiedad sobre la que está la ficha del jugador local (o null si la casilla no es propiedad). */

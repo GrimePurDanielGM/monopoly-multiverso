@@ -7,7 +7,7 @@ import {
   requestPropertyPurchase, resolvePropertyPurchase, payRent,
   startPropertyAuction, placePropertyBid, closePropertyAuction, cancelPropertyAuction,
   requestBankruptcy, resolveBankruptcy,
-  movePlayer, rollAndMove, hostSetPlayerPosition,
+  movePlayer, rollAndMove, hostSetPlayerPosition, resolveJunction,
   type ApiResult, type ExitResolution, type BankruptcyKind,
 } from '../lib/api';
 import { useActiveStore } from '../store/active';
@@ -204,6 +204,9 @@ export function ActiveGameScreen({
   const doMoveManual = useCallback((steps: number) => {
     void run(() => movePlayer(gameId, steps, newRequestId(), snap?.runtime_version ?? 0));
   }, [gameId, snap?.runtime_version, run]);
+  const doResolveJunction = useCallback((dir: 'own' | 'cross') => {
+    void run(() => resolveJunction(gameId, dir, newRequestId(), snap?.runtime_version ?? 0));
+  }, [gameId, snap?.runtime_version, run]);
   const doSetPosition = useCallback((ref: string, board: BoardKey, index: number, reason: string) => {
     void run(() => hostSetPlayerPosition(gameId, ref, board, index, reason, newRequestId(), snap?.runtime_version ?? 0));
   }, [gameId, snap?.runtime_version, run]);
@@ -284,6 +287,7 @@ export function ActiveGameScreen({
             busy={busy}
             onRoll={doRoll}
             onMoveManual={doMoveManual}
+            onResolveJunction={doResolveJunction}
             onOpenBoard={() => setBoardViewOpen(true)}
             onRequestPurchase={(p) => setBuyTarget(p)}
             onPayRent={(p) => setRentTarget(p)}

@@ -175,14 +175,20 @@ export function BoardView({
                 {!selProp && sel.space_type !== 'start' && !sel.guardian && (
                   <p className="text-xs text-slate-400">Esta casilla se resolverá en una fase posterior.</p>
                 )}
-                {sel.guardian && sel.links_to_board && (
-                  <p className="text-xs text-amber-300">
-                    🛡️ Guardián (peaje {sel.guardian_toll ?? 100}): custodia el paso entre{' '}
-                    <span className="font-semibold">{spaceName(sel.board_key, sel.space_index + 1)}</span> (este tablero) y{' '}
-                    <span className="font-semibold">{spaceName(sel.links_to_board, sel.links_to_index ?? -1)}</span> ({BOARD_LABEL[sel.links_to_board]}).
-                    Pasar por la entrada libre es gratis; por la custodiada, pagas el peaje (cruce en fase posterior).
-                  </p>
-                )}
+                {sel.guardian && sel.links_to_board && (() => {
+                  const guards = snap.guardians.find((g) => g.board_key === sel.board_key)?.guards ?? 'cross';
+                  const ownName = spaceName(sel.board_key, sel.space_index + 1);
+                  const crossName = spaceName(sel.links_to_board!, sel.links_to_index ?? -1);
+                  const guardedName = guards === 'own' ? ownName : crossName;
+                  return (
+                    <p className="text-xs text-amber-300">
+                      🛡️ Guardián (peaje {sel.guardian_toll ?? 100}): custodia el paso entre{' '}
+                      <span className="font-semibold">{ownName}</span> (este tablero) y{' '}
+                      <span className="font-semibold">{crossName}</span> ({BOARD_LABEL[sel.links_to_board!]}).
+                      Ahora bloquea <span className="font-semibold">{guardedName}</span> (peaje); la otra entrada es gratis.
+                    </p>
+                  );
+                })()}
                 <p className="mt-1 text-xs text-slate-400">
                   Jugadores aquí: {selPlayers.length ? selPlayers.map((r) => nameOf[r]).join(', ') : '—'}
                 </p>

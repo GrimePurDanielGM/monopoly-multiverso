@@ -25,7 +25,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     ],
     auctions: [], purchase_requests: [], leave_requests: [], bankruptcy_requests: [], late_join_requests: [],
     boards: [{ board_key: 'classic', ring_size: 2, start_bonus: 200, provisional: false }, { board_key: 'back_to_the_future', ring_size: 1, start_bonus: 200, provisional: false }],
-    spaces, board_links: [], positions,
+    spaces, board_links: [], guardians: [], pending_junction: null, positions,
     my_position: { board_key: 'classic', space_index: 1 },
     current_space: { space_ref: 'cl-1', board_key: 'classic', space_index: 1, name: 'Mediterráneo', space_type: 'property', property_ref: 'cl-1', is_start: false },
     last_roll: { d1: 2, d2: 3, total: 5, player_ref: 'P-1' },
@@ -38,7 +38,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
 }
 
 describe('MovementPanel', () => {
-  const cbs = () => ({ onRoll: vi.fn(), onMoveManual: vi.fn(), onOpenBoard: vi.fn(), onRequestPurchase: vi.fn(), onPayRent: vi.fn() });
+  const cbs = () => ({ onRoll: vi.fn(), onMoveManual: vi.fn(), onOpenBoard: vi.fn(), onRequestPurchase: vi.fn(), onPayRent: vi.fn(), onResolveJunction: vi.fn() });
 
   it('mi turno: "Tirar dados" llama onRoll y muestra la última tirada', () => {
     const c = cbs();
@@ -86,6 +86,26 @@ describe('MovementPanel', () => {
     render(<MovementPanel snap={snap()} busy={false} {...c} />);
     fireEvent.click(screen.getByRole('button', { name: 'Ver tablero' }));
     expect(c.onOpenBoard).toHaveBeenCalledTimes(1);
+  });
+
+  it('decisión de cruce: muestra los dos destinos (libre/peaje) y no deja tirar; elegir llama onResolveJunction', () => {
+    const c = cbs();
+    const s = snap({
+      spaces: [
+        { space_ref: 'cl-10', board_key: 'classic', space_index: 10, name: 'Cárcel / Solo visitas', space_type: 'jail', property_ref: null, is_start: false, guardian: true, links_to_board: 'back_to_the_future', links_to_index: 20, guardian_toll: 100 },
+        { space_ref: 'cl-11', board_key: 'classic', space_index: 11, name: 'Glorieta de Bilbao', space_type: 'property', property_ref: 'cl-bilbao', is_start: false },
+        { space_ref: 'bf-20', board_key: 'back_to_the_future', space_index: 20, name: 'Parking gratuito', space_type: 'parking', property_ref: null, is_start: false },
+      ],
+      guardians: [{ board_key: 'classic', guards: 'cross' }],
+      pending_junction: { player_ref: 'P-1', board_key: 'classic', junction_index: 10, remaining: 2 },
+    });
+    render(<MovementPanel snap={s} busy={false} {...c} />);
+    expect(screen.queryByRole('button', { name: /Tirar dados/ })).toBeNull();           // no se puede tirar
+    expect(screen.getByText(/Has llegado a la cárcel/)).toBeInTheDocument();
+    const seguir = screen.getByRole('button', { name: /Seguir.*Glorieta de Bilbao.*gratis/ });
+    expect(screen.getByRole('button', { name: /Cruzar.*Parking gratuito.*peaje/ })).toBeInTheDocument();
+    fireEvent.click(seguir);
+    expect(c.onResolveJunction).toHaveBeenCalledWith('own');
   });
 });
 

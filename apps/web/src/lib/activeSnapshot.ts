@@ -8,7 +8,7 @@ export type LedgerKind =
   | 'player_exit_to_bank' | 'player_exit_distribution' | 'player_exit_remainder_to_bank'
   | 'property_purchase' | 'rent_payment' | 'property_auction_purchase'
   | 'bankruptcy_cash_to_bank' | 'bankruptcy_cash_to_player'
-  | 'pass_start_bonus';
+  | 'pass_start_bonus' | 'guardian_toll';
 
 export type BoardKey = 'classic' | 'back_to_the_future';
 export type SpaceType = 'start' | 'property' | 'tax' | 'card' | 'jail' | 'go_to_jail' | 'parking' | 'special';
@@ -95,6 +95,20 @@ export interface BoardLink {
   links_to_board: BoardKey | null;
   links_to_index: number | null;
   guardian: boolean;
+}
+export type GuardDir = 'own' | 'cross';
+// Posición dinámica del guardián de un tablero (qué entrada custodia).
+export interface GuardianState {
+  board_key: BoardKey;
+  guards: GuardDir;
+}
+// Decisión de cruce pendiente: el jugador llegó a la cárcel-guardián con pasos restantes.
+export interface PendingJunction {
+  player_ref: string;
+  board_key: BoardKey;
+  junction_index: number;
+  remaining: number;
+  passed_start?: boolean;
 }
 export interface PlayerPosition {
   player_ref: string;
@@ -201,6 +215,8 @@ export interface ActiveSnapshot {
   boards: BoardInfo[];
   spaces: BoardSpace[];
   board_links: BoardLink[];
+  guardians: GuardianState[];
+  pending_junction: PendingJunction | null;
   positions: PlayerPosition[];
   my_position: MyPosition | null;
   current_space: CurrentSpace | null;
@@ -224,7 +240,7 @@ const KINDS: ReadonlySet<string> = new Set([
   'seed', 'late_join_seed', 'bank_to_player', 'player_to_bank', 'player_to_player', 'host_player_transfer', 'host_adjust', 'host_revert',
   'player_exit_to_bank', 'player_exit_distribution', 'player_exit_remainder_to_bank',
   'property_purchase', 'rent_payment', 'property_auction_purchase', 'bankruptcy_cash_to_bank', 'bankruptcy_cash_to_player',
-  'pass_start_bonus',
+  'pass_start_bonus', 'guardian_toll',
 ]);
 const BOARDS: ReadonlySet<string> = new Set(['classic', 'back_to_the_future']);
 const PKINDS: ReadonlySet<string> = new Set(['street', 'station', 'transport', 'utility', 'special']);
@@ -388,6 +404,23 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
       });
     }
   }
+  const guardians: GuardianState[] = [];
+  if (Array.isArray(raw.guardians)) {
+    for (const gd of raw.guardians) {
+      if (!isObj(gd) || !isBoard(gd.board_key) || (gd.guards !== 'own' && gd.guards !== 'cross')) return bad('guardian inválido');
+      guardians.push({ board_key: gd.board_key, guards: gd.guards });
+    }
+  }
+  let pendingJunction: PendingJunction | null = null;
+  if (isObj(raw.pending_junction)) {
+    const pjj = raw.pending_junction;
+    if (!isStr(pjj.player_ref) || !isBoard(pjj.board_key) || !isNum(pjj.junction_index) || !isNum(pjj.remaining)) return bad('pending_junction inválido');
+    pendingJunction = {
+      player_ref: pjj.player_ref, board_key: pjj.board_key, junction_index: pjj.junction_index,
+      remaining: pjj.remaining,
+      ...(isBool(pjj.passed_start) ? { passed_start: pjj.passed_start } : {}),
+    };
+  }
   const positions: PlayerPosition[] = [];
   if (Array.isArray(raw.positions)) {
     for (const p of raw.positions) {
@@ -453,6 +486,8 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
       boards,
       spaces,
       board_links: boardLinks,
+      guardians,
+      pending_junction: pendingJunction,
       positions,
       my_position: myPosition,
       current_space: currentSpace,

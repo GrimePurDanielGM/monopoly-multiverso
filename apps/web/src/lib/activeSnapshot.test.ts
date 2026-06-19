@@ -57,6 +57,11 @@ describe('parseActiveSnapshot', () => {
     expect(parseActiveSnapshot(bad).ok).toBe(false);
   });
 
+  it('acepta el ledger guardian_toll (peaje del guardián al cruzar)', () => {
+    const ok = { ...valid, ledger_recent: [{ ...valid.ledger_recent[0], kind: 'guardian_toll', from_ref: 'P-AAAA', to_ref: null }] };
+    expect(parseActiveSnapshot(ok).ok).toBe(true);
+  });
+
   it('rechaza tipos incorrectos en balance', () => {
     const bad = { ...valid, me: { ...valid.me, balance: 'mucho' } };
     expect(parseActiveSnapshot(bad).ok).toBe(false);

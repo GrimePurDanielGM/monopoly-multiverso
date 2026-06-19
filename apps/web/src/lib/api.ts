@@ -560,6 +560,16 @@ export async function rollAndMove(gameId: string, requestId: string, expectedVer
   return { ok: true, data: true };
 }
 
+/** Resuelve la bifurcación de la cárcel-guardián: 'own' (seguir en tu tablero) o 'cross' (cruzar al otro). */
+export async function resolveJunction(gameId: string, direction: 'own' | 'cross', requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('resolve_junction', {
+    p_game: gameId, p_direction: direction, p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
 /** El anfitrión corrige la posición de un jugador (motivo obligatorio; no cobra salida ni dispara acciones). */
 export async function hostSetPlayerPosition(
   gameId: string, playerRef: string, boardKey: string, spaceIndex: number,

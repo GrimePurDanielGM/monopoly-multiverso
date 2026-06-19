@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { ActiveProperty, ActiveSnapshot } from '../../lib/activeSnapshot';
 import {
   formatMoney, currentPlayerName, BOARD_LABEL, spaceTypeLabel, canRoll, currentSpaceProperty,
-  propertyStatus, canRequestPurchase, canPayRent, ownerName, purchaseBlockReason,
+  propertyStatus, canRequestPurchase, canPayRent, ownerName, purchaseBlockReason, junctionChoice,
 } from '../../lib/activeSelectors';
 
 const DICE = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
@@ -13,7 +13,7 @@ const face = (n: number) => DICE[n - 1] ?? '🎲';
  *  una propiedad ofrece, desde el contexto, solicitar compra o pagar alquiler (reutiliza los flujos).
  *  Las casillas aún no implementadas muestran un aviso de "fase posterior". */
 export function MovementPanel({
-  snap, busy, onRoll, onMoveManual, onOpenBoard, onRequestPurchase, onPayRent,
+  snap, busy, onRoll, onMoveManual, onOpenBoard, onRequestPurchase, onPayRent, onResolveJunction,
 }: {
   snap: ActiveSnapshot;
   busy: boolean;
@@ -22,8 +22,10 @@ export function MovementPanel({
   onOpenBoard: () => void;
   onRequestPurchase: (p: ActiveProperty) => void;
   onPayRent: (p: ActiveProperty) => void;
+  onResolveJunction: (dir: 'own' | 'cross') => void;
 }) {
   const [steps, setSteps] = useState(1);
+  const choice = junctionChoice(snap);
   const mine = canRoll(snap);
   const myPos = snap.my_position;
   const cur = snap.current_space;
@@ -78,8 +80,25 @@ export function MovementPanel({
         </div>
       )}
 
-      {/* Acciones de turno: tirar / mover manualmente (solo el jugador actual) */}
-      {mine ? (
+      {/* Decisión de cruce: has llegado a la cárcel-guardián y debes elegir destino (no avanza solo). */}
+      {choice ? (
+        <div className="flex flex-col gap-2 rounded-lg border border-amber-600 bg-amber-950/40 px-3 py-2">
+          <p className="text-sm font-semibold text-amber-100">🛡️ Has llegado a la cárcel: elige por dónde seguir ({choice.remaining} {choice.remaining === 1 ? 'casilla' : 'casillas'}).</p>
+          {[choice.own, choice.cross].map((opt) => (
+            <button
+              key={opt.dir}
+              type="button"
+              onClick={() => onResolveJunction(opt.dir)}
+              disabled={busy}
+              className={`min-h-[44px] rounded-xl px-4 text-sm font-semibold disabled:opacity-40 ${opt.guarded ? 'border border-amber-500 text-amber-200' : 'bg-emerald-600'}`}
+            >
+              {opt.dir === 'own' ? 'Seguir' : 'Cruzar'} → {opt.name}
+              {opt.dir === 'cross' && <span className="text-[11px] font-normal"> ({BOARD_LABEL[opt.board]})</span>}
+              {opt.guarded ? <span className="ml-1 text-[11px] font-normal">· peaje {formatMoney(opt.toll)}</span> : <span className="ml-1 text-[11px] font-normal">· gratis</span>}
+            </button>
+          ))}
+        </div>
+      ) : mine ? (
         <div className="flex flex-col gap-2">
           <button
             type="button"

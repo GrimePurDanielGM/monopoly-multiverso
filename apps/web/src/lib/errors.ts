@@ -97,6 +97,10 @@ const MESSAGES: Record<string, string> = {
   INVALID_SPACE: 'Esa casilla no existe en el tablero.',
   INVALID_BOARD: 'Ese tablero no es válido.',
   BOARD_NOT_FOUND: 'No se encontró el tablero.',
+  // Fase 4 — cruce entre tableros (intersección/guardián)
+  JUNCTION_PENDING: 'Tienes que elegir por dónde seguir en la cárcel antes de continuar.',
+  NO_PENDING_JUNCTION: 'No hay ninguna decisión de cruce pendiente.',
+  NOT_YOUR_JUNCTION: 'Esa decisión de cruce no es tuya.',
 };
 
 /** Mensaje legible para un código de error conocido (o genérico si no lo es). */
