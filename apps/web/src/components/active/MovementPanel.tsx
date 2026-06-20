@@ -168,7 +168,14 @@ export function MovementPanel({
           <p className="text-sm font-semibold text-amber-100">
             🔒 Estás en la cárcel. <span className="font-normal">Intento {Math.min(myJail.jail_turns + 1, 3)}/3.</span>
           </p>
-          {snap.me.is_current ? (
+          {!snap.me.is_current ? (
+            <p className="text-[11px] text-amber-200/80">Espera tu turno para intentar dobles, pagar la multa o usar una carta.</p>
+          ) : myJail.action_taken_this_turn ? (
+            // Solo una acción de cárcel por turno: ya la usó este turno → debe finalizar turno.
+            <p role="note" className="rounded-lg bg-amber-900/50 px-3 py-2 text-xs text-amber-100">
+              Ya has intentado salir de la cárcel en este turno. Debes finalizar turno.
+            </p>
+          ) : (
             <>
               <button
                 type="button"
@@ -196,10 +203,8 @@ export function MovementPanel({
                   Usar carta «Sal de la cárcel gratis»
                 </button>
               )}
-              <p className="text-[11px] text-amber-200/80">Si no sales antes, al tercer intento pagas 50 ₥ y sales. No puedes mover manualmente.</p>
+              <p className="text-[11px] text-amber-200/80">Solo una acción por turno. Si no sales antes, al tercer intento pagas 50 ₥ y sales. No puedes mover manualmente.</p>
             </>
-          ) : (
-            <p className="text-[11px] text-amber-200/80">Espera tu turno para intentar dobles, pagar la multa o usar una carta.</p>
           )}
         </div>
       ) : mine ? (

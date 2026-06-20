@@ -90,15 +90,16 @@ test('cárcel: intento de dobles, salida pagando y banner global del bote', asyn
   await expect(movement(B).getByRole('button', { name: /Intentar sacar dobles/ })).toBeVisible();
   await expect(movement(B).getByRole('button', { name: /Tirar dados/ })).toHaveCount(0);
 
-  // ── Un intento de dobles: produce una tirada (resultado aleatorio: sale o sigue preso, ambos válidos).
+  // ── Un intento de dobles: produce una tirada y CONSUME la acción de cárcel del turno (resultado aleatorio:
+  //    sale por dobles o sigue preso). En ambos casos, "Intentar sacar dobles" ya no está disponible.
   await movement(B).getByRole('button', { name: /Intentar sacar dobles/ }).click();
-  await expect(movement(B).getByText(/Última tirada/)).toBeVisible({ timeout: 20_000 });
+  await reloadUntil(B, () => movement(B).getByText(/Última tirada/));
+  await expect(movement(B).getByRole('button', { name: /Intentar sacar dobles/ })).toHaveCount(0); // una sola acción por turno
 
-  // ── Salir pagando 50: si sigue preso, paga; si salió por dobles, ya puede tirar normal. En ambos casos
-  //    acaba pudiendo tirar/mover con normalidad.
-  if (await movement(B).getByRole('button', { name: /Pagar 50 ₥ para salir/ }).count() > 0) {
-    await movement(B).getByRole('button', { name: /Pagar 50 ₥ para salir/ }).click();
-  }
+  // ── Salir pagando 50 (re-encarcelamos en limpio para tener la acción del turno disponible).
+  await landOn(host, B, 30);   // vuelve a la cárcel (acción del turno reiniciada)
+  await reloadUntil(B, () => movement(B).getByRole('button', { name: /Pagar 50 ₥ para salir/ }));
+  await movement(B).getByRole('button', { name: /Pagar 50 ₥ para salir/ }).click();
   await reloadUntil(B, () => movement(B).getByRole('button', { name: '1 casilla', exact: true }));
 
   // ── Bote del Parking: Marty paga un impuesto (bote=200) y luego cae en Parking → cobra el bote.

@@ -195,7 +195,7 @@ export interface LastMove {
   effect?: LandingEffect | null;
 }
 export interface JailEntry { player_ref: string; board_key: BoardKey; jail_turns: number; }
-export interface MyJail { board_key: BoardKey; jail_turns: number; fine: number; }
+export interface MyJail { board_key: BoardKey; jail_turns: number; fine: number; action_taken_this_turn: boolean; }
 export interface CardDeckSummary { deck_key: DeckKey; board_key: BoardKey; draw_count: number; discard_count: number; }
 export interface LastCardDraw {
   draw_id: string; player_ref: string; deck_key: DeckKey; board_key: BoardKey; card_ref: string;
@@ -581,7 +581,8 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
   if (isObj(raw.my_jail)) {
     const mj = raw.my_jail;
     if (isBoard(mj.board_key)) {
-      myJail = { board_key: mj.board_key, jail_turns: isNum(mj.jail_turns) ? mj.jail_turns : 0, fine: isNum(mj.fine) ? mj.fine : 50 };
+      myJail = { board_key: mj.board_key, jail_turns: isNum(mj.jail_turns) ? mj.jail_turns : 0, fine: isNum(mj.fine) ? mj.fine : 50,
+        action_taken_this_turn: mj.action_taken_this_turn === true };
     }
   }
   const cardDecks: CardDeckSummary[] = [];

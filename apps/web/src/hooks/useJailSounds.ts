@@ -18,7 +18,7 @@ export function useJailSounds(snap: ActiveSnapshot | null): void {
     lastVersion.current = version;
     lastJailed.current = jailed;
     if (prevJailed === null) return;              // primer snapshot: solo fija la línea base
-    if (!prevJailed && jailed) playSfx('siren');  // me han enviado a la cárcel
-    else if (prevJailed && !jailed) playSfx('door'); // he salido de la cárcel
+    if (!prevJailed && jailed) playSfx('siren');     // me han enviado a la cárcel
+    else if (prevJailed && !jailed) playSfx('release'); // he salido de la cárcel (sonido de liberación)
   }, [version, jailed]);
 }

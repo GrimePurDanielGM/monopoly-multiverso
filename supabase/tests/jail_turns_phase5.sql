@@ -24,8 +24,8 @@ create or replace function pg_temp._jturns(gid uuid, ref text) returns int langu
 -- Coloca al jugador en la cárcel del classic con N intentos previos y un saldo dado.
 create or replace function pg_temp._prep_jail(gid uuid, ref text, turns int, bal bigint) returns void language plpgsql security definer as $f$
 begin
-  insert into public.game_jail(game_id,player_ref,board_key,jail_turns) values (gid,ref,'classic',turns)
-    on conflict (game_id,player_ref) do update set board_key='classic', jail_turns=turns;
+  insert into public.game_jail(game_id,player_ref,board_key,jail_turns,action_turn) values (gid,ref,'classic',turns,0)
+    on conflict (game_id,player_ref) do update set board_key='classic', jail_turns=turns, action_turn=0;
   update public.player_positions set board_key='classic', space_index=10 where game_id=gid and player_ref=ref;
   update public.player_balances set balance=bal where game_id=gid and player_ref=ref;
   update public.game_runtime set pending_payment=null where game_id=gid;

@@ -48,38 +48,41 @@ function siren() {
   return out;
 }
 
-// ── Puerta de prisión / barrotes: deslizamiento metálico + clanc final. ──
-function jailDoor() {
+// ── Liberación celebratoria: arpegio mayor ascendente tipo campanita + un clic breve de "reja abierta"
+//    discreto al inicio. Sensación de logro/salida, no de puerta. ~1 s, volumen moderado. ──
+function jailRelease() {
   const dur = 1.0, n = Math.floor(SR * dur), out = new Float32Array(n);
-  // parciales inarmónicos metálicos con vibrato y decaimiento.
-  const partials = [196, 437, 731, 1090];
-  for (let i = 0; i < n; i++) {
-    const t = i / SR;
-    // "deslizamiento": ruido filtrado paso banda muy simple (promedio móvil sobre ruido) que decae.
-    const noise = rand();
-    const slideEnv = Math.exp(-2.5 * t) * (t < 0.7 ? 1 : 0);
-    let metal = 0;
-    for (const f of partials) metal += Math.sin(2 * Math.PI * f * (1 + 0.004 * Math.sin(2 * Math.PI * 5 * t)) * t);
-    metal /= partials.length;
-    out[i] = (0.5 * metal * Math.exp(-3 * t) + 0.25 * noise * slideEnv) * 0.5;
+  // Do mayor ascendente C5–E5–G5–C6 (alegre), cada nota con timbre de campana (fundamental + 2 parciales).
+  const notes = [523.25, 659.25, 783.99, 1046.5];
+  const noteDur = 0.16;       // separación entre notas
+  for (let k = 0; k < notes.length; k++) {
+    const f = notes[k];
+    const start = Math.floor(k * noteDur * SR);
+    const len = Math.floor((dur - k * noteDur) * SR); // resuena hasta el final
+    for (let i = 0; i < len && start + i < n; i++) {
+      const t = i / SR;
+      const env = Math.exp(-4.5 * t);                 // decaimiento de campana
+      const s = (Math.sin(2 * Math.PI * f * t)
+               + 0.5 * Math.sin(2 * Math.PI * 2 * f * t)
+               + 0.25 * Math.sin(2 * Math.PI * 3 * f * t)) / 1.75;
+      out[start + i] += s * env * 0.3;
+    }
   }
-  // suaviza el ruido (paso bajo de 1er orden) para que suene a roce, no a siseo.
+  // Clic breve inicial (reja que se abre), MUY discreto: pequeño transitorio de ruido filtrado.
   let prev = 0;
-  for (let i = 0; i < n; i++) { prev = prev + 0.25 * (out[i] - prev); out[i] = prev; }
-  // "clanc" final: golpe corto a ~0.78 s.
-  const clankAt = Math.floor(0.78 * SR);
-  for (let i = 0; i < SR * 0.18 && clankAt + i < n; i++) {
+  for (let i = 0; i < SR * 0.06 && i < n; i++) {
     const t = i / SR;
-    const env = Math.exp(-22 * t);
-    out[clankAt + i] += (0.6 * Math.sin(2 * Math.PI * 240 * t) + 0.3 * Math.sin(2 * Math.PI * 760 * t) + 0.2 * rand() * env) * env * 0.5;
+    const env = Math.exp(-40 * t);
+    prev = prev + 0.3 * (rand() - prev);
+    out[i] += prev * env * 0.18;
   }
-  // fade out final
-  for (let i = 0; i < n; i++) { const t = i / SR; out[i] *= Math.min(1, (dur - t) / 0.06); }
+  // Fade out final suave.
+  for (let i = 0; i < n; i++) { const t = i / SR; out[i] *= Math.min(1, (dur - t) / 0.05); }
   return out;
 }
 
 mkdirSync(OUT, { recursive: true });
 writeFileSync(join(OUT, 'police-siren.wav'), toWav(siren()));
-seed = 0x12345678; // reinicia el PRNG para que la puerta también sea determinista
-writeFileSync(join(OUT, 'jail-door-open.wav'), toWav(jailDoor()));
-console.log('Generados: police-siren.wav, jail-door-open.wav en', OUT);
+seed = 0x12345678; // reinicia el PRNG para que la liberación sea determinista
+writeFileSync(join(OUT, 'jail-release.wav'), toWav(jailRelease()));
+console.log('Generados: police-siren.wav, jail-release.wav en', OUT);

@@ -122,7 +122,7 @@ describe('MovementPanel', () => {
 
   it('en la cárcel: estado + "Intento 1/3", intentar dobles (onRoll), pagar la multa y NO mover manual', () => {
     const c = cbs();
-    const s = snap({ my_jail: { board_key: 'classic', jail_turns: 0, fine: 50 } });
+    const s = snap({ my_jail: { board_key: 'classic', jail_turns: 0, fine: 50, action_taken_this_turn: false } });
     render(<MovementPanel snap={s} busy={false} {...c} />);
     expect(screen.getByText(/Estás en la cárcel/)).toBeInTheDocument();
     expect(screen.getByText(/Intento 1\/3/)).toBeInTheDocument();
@@ -134,16 +134,27 @@ describe('MovementPanel', () => {
     expect(c.onPayJailRelease).toHaveBeenCalledTimes(1);
   });
 
+  it('cárcel: si ya actuó este turno, oculta las acciones y pide finalizar turno', () => {
+    const c = cbs();
+    const s = snap({ my_jail: { board_key: 'classic', jail_turns: 1, fine: 50, action_taken_this_turn: true },
+      my_held_cards: [{ card_ref: 'chance-jail-free', title: 'Sal de la cárcel gratis', description: '', deck_key: 'chance', effect_type: 'jail_free' }] });
+    render(<MovementPanel snap={s} busy={false} {...c} />);
+    expect(screen.getByText(/Ya has intentado salir de la cárcel en este turno\. Debes finalizar turno/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Intentar sacar dobles/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Pagar 50 ₥ para salir/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Usar carta/ })).toBeNull();
+  });
+
   it('cárcel: el contador de intentos avanza (jail_turns=2 → "Intento 3/3")', () => {
     const c = cbs();
-    render(<MovementPanel snap={snap({ my_jail: { board_key: 'classic', jail_turns: 2, fine: 50 } })} busy={false} {...c} />);
+    render(<MovementPanel snap={snap({ my_jail: { board_key: 'classic', jail_turns: 2, fine: 50, action_taken_this_turn: false } })} busy={false} {...c} />);
     expect(screen.getByText(/Intento 3\/3/)).toBeInTheDocument();
   });
 
   it('cárcel: mensajes del intento de dobles (fallo / dobles / 3er forzado)', () => {
     const c = cbs();
     const base = snap().last_roll!;
-    const failed = snap({ my_jail: { board_key: 'classic', jail_turns: 1, fine: 50 }, last_roll: { ...base, d1: 2, d2: 5, jail: 'failed' } });
+    const failed = snap({ my_jail: { board_key: 'classic', jail_turns: 1, fine: 50, action_taken_this_turn: false }, last_roll: { ...base, d1: 2, d2: 5, jail: 'failed' } });
     const { rerender } = render(<MovementPanel snap={failed} busy={false} {...c} />);
     expect(screen.getByText(/No has sacado dobles\. Sigues en la cárcel/)).toBeInTheDocument();
     const doubles = snap({ my_jail: null, last_roll: { ...base, d1: 4, d2: 4, jail: 'doubles' } });
@@ -157,7 +168,7 @@ describe('MovementPanel', () => {
   it('en la cárcel con carta: ofrece usar la carta «Sal de la cárcel gratis»', () => {
     const c = cbs();
     const s = snap({
-      my_jail: { board_key: 'classic', jail_turns: 0, fine: 50 },
+      my_jail: { board_key: 'classic', jail_turns: 0, fine: 50, action_taken_this_turn: false },
       my_held_cards: [{ card_ref: 'chance-jail-free', title: 'Sal de la cárcel gratis', description: '', deck_key: 'chance', effect_type: 'jail_free' }],
     });
     render(<MovementPanel snap={s} busy={false} {...c} />);

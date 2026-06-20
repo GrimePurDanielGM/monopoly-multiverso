@@ -19,7 +19,7 @@ function snap(myJail: MyJail | null, version: number): ActiveSnapshot {
     runtime_status: 'running', control: { paused_by_ref: null, finished_by_ref: null, reason: null }, runtime_version: version,
   };
 }
-const JAIL: MyJail = { board_key: 'classic', jail_turns: 0, fine: 50 };
+const JAIL: MyJail = { board_key: 'classic', jail_turns: 0, fine: 50, action_taken_this_turn: false };
 
 describe('useJailSounds', () => {
   beforeEach(() => playMock.mockClear());
@@ -35,10 +35,10 @@ describe('useJailSounds', () => {
     expect(playMock).toHaveBeenCalledWith('siren');
   });
 
-  it('puerta al SALIR de la cárcel (preso → no preso)', () => {
+  it('sonido de liberación al SALIR de la cárcel (preso → no preso)', () => {
     const { rerender } = renderHook(({ s }) => useJailSounds(s), { initialProps: { s: snap(JAIL, 1) } });
     rerender({ s: snap(null, 2) });
-    expect(playMock).toHaveBeenCalledWith('door');
+    expect(playMock).toHaveBeenCalledWith('release');
   });
 
   it('no suena dos veces por el mismo runtime_version', () => {

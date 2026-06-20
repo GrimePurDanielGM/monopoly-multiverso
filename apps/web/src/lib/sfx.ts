@@ -3,12 +3,12 @@
 // falla SIEMPRE en silencio). Comparte la preferencia de sonido con cashSound (un único interruptor).
 import { isCashSoundEnabled } from './cashSound';
 
-export type SfxName = 'siren' | 'door';
+export type SfxName = 'siren' | 'release';
 
 const BASE = import.meta.env.BASE_URL ?? '/';
 const ASSETS: Record<SfxName, string> = {
   siren: `${BASE}sounds/police-siren.wav`,
-  door: `${BASE}sounds/jail-door-open.wav`,
+  release: `${BASE}sounds/jail-release.wav`,
 };
 
 const els: Partial<Record<SfxName, HTMLAudioElement>> = {};

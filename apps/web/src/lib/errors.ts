@@ -103,6 +103,7 @@ const MESSAGES: Record<string, string> = {
   NOT_YOUR_JUNCTION: 'Esa decisión de cruce no es tuya.',
   // Fase 5 — casillas especiales (cárcel, cartas, impuestos)
   IN_JAIL: 'Estás en la cárcel: paga la multa o usa una carta para salir.',
+  JAIL_ACTION_ALREADY_TAKEN: 'Ya has intentado salir de la cárcel en este turno. Debes finalizar turno.',
   NOT_IN_JAIL: 'No estás en la cárcel.',
   NO_JAIL_CARD: 'No tienes ninguna carta para salir de la cárcel.',
   CARD_PENDING: 'Tienes una carta pendiente de resolver.',

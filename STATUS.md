@@ -1,6 +1,19 @@
 # Estado del proyecto — lista viva
 
 ## Fase 5 — Casillas especiales · **`Fase 5: COMPLETADA` (pendiente validación manual)**
+- **Corrección 2 (2026-06-20) — una acción de cárcel por turno + sonido de liberación (`0044`/`0045`):**
+  - **Una sola acción por turno:** estando preso, el jugador elige UNA acción por turno (intentar dobles
+    / pagar 50 / usar carta). Si tras ella sigue preso (intento fallido o salida forzada sin saldo), no
+    puede ejecutar otra acción de cárcel hasta su siguiente turno: debe **finalizar turno**. Modelado con
+    `game_jail.action_turn` (= `turn_number` en que actuó); **el backend lo bloquea** en `roll_and_move`,
+    `pay_jail_release` y `use_jail_card` con `JAIL_ACTION_ALREADY_TAKEN` (no solo la UI). `pay_pending`
+    (salida forzada) queda exento. El snapshot expone `my_jail.action_taken_this_turn` (saneado); la UI
+    oculta los botones y muestra «Ya has intentado salir de la cárcel en este turno. Debes finalizar turno».
+  - **Sonido de liberación celebratorio:** sustituido `jail-door-open.wav` por **`jail-release.wav`**
+    (arpegio mayor ascendente tipo campanita + clic discreto de reja, ~1 s, positivo), generado
+    deterministamente; `sfx.ts` usa `release`. La sirena de entrada se mantiene.
+  - Tests: SQL `jail_action_once_phase5` (6) + batería 1–5 (41 suites) tras `db reset`; unit 306;
+    E2E `jail_doubles` ampliado (una acción/turno). Aplicado a dev (`0044`,`0045`). **No se avanza a Fase 6.**
 - **Corrección (2026-06-20) — cárcel 3 turnos, sonidos y banner global (`0042`/`0043`):**
   - **Cárcel completa:** estando preso, `roll_and_move` ya no se bloquea, es un **intento de dobles**:
     sacar **dobles** libera sin pagar y mueve (`jail_released_by_doubles`); fallar suma intento sin
