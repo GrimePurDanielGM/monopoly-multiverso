@@ -64,7 +64,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     late_join_requests: [],
     boards: [], spaces: [], board_links: [], guardians: [], pending_junction: null, parking_pot: 0, jail: [], my_jail: null, card_decks: [], last_card_draw: null, held_cards: [], my_held_cards: [], pending_card: null, pending_payment: null, last_global_event: null, positions: [], my_position: null, current_space: null, last_roll: null, last_move: null,
     runtime_status: 'running',
-    control: { paused_by_ref: null, finished_by_ref: null, reason: null },
+    current_landing_rent_resolved: false, control: { paused_by_ref: null, finished_by_ref: null, reason: null },
     runtime_version: 5,
     ...over,
   };
@@ -115,14 +115,14 @@ describe('ActiveGameScreen — finalizar (confirmación obligatoria)', () => {
 
 describe('ActiveGameScreen — control y estados', () => {
   it('en pausa muestra el aviso y deshabilita acciones', () => {
-    renderScreen(snap({ runtime_status: 'paused', control: { paused_by_ref: 'P-1', finished_by_ref: null, reason: 'café' } }));
+    renderScreen(snap({ runtime_status: 'paused', current_landing_rent_resolved: false, control: { paused_by_ref: 'P-1', finished_by_ref: null, reason: 'café' } }));
     expect(screen.getByText('Partida en pausa')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Enviar' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Reanudar partida' })).toBeInTheDocument();
   });
 
   it('finalizada muestra la pantalla final sin acciones', () => {
-    renderScreen(snap({ runtime_status: 'finished', control: { paused_by_ref: null, finished_by_ref: 'P-1', reason: null } }));
+    renderScreen(snap({ runtime_status: 'finished', current_landing_rent_resolved: false, control: { paused_by_ref: null, finished_by_ref: 'P-1', reason: null } }));
     expect(screen.getByRole('heading', { name: 'Partida finalizada' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Finalizar partida' })).toBeNull();
   });
@@ -177,7 +177,7 @@ describe('ActiveGameScreen — abandonar/expulsar', () => {
   });
 
   it('en pausa se permite abandonar (acción no bloqueada por el fieldset)', () => {
-    renderScreen(snap({ me: { public_ref: 'P-2', is_host: false, balance: 3000, is_current: false, is_spectator: false }, runtime_status: 'paused', control: { paused_by_ref: 'P-1', finished_by_ref: null, reason: null } }));
+    renderScreen(snap({ me: { public_ref: 'P-2', is_host: false, balance: 3000, is_current: false, is_spectator: false }, runtime_status: 'paused', current_landing_rent_resolved: false, control: { paused_by_ref: 'P-1', finished_by_ref: null, reason: null } }));
     expect(screen.getByRole('button', { name: 'Abandonar partida' })).toBeEnabled();
   });
 });

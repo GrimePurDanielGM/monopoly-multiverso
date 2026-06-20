@@ -3,9 +3,15 @@ import type { ActiveProperty, ActiveSnapshot } from '../../lib/activeSnapshot';
 import {
   formatMoney, currentPlayerName, BOARD_LABEL, spaceTypeLabel, canRoll, currentSpaceProperty,
   propertyStatus, canRequestPurchase, canPayRent, ownerName, purchaseBlockReason, junctionChoice,
-  physicalAllowed, virtualAllowed, utilityRentInfo, canPayUtilityRent,
+  physicalAllowed, virtualAllowed, utilityRentInfo, canPayUtilityRent, stationRentInfo,
 } from '../../lib/activeSelectors';
 import { PropertyCardModal } from './PropertyCardModal';
+
+// Preferencia LOCAL (por jugador/dispositivo) de qué interfaz física ver: dados o casillas. No es secreto.
+const INPUT_VIEW_KEY = 'physical_input_view';
+function readInputView(): 'dice' | 'steps' {
+  try { return localStorage.getItem(INPUT_VIEW_KEY) === 'steps' ? 'steps' : 'dice'; } catch { return 'dice'; }
+}
 
 const DICE = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 const face = (n: number) => DICE[n - 1] ?? '🎲';
@@ -103,6 +109,29 @@ function UtilitySection({ prop, snap, busy, onPay }: {
   );
 }
 
+/** Alquiler de una ESTACIÓN/TRANSPORTE propiedad de otro: acumulativo según cuántas posea el propietario
+ *  entre ambos tableros (1→25 … 8→600). Importe determinista (sin dados). */
+function StationSection({ prop, snap, busy, onPay }: {
+  prop: ActiveProperty; snap: ActiveSnapshot; busy: boolean; onPay: (p: ActiveProperty) => void;
+}) {
+  const info = stationRentInfo(prop, snap);
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[11px] text-slate-300">
+        Estaciones/transportes de {ownerName(prop, snap)}: <span className="font-semibold">{info.count}/8</span> · Alquiler <span className="font-semibold text-amber-200">{formatMoney(info.amount)}</span>
+      </p>
+      <button
+        type="button"
+        onClick={() => onPay(prop)}
+        disabled={busy || !canPayRent(prop, snap)}
+        className="min-h-[40px] rounded-lg border border-amber-600 px-3 text-xs font-semibold text-amber-200 disabled:opacity-40"
+      >
+        Pagar alquiler ({formatMoney(info.amount)})
+      </button>
+    </div>
+  );
+}
+
 /** Bloque "Movimiento" de la pantalla principal: turno, posición y casilla actuales, última tirada
  *  y resultado del último movimiento. El jugador actual tira dados o mueve manualmente; al caer en
  *  una propiedad ofrece, desde el contexto, solicitar compra o pagar alquiler (reutiliza los flujos).
@@ -127,6 +156,9 @@ export function MovementPanel({
 }) {
   const [steps, setSteps] = useState<number | null>(null);
   const [card, setCard] = useState<ActiveProperty | null>(null);
+  // Preferencia local de interfaz física: tirada de dados ('dice') o movimiento por casillas ('steps').
+  const [inputView, setInputView] = useState<'dice' | 'steps'>(readInputView);
+  const chooseView = (v: 'dice' | 'steps') => { setInputView(v); try { localStorage.setItem(INPUT_VIEW_KEY, v); } catch { /* sin persistencia */ } };
   const choice = junctionChoice(snap);
   const myJail = snap.my_jail;                 // estoy en la cárcel
   const pendingPay = snap.pending_payment;     // pago obligado pendiente (ya viene filtrado a mí)
@@ -310,6 +342,7 @@ export function MovementPanel({
         </div>
       ) : mine ? (
         <div className="flex flex-col gap-2">
+          {/* Dados virtuales: siempre que el modo los permita (en virtual_only es la ÚNICA opción). */}
           {virtualAllowed(snap) && (
             <button
               type="button"
@@ -320,40 +353,61 @@ export function MovementPanel({
               🎲 Tirar dados
             </button>
           )}
+          {/* Si el anfitrión permite físicos, cada jugador elige qué interfaz ver: tirada física o casillas.
+              En virtual_only no se muestra ninguna de estas (la app mueve automáticamente al tirar). */}
           {physicalAllowed(snap) && (
-            <PhysicalDiceInput busy={busy} label="Introducir tirada física" cta="Mover con estos dados" onSubmit={onMovePhysical} />
+            <>
+              <div role="group" aria-label="Quiero usar" className="flex flex-col gap-1">
+                <p className="text-[11px] text-slate-400">Quiero usar:</p>
+                <div className="grid grid-cols-2 gap-1">
+                  {([['dice', 'Tirada física'], ['steps', 'Movimiento manual']] as const).map(([v, label]) => (
+                    <button
+                      key={v}
+                      type="button"
+                      aria-pressed={inputView === v}
+                      onClick={() => chooseView(v)}
+                      className={`min-h-[40px] rounded-lg text-xs font-semibold disabled:opacity-40 ${inputView === v ? 'bg-sky-600 text-white' : 'border border-slate-600 text-slate-200 active:bg-slate-800'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {inputView === 'dice' ? (
+                <PhysicalDiceInput busy={busy} label="Introducir tirada física" cta="Mover con esta tirada" onSubmit={onMovePhysical} />
+              ) : (
+                // Mover por casillas (útil con dados físicos cuando solo quieren introducir el total).
+                <div role="group" aria-label="Mover manualmente" className="flex flex-col gap-2">
+                  <p className="text-[11px] text-slate-400">Mover casillas</p>
+                  <div className="grid grid-cols-6 gap-1">
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        aria-label={`${n} ${n === 1 ? 'casilla' : 'casillas'}`}
+                        aria-pressed={steps === n}
+                        onClick={() => setSteps(n)}
+                        disabled={busy}
+                        className={`min-h-[44px] rounded-lg text-sm font-semibold tabular-nums disabled:opacity-40 ${
+                          steps === n ? 'bg-sky-600 text-white' : 'border border-slate-600 text-slate-200 active:bg-slate-800'
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => steps !== null && onMoveManual(steps)}
+                    disabled={busy || steps === null}
+                    className="min-h-[44px] rounded-xl border border-slate-600 px-3 text-sm font-semibold disabled:opacity-40"
+                  >
+                    {steps !== null ? `Mover ${steps}` : 'Mover'}
+                  </button>
+                </div>
+              )}
+            </>
           )}
-          {/* Mover manualmente: selector de pasos 1–12 con botones grandes (cómodo en iPhone, sin
-              depender de <input type="number">, que en Safari móvil no ofrece flechas y complica los
-              dígitos). El botón Mover queda deshabilitado hasta elegir un valor válido (1–12). */}
-          <div role="group" aria-label="Mover manualmente" className="flex flex-col gap-2">
-            <p className="text-[11px] text-slate-400">Mover manualmente (casillas)</p>
-            <div className="grid grid-cols-6 gap-1">
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  aria-label={`${n} ${n === 1 ? 'casilla' : 'casillas'}`}
-                  aria-pressed={steps === n}
-                  onClick={() => setSteps(n)}
-                  disabled={busy}
-                  className={`min-h-[44px] rounded-lg text-sm font-semibold tabular-nums disabled:opacity-40 ${
-                    steps === n ? 'bg-sky-600 text-white' : 'border border-slate-600 text-slate-200 active:bg-slate-800'
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => steps !== null && onMoveManual(steps)}
-              disabled={busy || steps === null}
-              className="min-h-[44px] rounded-xl border border-slate-600 px-3 text-sm font-semibold disabled:opacity-40"
-            >
-              {steps !== null ? `Mover ${steps}` : 'Mover'}
-            </button>
-          </div>
         </div>
       ) : (
         blockedNote && <p role="note" className="rounded-lg bg-slate-800 px-3 py-2 text-xs text-slate-300">{blockedNote}</p>
@@ -383,8 +437,12 @@ export function MovementPanel({
           {status === 'owned' && (
             <>
               <p>Has caído en propiedad de <span className="font-semibold">{ownerName(prop, snap)}</span> ({prop.name}).</p>
-              {prop.kind === 'utility' ? (
+              {snap.current_landing_rent_resolved ? (
+                <p role="note" className="rounded-lg bg-emerald-900/40 px-3 py-2 text-xs text-emerald-200">Alquiler pagado. Ya has pagado el alquiler de esta caída.</p>
+              ) : prop.kind === 'utility' ? (
                 <UtilitySection prop={prop} snap={snap} busy={busy} onPay={onPayUtilityRent} />
+              ) : prop.kind === 'station' || prop.kind === 'transport' ? (
+                <StationSection prop={prop} snap={snap} busy={busy} onPay={onPayRent} />
               ) : prop.base_rent > 0 ? (
                 <button
                   type="button"

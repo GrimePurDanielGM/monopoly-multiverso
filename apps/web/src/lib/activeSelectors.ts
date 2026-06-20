@@ -178,10 +178,27 @@ export function purchaseBlockReason(p: ActiveProperty, snap: ActiveSnapshot): st
 
 /** ¿Puedo pagar el alquiler de esta propiedad? (en curso, de otro jugador, con alquiler y saldo). */
 export function canPayRent(p: ActiveProperty, snap: ActiveSnapshot): boolean {
-  return (
-    canActAsMe(snap) && p.owner_ref !== null && p.owner_ref !== snap.me.public_ref &&
-    p.base_rent > 0 && snap.me.balance >= p.base_rent
-  );
+  if (!(canActAsMe(snap) && p.owner_ref !== null && p.owner_ref !== snap.me.public_ref)) return false;
+  if (snap.current_landing_rent_resolved) return false;             // ya pagado en esta caída
+  const due = p.kind === 'station' || p.kind === 'transport' ? stationRentInfo(p, snap).amount : p.base_rent;
+  return due > 0 && snap.me.balance >= due;
+}
+
+// ── Estaciones / transportes (Fase 5 corrección): alquiler acumulativo entre ambos tableros ──────────
+const STATION_SCALE = [0, 25, 50, 100, 200, 300, 400, 500, 600] as const;
+/** Alquiler de estación/transporte según cuántas posea el propietario (1→25 … 8→600). */
+export function stationRent(count: number): number {
+  return STATION_SCALE[Math.min(Math.max(count, 0), 8)] ?? 0;
+}
+/** Nº de estaciones/transportes ACTIVOS de un jugador (combinando ambos tableros). */
+export function playerStationCount(snap: ActiveSnapshot, ownerRef: string | null): number {
+  if (!ownerRef) return 0;
+  return snap.properties.filter((p) => (p.kind === 'station' || p.kind === 'transport') && p.owner_ref === ownerRef).length;
+}
+export interface StationRentInfo { count: number; amount: number; }
+export function stationRentInfo(p: ActiveProperty, snap: ActiveSnapshot): StationRentInfo {
+  const count = playerStationCount(snap, p.owner_ref);
+  return { count, amount: stationRent(count) };
 }
 
 /** ¿Puedo pujar en una subasta? (en curso, no espectador). */
@@ -248,6 +265,7 @@ export function utilityRentInfo(p: ActiveProperty, snap: ActiveSnapshot): Utilit
 /** ¿Puedo pagar el alquiler de un servicio? (mi turno, dueño ajeno, hay tirada y saldo suficiente). */
 export function canPayUtilityRent(p: ActiveProperty, snap: ActiveSnapshot): boolean {
   if (!(canActAsMe(snap) && p.kind === 'utility' && p.owner_ref !== null && p.owner_ref !== snap.me.public_ref)) return false;
+  if (snap.current_landing_rent_resolved) return false;             // ya pagado en esta caída
   const info = utilityRentInfo(p, snap);
   return info.amount !== null && snap.me.balance >= info.amount;
 }

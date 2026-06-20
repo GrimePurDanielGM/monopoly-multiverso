@@ -20,8 +20,13 @@ create or replace function pg_temp._ver(gid uuid) returns bigint language sql se
 -- concede un servicio al propietario; fija la última tirada del pagador (host) con un total dado.
 create or replace function pg_temp._own(gid uuid, prop text, owner_ref text) returns void language sql security definer as $f$
   insert into public.property_ownership(game_id,property_ref,owner_ref) values (gid,prop,owner_ref) on conflict do nothing $f$;
+-- fija la última tirada del pagador Y simula una nueva caída (++landing_seq), para que el bloqueo de doble
+-- pago por caída no impida cada pago de este suite (en juego real cada caída viene de un movimiento).
 create or replace function pg_temp._setroll(gid uuid, ref text, total int) returns void language plpgsql security definer as $f$
-begin update public.game_runtime set last_roll = jsonb_build_object('d1',1,'d2',total-1,'total',total,'player_ref',ref) where game_id=gid; end $f$;
+begin update public.game_runtime set last_roll = jsonb_build_object('d1',1,'d2',total-1,'total',total,'player_ref',ref),
+  landing_seq = landing_seq + 1 where game_id=gid; end $f$;
+create or replace function pg_temp._land(gid uuid) returns void language sql security definer as $f$
+  update public.game_runtime set landing_seq = landing_seq + 1 where game_id=gid $f$;
 
 create or replace function pg_temp._build() returns void language plpgsql as $f$
 declare host text:='d4000000-0000-0000-0000-0000000000a1'; j1 text:='d4000000-0000-0000-0000-000000000001'; r jsonb; gid uuid; code text; v int; href text; begin
@@ -87,7 +92,8 @@ end $$;
 -- U6) sin tirada válida y modo physical_only sin dados físicos → UTILITY_ROLL_REQUIRED.
 do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host'); p1 text:=pg_temp._ctx('p1'); ok boolean:=false; begin
   perform pg_temp._as_user(host); perform set_dice_mode(gid,'physical_only',gen_random_uuid(),pg_temp._ver(gid));
-  perform pg_temp._as_admin(); update public.game_runtime set last_roll = jsonb_build_object('total',7,'player_ref',p1) where game_id=gid; -- tirada de OTRO, no del pagador
+  perform pg_temp._as_admin(); perform pg_temp._land(gid);
+  update public.game_runtime set last_roll = jsonb_build_object('total',7,'player_ref',p1) where game_id=gid; -- tirada de OTRO, no del pagador
   perform pg_temp._as_user(host);
   begin perform pay_utility_rent(gid,'cl-cia-electricidad',null,null,gen_random_uuid(),pg_temp._ver(gid)); exception when others then ok:=(sqlerrm='UTILITY_ROLL_REQUIRED'); end;
   perform pg_temp._as_admin();
@@ -96,6 +102,7 @@ end $$;
 
 -- U7) con dados físicos introducidos (physical_only): calcula y registra ledger + auditoría.
 do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host'); res jsonb; nled int; aud jsonb; begin
+  perform pg_temp._as_admin(); perform pg_temp._land(gid);
   perform pg_temp._as_user(host); res := pay_utility_rent(gid,'cl-cia-electricidad',3,3,gen_random_uuid(),pg_temp._ver(gid)); -- 6 ×20 = 120
   perform pg_temp._as_admin();
   select count(*) into nled from public.ledger where game_id=gid and kind='rent_payment' and amount=120;

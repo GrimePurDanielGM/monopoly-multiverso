@@ -117,6 +117,7 @@ const MESSAGES: Record<string, string> = {
   INVALID_DIE_VALUE: 'Cada dado debe ser un número del 1 al 6.',
   NOT_A_UTILITY: 'Esa propiedad no es un servicio.',
   UTILITY_ROLL_REQUIRED: 'Este servicio necesita una tirada para calcular el alquiler.',
+  RENT_ALREADY_PAID: 'Ya has pagado el alquiler de esta caída.',
 };
 
 /** Mensaje legible para un código de error conocido (o genérico si no lo es). */

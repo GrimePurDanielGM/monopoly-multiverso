@@ -42,7 +42,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     current_space: { space_ref: 'cl-1', board_key: 'classic', space_index: 1, name: 'Mediterráneo', space_type: 'property', property_ref: 'cl-1', is_start: false },
     last_roll: null, last_move: null,
     runtime_status: 'running',
-    control: { paused_by_ref: null, finished_by_ref: null, reason: null },
+    current_landing_rent_resolved: false, control: { paused_by_ref: null, finished_by_ref: null, reason: null },
     runtime_version: 1,
     ...over,
   };

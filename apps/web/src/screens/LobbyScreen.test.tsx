@@ -160,7 +160,7 @@ describe('LobbyScreen', () => {
         boards: [], spaces: [], board_links: [], guardians: [], pending_junction: null, parking_pot: 0, jail: [], my_jail: null, card_decks: [], last_card_draw: null, held_cards: [], my_held_cards: [], pending_card: null, pending_payment: null, last_global_event: null,
         positions: [], my_position: null, current_space: null, last_roll: null, last_move: null,
         runtime_status: 'running',
-        control: { paused_by_ref: null, finished_by_ref: null, reason: null },
+        current_landing_rent_resolved: false, control: { paused_by_ref: null, finished_by_ref: null, reason: null },
         runtime_version: 0,
       },
     });

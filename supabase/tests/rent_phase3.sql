@@ -71,14 +71,14 @@ do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; p1u text:=pg_temp._ctx('p1_ui
   perform pg_temp._as_admin(); perform pg_temp._rec('R2) no pagar alquiler de la propia propiedad (SELF_RENT)', ok);
 end $$;
 
--- R3) utility sin alquiler por dados en esta fase: pay_rent no aplica (NO_RENT_DUE) aunque tenga dueño.
+-- R3) los servicios (utility) ya NO se cobran por pay_rent (van por pay_utility_rent) → NOT_A_UTILITY.
 do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host'); p1u text:=pg_temp._ctx('p1_uid'); rref text; ok boolean:=false; begin
   perform pg_temp._onprop(gid, host, p1u, 'cl-cia-aguas');
   perform pg_temp._as_user(p1u); perform request_property_purchase(gid,'cl-cia-aguas',gen_random_uuid());
   perform pg_temp._as_admin(); select public_ref into rref from property_purchase_requests where game_id=gid and property_ref='cl-cia-aguas' and status='pending';
   perform pg_temp._as_user(host); perform resolve_property_purchase(rref,true,pg_temp._ver(gid));
-  begin perform pay_rent(gid,'cl-cia-aguas',gen_random_uuid(),pg_temp._ver(gid)); exception when others then ok:=(sqlerrm='NO_RENT_DUE'); end;
-  perform pg_temp._as_admin(); perform pg_temp._rec('R3) utility comprable pero sin alquiler por dados aún (NO_RENT_DUE)', ok);
+  begin perform pay_rent(gid,'cl-cia-aguas',gen_random_uuid(),pg_temp._ver(gid)); exception when others then ok:=(sqlerrm='NOT_A_UTILITY'); end;
+  perform pg_temp._as_admin(); perform pg_temp._rec('R3) servicio no se paga por pay_rent (NOT_A_UTILITY)', ok);
 end $$;
 
 do $$ declare n_ok int; n_all int; begin

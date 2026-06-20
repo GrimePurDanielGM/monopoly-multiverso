@@ -99,7 +99,7 @@ test('dados físicos configurables y alquiler de servicios combinado', async ({ 
   await hostFijarTurno(host, 'Marty');
   await hostPosicion(host, 'Marty', 1);
   await reloadUntil(B, () => movement(B).getByText('Introducir tirada física'));
-  await physicalRoll(B, 3, 4, /Mover con estos dados/);
+  await physicalRoll(B, 3, 4, /Mover con esta tirada/);
   await reloadUntil(B, () => movement(B).getByText(/Última tirada: 3 \+ 4 = 7/));
 
   // ── (2) Cambio a SOLO VIRTUALES: desaparece la entrada física, queda "Tirar dados".
@@ -115,7 +115,8 @@ test('dados físicos configurables y alquiler de servicios combinado', async ({ 
   // ── (4) Intento de cárcel con dados físicos: dobles 3+3 → sale de la cárcel.
   await hostSetDiceMode(host, 'Permitir dados físicos y virtuales');
   await hostPosicion(host, 'Marty', 29);
-  await reloadUntil(B, () => movement(B).getByRole('button', { name: '1 casilla', exact: true }));
+  await reloadUntil(B, () => movement(B).getByRole('button', { name: 'Movimiento manual' }));
+  await movement(B).getByRole('button', { name: 'Movimiento manual' }).click();
   await movement(B).getByRole('button', { name: '1 casilla', exact: true }).click();
   await movement(B).getByRole('button', { name: 'Mover 1', exact: true }).click();
   await reloadUntil(B, () => movement(B).getByText(/Estás en la cárcel/));
@@ -136,16 +137,19 @@ test('dados físicos configurables y alquiler de servicios combinado', async ({ 
   //    (idx 12): el alquiler usa su última tirada (7) × ×4 = 28 € para el Anfitrión.
   await hostFijarTurno(host, 'Marty');
   await hostPosicion(host, 'Marty', 1);
-  await reloadUntil(B, () => movement(B).getByText('Introducir tirada física'));
-  await physicalRoll(B, 3, 4, /Mover con estos dados/);
+  // En el paso 4 se eligió "Movimiento manual" (preferencia local); volvemos a "Tirada física".
+  await reloadUntil(B, () => movement(B).getByRole('button', { name: 'Tirada física' }));
+  await movement(B).getByRole('button', { name: 'Tirada física' }).click();
+  await physicalRoll(B, 3, 4, /Mover con esta tirada/);
   await reloadUntil(B, () => movement(B).getByText(/Última tirada: 3 \+ 4 = 7/));
   await hostPosicion(host, 'Marty', 12);
   await reloadUntil(B, () => movement(B).getByText(/Servicios poseídos por Anfitrión: 1\/4/));
   await expect(movement(B).getByText(/Multiplicador ×4/)).toBeVisible();
   await expect(movement(B).getByText(/Alquiler 28/)).toBeVisible();
   await movement(B).getByRole('button', { name: /Pagar alquiler \(28/ }).click();
-  // El pago se procesa sin error (la matemática del alquiler está cubierta por las pruebas SQL).
-  await reloadUntil(B, () => movement(B).getByText(/Servicios poseídos por Anfitrión: 1\/4/));
+  // Tras pagar, la caída queda resuelta: ya no se ofrece pagar de nuevo (bloqueo de doble pago).
+  await reloadUntil(B, () => movement(B).getByText(/Ya has pagado el alquiler de esta caída/));
+  await expect(movement(B).getByRole('button', { name: /Pagar alquiler/ })).toHaveCount(0);
   await expect(B.getByRole('alert')).toHaveCount(0);
 
   await hostCtx.close();

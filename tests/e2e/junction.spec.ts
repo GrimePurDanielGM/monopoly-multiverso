@@ -62,6 +62,7 @@ test('cruce: la cárcel-guardián obliga a elegir; cruzar paga peaje y cambia de
   const code = await createGame(host);
   await host.getByText('Configuración de la sala').click();
   await host.getByLabel('Mínimo').fill('2');
+  await host.getByLabel('Configuración de dados').selectOption('physical_allowed');
   await host.getByRole('button', { name: 'Guardar configuración' }).click();
   await expect(host.getByLabel('Mínimo')).toHaveValue('2');
 
@@ -81,7 +82,8 @@ test('cruce: la cárcel-guardián obliga a elegir; cruzar paga peaje y cambia de
   await hostPosicion(host, 'Marty', 9);
 
   // Marty mueve 2: alcanza la cárcel (10) con 1 restante → debe ELEGIR (no avanza solo).
-  await reloadUntil(B, () => movement(B).getByRole('button', { name: '2 casillas', exact: true }));
+  await reloadUntil(B, () => movement(B).getByRole('button', { name: 'Movimiento manual' }));
+  await movement(B).getByRole('button', { name: 'Movimiento manual' }).click();
   await movement(B).getByRole('button', { name: '2 casillas', exact: true }).click();
   await movement(B).getByRole('button', { name: 'Mover 2', exact: true }).click();
   await reloadUntil(B, () => movement(B).getByText(/Has llegado a la cárcel/));

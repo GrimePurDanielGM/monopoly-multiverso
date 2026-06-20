@@ -1,6 +1,23 @@
 # Estado del proyecto — lista viva
 
 ## Fase 5 — Casillas especiales · **`Fase 5: COMPLETADA` (pendiente validación manual)**
+- **Corrección 4 (2026-06-20) — estaciones acumulativas + doble pago + selector de dados (`0049`/`0050`/`0051`):**
+  - **Estaciones/transportes acumulativos entre tableros:** `pay_rent` detecta `kind` station/transport y cobra por
+    escala según cuántas posea el propietario en AMBOS tableros: 1→25 · 2→50 · 3→100 · 4→200 · 5→300 · 6→400 ·
+    7→500 · 8→600. (Servicios siguen por `pay_utility_rent`; `pay_rent` sobre un servicio → `NOT_A_UTILITY`.)
+    Ledger `rent_payment` + auditoría con nº e importe. UI: «Estaciones/transportes de X: N/8 · Alquiler …», ficha
+    con la tabla 25…600 y «se combinan entre ambos tableros», recuento «N/8» en el propietario.
+  - **Bloqueo de doble pago por caída:** `game_runtime.landing_seq` avanza en cada aterrizaje (`_p4_apply_move`) y
+    en cada recolocación del anfitrión; `rent_resolved_seq` guarda la caída pagada. `pay_rent`/`pay_utility_rent`
+    rechazan un segundo pago de la misma caída con `RENT_ALREADY_PAID`; el snapshot expone
+    `current_landing_rent_resolved` y la UI oculta «Pagar alquiler» mostrando «Ya has pagado el alquiler de esta
+    caída». Persiste tras recarga; una nueva caída (movimiento o recolocación) reabre el pago.
+  - **Selector de interfaz de dados por jugador:** en `physical_allowed`/`physical_only` cada jugador elige en
+    pantalla **Tirada física** o **Movimiento manual** (preferencia local en `localStorage`, sin secretos); en
+    `virtual_only` solo se ve «Tirar dados» (sin físico ni manual). En la cárcel no aparece el movimiento manual.
+  - Tests: SQL `transport_rent` (11) + `rent_once` (10 checks) + batería 1–5 (**47 suites, 0 fallos**) tras `db
+    reset`; unit **319**; E2E (5 specs actualizados + `dice_utility` cubre el doble pago) Chromium+WebKit. Aplicado
+    a dev (`0049`,`0050`,`0051`). **No se avanza a Fase 6.**
 - **Corrección 3 (2026-06-20) — dados físicos/virtuales configurables + servicios combinados (`0046`/`0047`/`0048`):**
   - **Modo de dados (`config.dice_mode`):** `virtual_only` (def) · `physical_allowed` · `physical_only`. El
     anfitrión lo cambia **en lobby** (formulario de sala, vía `update_config`) y **en partida activa**

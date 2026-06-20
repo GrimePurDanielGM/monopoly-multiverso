@@ -73,6 +73,7 @@ test('Fase 4 corrección: tablero visual, privacidad, restricción de compra, al
   const code = await createGame(host);
   await host.getByText('Configuración de la sala').click();
   await host.getByLabel('Mínimo').fill('2');
+  await host.getByLabel('Configuración de dados').selectOption('physical_allowed');
   await host.getByRole('button', { name: 'Guardar configuración' }).click();
   await expect(host.getByLabel('Mínimo')).toHaveValue('2');
 
@@ -149,6 +150,7 @@ test('Fase 4 corrección: tablero visual, privacidad, restricción de compra, al
   // ── Pasar por salida: el anfitrión (actual) en la última casilla avanza 1 y cobra.
   await hostPosicion(host, 'Anfitrión', LAST_IX);
   await reloadUntil(host, () => movement(host).getByRole('button', { name: /Tirar dados/ }));
+  await movement(host).getByRole('button', { name: 'Movimiento manual' }).click();
   await movement(host).getByRole('button', { name: '1 casilla', exact: true }).click();
   await movement(host).getByRole('button', { name: 'Mover 1', exact: true }).click();
   await expect(movement(host).getByText(/pasó por salida/)).toBeVisible({ timeout: 20_000 });

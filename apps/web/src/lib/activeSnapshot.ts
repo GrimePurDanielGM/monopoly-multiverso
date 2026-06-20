@@ -301,6 +301,8 @@ export interface ActiveSnapshot {
   pending_payment: PendingPayment | null;
   last_global_event: GlobalEvent | null;
   runtime_status: RuntimeStatus;
+  /** ¿la caída actual ya tiene su alquiler resuelto? (bloqueo de doble pago) */
+  current_landing_rent_resolved: boolean;
   control: ActiveControl;
   runtime_version: number;
 }
@@ -692,6 +694,7 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
       pending_payment: pendingPayment,
       last_global_event: lastGlobalEvent,
       runtime_status: rs,
+      current_landing_rent_resolved: raw.current_landing_rent_resolved === true,
       control: { paused_by_ref: ctl.paused_by_ref, finished_by_ref: ctl.finished_by_ref, reason: ctl.reason },
       runtime_version: raw.runtime_version,
     },

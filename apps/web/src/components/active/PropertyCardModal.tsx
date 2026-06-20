@@ -101,6 +101,22 @@ export function PropertyCardModal({ property: p, snap, onClose }: {
                 <p className="mt-1 text-slate-500">Los servicios se combinan entre ambos tableros.</p>
               </div>
             )}
+            {(p.kind === 'station' || p.kind === 'transport') && (
+              <div className="px-3 py-1.5 text-[11px] text-slate-400">
+                <p className="text-slate-300">Alquiler acumulativo según estaciones/transportes del propietario:</p>
+                <ul className="mt-0.5 grid grid-cols-2 gap-x-3 tabular-nums">
+                  <li>1: 25 €</li>
+                  <li>2: 50 €</li>
+                  <li>3: 100 €</li>
+                  <li>4: 200 €</li>
+                  <li>5: 300 €</li>
+                  <li>6: 400 €</li>
+                  <li>7: 500 €</li>
+                  <li>8: 600 €</li>
+                </ul>
+                <p className="mt-1 text-slate-500">Las estaciones y transportes se combinan entre ambos tableros.</p>
+              </div>
+            )}
           </div>
 
           <div className="overflow-hidden rounded-lg border border-slate-700">

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import type { ActiveSnapshot, BoardSpace, PlayerPosition } from '../../lib/activeSnapshot';
 import { MovementPanel } from './MovementPanel';
@@ -31,13 +31,14 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     last_roll: { d1: 2, d2: 3, total: 5, player_ref: 'P-1' },
     last_move: { player_ref: 'P-1', board: 'classic', from: 0, to: 1, steps: 1, method: 'roll', passed_start: false, bonus: 0, space_ref: 'cl-1', space_name: 'Mediterráneo', space_type: 'property', property_ref: 'cl-1' },
     runtime_status: 'running',
-    control: { paused_by_ref: null, finished_by_ref: null, reason: null },
+    current_landing_rent_resolved: false, control: { paused_by_ref: null, finished_by_ref: null, reason: null },
     runtime_version: 1,
     ...over,
   };
 }
 
 describe('MovementPanel', () => {
+  beforeEach(() => { try { localStorage.clear(); } catch { /* noop */ } });
   const cbs = () => ({ onRoll: vi.fn(), onMovePhysical: vi.fn(), onMoveManual: vi.fn(), onPayUtilityRent: vi.fn(), onOpenBoard: vi.fn(), onRequestPurchase: vi.fn(), onPayRent: vi.fn(), onResolveJunction: vi.fn(), onPayJailRelease: vi.fn(), onUseJailCard: vi.fn(), onPayPending: vi.fn() });
 
   it('mi turno: "Tirar dados" llama onRoll y muestra la última tirada', () => {
@@ -48,9 +49,14 @@ describe('MovementPanel', () => {
     expect(c.onRoll).toHaveBeenCalledTimes(1);
   });
 
-  it('mover manualmente: elegir 1–12 con botones y Mover llama onMoveManual', () => {
+  // El movimiento manual solo está disponible cuando el modo permite físicos (con físicos, elegir "Movimiento manual").
+  const physSnap = (over: Partial<ActiveSnapshot> = {}) =>
+    snap({ game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'physical_allowed' } }, ...over });
+
+  it('mover manualmente (con físicos permitidos): elegir 1–12 con botones y Mover llama onMoveManual', () => {
     const c = cbs();
-    render(<MovementPanel snap={snap()} busy={false} {...c} />);
+    render(<MovementPanel snap={physSnap()} busy={false} {...c} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Movimiento manual' }));
     // Mover está deshabilitado hasta elegir un valor válido (no se puede mover con 0).
     expect(screen.getByRole('button', { name: 'Mover' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: '7 casillas' }));
@@ -60,12 +66,21 @@ describe('MovementPanel', () => {
 
   it('mover manualmente: 1 casilla (singular) y dígitos 8–12 disponibles', () => {
     const c = cbs();
-    render(<MovementPanel snap={snap()} busy={false} {...c} />);
+    render(<MovementPanel snap={physSnap()} busy={false} {...c} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Movimiento manual' }));
     expect(screen.getByRole('button', { name: '1 casilla' })).toBeInTheDocument();
     [8, 9, 10, 11, 12].forEach((n) => expect(screen.getByRole('button', { name: `${n} casillas` })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: '11 casillas' }));
     fireEvent.click(screen.getByRole('button', { name: 'Mover 11' }));
     expect(c.onMoveManual).toHaveBeenCalledWith(11);
+  });
+
+  it('virtual_only: no muestra movimiento manual ni tirada física (solo "Tirar dados")', () => {
+    render(<MovementPanel snap={snap()} busy={false} {...cbs()} />);
+    expect(screen.getByRole('button', { name: /Tirar dados/ })).toBeInTheDocument();
+    expect(screen.queryByText('Introducir tirada física')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Movimiento manual' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '7 casillas' })).toBeNull();
   });
 
   it('al caer en propiedad disponible ofrece "Solicitar compra" desde el contexto', () => {
@@ -262,6 +277,7 @@ describe('BoardView (tablero visual)', () => {
 });
 
 describe('MovementPanel — dados físicos y servicios', () => {
+  beforeEach(() => { try { localStorage.clear(); } catch { /* noop */ } });
   const cbs = () => ({ onRoll: vi.fn(), onMovePhysical: vi.fn(), onMoveManual: vi.fn(), onOpenBoard: vi.fn(), onRequestPurchase: vi.fn(), onPayRent: vi.fn(), onPayUtilityRent: vi.fn(), onResolveJunction: vi.fn(), onPayJailRelease: vi.fn(), onUseJailCard: vi.fn(), onPayPending: vi.fn() });
   const withDice = (dice_mode: 'virtual_only' | 'physical_allowed' | 'physical_only', over: Partial<ActiveSnapshot> = {}) =>
     snap({ game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode } }, ...over });
@@ -286,7 +302,7 @@ describe('MovementPanel — dados físicos y servicios', () => {
     expect(screen.getByRole('button', { name: /Tirar dados/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Dado 1: 3' }));
     fireEvent.click(screen.getByRole('button', { name: 'Dado 2: 4' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Mover con estos dados' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mover con esta tirada' }));
     expect(c.onMovePhysical).toHaveBeenCalledWith(3, 4);
   });
 
@@ -322,5 +338,63 @@ describe('MovementPanel — dados físicos y servicios', () => {
     expect(screen.getByText(/necesita una tirada para calcular el alquiler/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Tirar dados virtuales para el servicio/ }));
     expect(c.onPayUtilityRent).toHaveBeenCalledWith(expect.objectContaining({ property_ref: 'cl-elec' }), null, null);
+  });
+
+  it('physical_allowed: el selector alterna entre tirada física y movimiento manual y persiste la preferencia', () => {
+    const { unmount } = render(<MovementPanel snap={withDice('physical_allowed')} busy={false} {...cbs()} />);
+    // por defecto, tirada física
+    expect(screen.getByText('Introducir tirada física')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '7 casillas' })).toBeNull();
+    // cambiar a movimiento manual
+    fireEvent.click(screen.getByRole('button', { name: 'Movimiento manual' }));
+    expect(screen.getByRole('button', { name: '7 casillas' })).toBeInTheDocument();
+    expect(screen.queryByText('Introducir tirada física')).toBeNull();
+    unmount();
+    // al re-montar, la preferencia local (steps) se conserva
+    render(<MovementPanel snap={withDice('physical_allowed')} busy={false} {...cbs()} />);
+    expect(screen.getByRole('button', { name: '7 casillas' })).toBeInTheDocument();
+  });
+
+  it('physical_only: oculta "Tirar dados" pero mantiene el selector físico/manual', () => {
+    render(<MovementPanel snap={withDice('physical_only')} busy={false} {...cbs()} />);
+    expect(screen.queryByRole('button', { name: /Tirar dados/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Tirada física' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Movimiento manual' })).toBeInTheDocument();
+  });
+
+  it('en cárcel NO aparece movimiento manual, pero sí la tirada física (si está permitida)', () => {
+    const s = withDice('physical_allowed', { my_jail: { board_key: 'classic', jail_turns: 0, fine: 50, action_taken_this_turn: false } });
+    render(<MovementPanel snap={s} busy={false} {...cbs()} />);
+    expect(screen.queryByRole('button', { name: 'Movimiento manual' })).toBeNull();
+    expect(screen.getByText('Intento con dados físicos')).toBeInTheDocument();
+  });
+
+  it('estación de otro: muestra N/8 y alquiler acumulativo, y paga con onPayRent', () => {
+    const c = cbs();
+    const s = withDice('virtual_only', {
+      properties: [
+        { property_ref: 'cl-goya', board_key: 'classic', group_key: 'estacion', name: 'Estación de Goya', kind: 'station', price: 200, base_rent: 25, is_buyable: true, sort_order: 1, owner_ref: 'P-2', in_auction: false },
+        { property_ref: 'bf-tren', board_key: 'back_to_the_future', group_key: 'estacion', name: 'Tren del Tiempo', kind: 'transport', price: 200, base_rent: 25, is_buyable: true, sort_order: 2, owner_ref: 'P-2', in_auction: false },
+      ],
+      spaces: [
+        { space_ref: 'cl-0', board_key: 'classic', space_index: 0, name: 'Salida', space_type: 'start', property_ref: null, is_start: true },
+        { space_ref: 'cl-goya', board_key: 'classic', space_index: 5, name: 'Estación de Goya', space_type: 'property', property_ref: 'cl-goya', is_start: false },
+      ],
+      positions: [{ player_ref: 'P-1', board_key: 'classic', space_index: 5 }],
+      my_position: { board_key: 'classic', space_index: 5 },
+      current_space: { space_ref: 'cl-goya', board_key: 'classic', space_index: 5, name: 'Estación de Goya', space_type: 'property', property_ref: 'cl-goya', is_start: false },
+    });
+    render(<MovementPanel snap={s} busy={false} {...c} />);
+    expect(screen.getByText(/Estaciones\/transportes de Beto:/)).toHaveTextContent('Estaciones/transportes de Beto: 2/8 · Alquiler 50 ₥');
+    fireEvent.click(screen.getByRole('button', { name: /Pagar alquiler \(50/ }));
+    expect(c.onPayRent).toHaveBeenCalledWith(expect.objectContaining({ property_ref: 'cl-goya' }));
+  });
+
+  it('alquiler resuelto en esta caída: oculta el botón de pago y avisa', () => {
+    const c = cbs();
+    const s = utilSnap('virtual_only', { current_landing_rent_resolved: true });
+    render(<MovementPanel snap={s} busy={false} {...c} />);
+    expect(screen.getByText(/Ya has pagado el alquiler de esta caída/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Pagar alquiler/ })).toBeNull();
   });
 });

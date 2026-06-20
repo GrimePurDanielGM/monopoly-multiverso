@@ -28,7 +28,7 @@ const valid = {
   ],
   late_join_requests: [],
   runtime_status: 'running',
-  control: { paused_by_ref: null, finished_by_ref: null, reason: null },
+  current_landing_rent_resolved: false, control: { paused_by_ref: null, finished_by_ref: null, reason: null },
   runtime_version: 3,
 };
 

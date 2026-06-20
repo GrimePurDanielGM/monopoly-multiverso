@@ -3,6 +3,7 @@ import type { ActiveProperty, ActiveSnapshot, PropertyAuction } from '../../lib/
 import {
   formatMoney, propertyStatus, canRequestPurchase, canPayRent, ownerName,
   propertyGroupsByBoard, purchaseBlockReason, playerUtilityCount, utilityMultiplier,
+  playerStationCount, stationRent,
 } from '../../lib/activeSelectors';
 import { AuctionsPanel } from './AuctionsPanel';
 import { PropertyCardModal } from './PropertyCardModal';
@@ -43,6 +44,9 @@ function PropertyCard({
       {status === 'owned' && <p className="text-[11px] text-amber-300">Propiedad de {ownerName(p, snap)}</p>}
       {p.kind === 'utility' && (status === 'owned' || status === 'mine') && p.owner_ref && (
         <p className="text-[11px] text-emerald-300">Servicios: {playerUtilityCount(snap, p.owner_ref)}/4 · Multiplicador actual ×{utilityMultiplier(playerUtilityCount(snap, p.owner_ref))}</p>
+      )}
+      {(p.kind === 'station' || p.kind === 'transport') && (status === 'owned' || status === 'mine') && p.owner_ref && (
+        <p className="text-[11px] text-emerald-300">Estaciones/transportes: {playerStationCount(snap, p.owner_ref)}/8 · Alquiler actual {formatMoney(stationRent(playerStationCount(snap, p.owner_ref)))}</p>
       )}
       <button
         type="button"

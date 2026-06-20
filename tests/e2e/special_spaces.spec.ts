@@ -57,7 +57,8 @@ async function reloadUntil(page: Page, loc: () => Locator, timeout = 45_000) {
 // Coloca a B 1 casilla antes de `index` y mueve 1 para CAER en ella.
 async function landOn(host: Page, B: Page, index: number) {
   await hostPosicion(host, 'Marty', index - 1);
-  await reloadUntil(B, () => movement(B).getByRole('button', { name: '1 casilla', exact: true }));
+  await reloadUntil(B, () => movement(B).getByRole('button', { name: 'Movimiento manual' }));
+  await movement(B).getByRole('button', { name: 'Movimiento manual' }).click();
   await movement(B).getByRole('button', { name: '1 casilla', exact: true }).click();
   await movement(B).getByRole('button', { name: 'Mover 1', exact: true }).click();
 }
@@ -69,6 +70,7 @@ test('casillas especiales: impuesto, Parking, cárcel y carta', async ({ browser
   const code = await createGame(host);
   await host.getByText('Configuración de la sala').click();
   await host.getByLabel('Mínimo').fill('2');
+  await host.getByLabel('Configuración de dados').selectOption('physical_allowed');
   await host.getByRole('button', { name: 'Guardar configuración' }).click();
   await expect(host.getByLabel('Mínimo')).toHaveValue('2');
 
