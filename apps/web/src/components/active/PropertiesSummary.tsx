@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ActiveProperty, ActiveSnapshot } from '../../lib/activeSnapshot';
 import { formatMoney, myProperties, propertiesOf } from '../../lib/activeSelectors';
-import { PropertyCardModal } from './PropertyCardModal';
+import { PropertyCardModal, type BuildingActions } from './PropertyCardModal';
 
 /** Resumen LIGERO de propiedades en la pantalla principal: mis propiedades + recuento por jugador.
  *  No lista el catálogo completo ni incluye acciones de compra: esas viven en "Tablero de propiedades",
@@ -9,9 +9,13 @@ import { PropertyCardModal } from './PropertyCardModal';
 export function PropertiesSummary({
   snap,
   onOpenBoard,
+  buildingActions,
+  busy = false,
 }: {
   snap: ActiveSnapshot;
   onOpenBoard: () => void;
+  buildingActions?: BuildingActions;
+  busy?: boolean;
 }) {
   const mine = myProperties(snap);
   const others = snap.players
@@ -88,7 +92,15 @@ export function PropertiesSummary({
         </div>
       )}
 
-      {card && <PropertyCardModal property={card} snap={snap} onClose={() => setCard(null)} />}
+      {/* Resumen de banco (Fase 6): stock físico de casas y hoteles disponibles. */}
+      {snap.building_stock && (
+        <div className="grid grid-cols-2 gap-2 border-t border-slate-700 pt-3 text-xs">
+          <div className="rounded-lg bg-slate-800/60 px-3 py-2"><p className="text-slate-400">Casas disponibles</p><p className="text-base font-bold text-orange-300">{snap.building_stock.houses_available}</p></div>
+          <div className="rounded-lg bg-slate-800/60 px-3 py-2"><p className="text-slate-400">Hoteles disponibles</p><p className="text-base font-bold text-purple-300">{snap.building_stock.hotels_available}</p></div>
+        </div>
+      )}
+
+      {card && <PropertyCardModal property={card} snap={snap} busy={busy} actions={buildingActions ?? {}} onClose={() => setCard(null)} />}
     </section>
   );
 }

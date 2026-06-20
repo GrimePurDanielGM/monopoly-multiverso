@@ -108,6 +108,12 @@ const KIND_LABEL: Record<LedgerKind, string> = {
   card_bank_charge: 'Carta: pagas a la banca',
   card_player_payment: 'Carta: pagas a un jugador',
   card_player_charge: 'Carta: cobras de un jugador',
+  building_purchase: 'Compra de casa',
+  building_sale: 'Venta de casa',
+  hotel_purchase: 'Compra de hotel',
+  hotel_sale: 'Venta de hotel',
+  mortgage_received: 'Hipoteca recibida',
+  unmortgage_payment: 'Deshipoteca',
 };
 export function kindLabel(kind: LedgerKind): string {
   return KIND_LABEL[kind];
@@ -260,6 +266,46 @@ export function utilityRentInfo(p: ActiveProperty, snap: ActiveSnapshot): Utilit
   const roll = snap.last_roll;
   const total = roll && roll.player_ref === snap.me.public_ref ? roll.total : null;
   return { count, multiplier, total, amount: total === null ? null : total * multiplier };
+}
+
+// ── Construcciones e hipotecas (Fase 6, solo calles) ────────────────────────────────
+/** ¿La propiedad es mía? */
+export function isMine(p: ActiveProperty, snap: ActiveSnapshot): boolean {
+  return p.owner_ref !== null && p.owner_ref === snap.me.public_ref;
+}
+const isStreet = (p: ActiveProperty) => p.kind === 'street';
+/** ¿Puedo construir una casa? (mía, calle, monopolio, no hipotecada, <4 casas, sin hotel, saldo). */
+export function canBuildHouse(p: ActiveProperty, snap: ActiveSnapshot): boolean {
+  return isMine(p, snap) && isStreet(p) && !p.mortgaged && p.monopoly === true && !p.has_hotel
+    && (p.houses ?? 0) < 4 && p.house_cost != null && snap.me.balance >= p.house_cost;
+}
+/** ¿Puedo construir un hotel? (mía, calle, monopolio, 4 casas, sin hotel, saldo). */
+export function canBuildHotel(p: ActiveProperty, snap: ActiveSnapshot): boolean {
+  return isMine(p, snap) && isStreet(p) && !p.mortgaged && p.monopoly === true && !p.has_hotel
+    && (p.houses ?? 0) === 4 && p.hotel_cost != null && snap.me.balance >= p.hotel_cost;
+}
+/** ¿Puedo vender una casa? (mía, calle, con casas y sin hotel). */
+export function canSellHouse(p: ActiveProperty, snap: ActiveSnapshot): boolean {
+  return isMine(p, snap) && isStreet(p) && !p.has_hotel && (p.houses ?? 0) > 0;
+}
+/** ¿Puedo vender un hotel? (mía, calle, con hotel). */
+export function canSellHotel(p: ActiveProperty, snap: ActiveSnapshot): boolean {
+  return isMine(p, snap) && isStreet(p) && p.has_hotel === true;
+}
+/** ¿Puedo hipotecar? (mía, calle, no hipotecada, sin construcciones en esta propiedad). */
+export function canMortgage(p: ActiveProperty, snap: ActiveSnapshot): boolean {
+  return isMine(p, snap) && isStreet(p) && !p.mortgaged && !p.has_hotel && (p.houses ?? 0) === 0;
+}
+/** ¿Puedo deshipotecar? (mía, calle, hipotecada, saldo suficiente). */
+export function canUnmortgage(p: ActiveProperty, snap: ActiveSnapshot): boolean {
+  return isMine(p, snap) && isStreet(p) && p.mortgaged === true && p.unmortgage_cost != null && snap.me.balance >= p.unmortgage_cost;
+}
+/** Explicación breve de por qué no hay acciones de construcción disponibles (para la ficha). */
+export function buildBlockReason(p: ActiveProperty, snap: ActiveSnapshot): string | null {
+  if (!isMine(p, snap) || !isStreet(p)) return null;
+  if (p.mortgaged) return 'Propiedad hipotecada. Deshipoteca para volver a construir.';
+  if (p.monopoly !== true) return 'Necesitas tener el grupo de color completo para construir.';
+  return null;
 }
 
 /** ¿Puedo pagar el alquiler de un servicio? (mi turno, dueño ajeno, hay tirada y saldo suficiente). */

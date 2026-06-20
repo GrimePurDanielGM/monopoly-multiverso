@@ -11,7 +11,9 @@ export type LedgerKind =
   | 'pass_start_bonus' | 'guardian_toll'
   // Fase 5 — casillas especiales
   | 'tax_payment' | 'parking_pot_payout' | 'jail_release_payment'
-  | 'card_bank_payment' | 'card_bank_charge' | 'card_player_payment' | 'card_player_charge';
+  | 'card_bank_payment' | 'card_bank_charge' | 'card_player_payment' | 'card_player_charge'
+  // Fase 6 — construcciones e hipotecas
+  | 'building_purchase' | 'building_sale' | 'hotel_purchase' | 'hotel_sale' | 'mortgage_received' | 'unmortgage_payment';
 
 export type BoardKey = 'classic' | 'back_to_the_future';
 export type DeckKey = 'chance' | 'community_chest' | 'past' | 'future';
@@ -43,6 +45,12 @@ export interface ActiveProperty {
   hotel_cost?: number | null;
   mortgage_value?: number | null;
   unmortgage_cost?: number | null;
+  // Fase 6 — estado de construcción/hipoteca y alquiler actual adeudado
+  houses?: number | null;        // 0–4 casas (calles)
+  has_hotel?: boolean | null;    // hotel presente (calles)
+  mortgaged?: boolean | null;    // hipotecada (bloquea alquiler)
+  monopoly?: boolean | null;     // el dueño posee todo el grupo (habilita construir)
+  rent_due?: number | null;      // alquiler actual que adeudaría quien cae (calle/estación); null si no aplica
 }
 
 export interface PropertyAuction {
@@ -303,6 +311,8 @@ export interface ActiveSnapshot {
   runtime_status: RuntimeStatus;
   /** ¿la caída actual ya tiene su alquiler resuelto? (bloqueo de doble pago) */
   current_landing_rent_resolved: boolean;
+  /** Stock físico del banco (Fase 6): casas/hoteles disponibles. */
+  building_stock: { houses_available: number; hotels_available: number } | null;
   control: ActiveControl;
   runtime_version: number;
 }
@@ -323,6 +333,7 @@ const KINDS: ReadonlySet<string> = new Set([
   'pass_start_bonus', 'guardian_toll',
   'tax_payment', 'parking_pot_payout', 'jail_release_payment',
   'card_bank_payment', 'card_bank_charge', 'card_player_payment', 'card_player_charge',
+  'building_purchase', 'building_sale', 'hotel_purchase', 'hotel_sale', 'mortgage_received', 'unmortgage_payment',
 ]);
 const DECKS: ReadonlySet<string> = new Set(['chance', 'community_chest', 'past', 'future']);
 const CARD_EFFECTS: ReadonlySet<string> = new Set([
@@ -443,6 +454,9 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
       rent_1: card(p.rent_1), rent_2: card(p.rent_2), rent_3: card(p.rent_3), rent_4: card(p.rent_4),
       rent_hotel: card(p.rent_hotel), house_cost: card(p.house_cost), hotel_cost: card(p.hotel_cost),
       mortgage_value: card(p.mortgage_value), unmortgage_cost: card(p.unmortgage_cost),
+      houses: isNum(p.houses) ? p.houses : null, has_hotel: isBool(p.has_hotel) ? p.has_hotel : null,
+      mortgaged: isBool(p.mortgaged) ? p.mortgaged : null, monopoly: isBool(p.monopoly) ? p.monopoly : null,
+      rent_due: card(p.rent_due),
     });
   }
 
@@ -695,6 +709,8 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
       last_global_event: lastGlobalEvent,
       runtime_status: rs,
       current_landing_rent_resolved: raw.current_landing_rent_resolved === true,
+      building_stock: isObj(raw.building_stock) && isNum(raw.building_stock.houses_available) && isNum(raw.building_stock.hotels_available)
+        ? { houses_available: raw.building_stock.houses_available, hotels_available: raw.building_stock.hotels_available } : null,
       control: { paused_by_ref: ctl.paused_by_ref, finished_by_ref: ctl.finished_by_ref, reason: ctl.reason },
       runtime_version: raw.runtime_version,
     },

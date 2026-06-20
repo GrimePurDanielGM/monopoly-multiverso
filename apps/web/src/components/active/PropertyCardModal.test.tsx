@@ -15,7 +15,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     ledger_recent: [], properties: [], auctions: [], purchase_requests: [],
     leave_requests: [], bankruptcy_requests: [], late_join_requests: [],
     boards: [], spaces: [], board_links: [], guardians: [], pending_junction: null, parking_pot: 0, jail: [], my_jail: null, card_decks: [], last_card_draw: null, held_cards: [], my_held_cards: [], pending_card: null, pending_payment: null, last_global_event: null, positions: [], my_position: null, current_space: null, last_roll: null, last_move: null,
-    runtime_status: 'running', current_landing_rent_resolved: false, control: { paused_by_ref: null, finished_by_ref: null, reason: null }, runtime_version: 1,
+    runtime_status: 'running', current_landing_rent_resolved: false, building_stock: { houses_available: 32, hotels_available: 12 }, control: { paused_by_ref: null, finished_by_ref: null, reason: null }, runtime_version: 1,
     ...over,
   };
 }

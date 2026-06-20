@@ -592,6 +592,29 @@ export async function payUtilityRent(gameId: string, propertyRef: string, die1: 
   return { ok: true, data: true };
 }
 
+// ── Fase 6 — construcciones e hipotecas (solo calles) ──────────────────────────────
+/** Genérico: una RPC de construcción/hipoteca con la firma estándar (game, property_ref, req, version). */
+async function buildingRpc(fn: string, gameId: string, propertyRef: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc(fn, {
+    p_game: gameId, p_property_ref: propertyRef, p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+/** Construir una casa (monopolio, uniforme, no hipotecada). */
+export const buildHouse = (g: string, p: string, r: string, v: number) => buildingRpc('build_house', g, p, r, v);
+/** Construir un hotel (4 casas en todo el grupo). */
+export const buildHotel = (g: string, p: string, r: string, v: number) => buildingRpc('build_hotel', g, p, r, v);
+/** Vender una casa (50% del coste; uniformidad inversa). */
+export const sellHouse = (g: string, p: string, r: string, v: number) => buildingRpc('sell_house', g, p, r, v);
+/** Vender un hotel (50%; vuelve a 4 casas si hay stock). */
+export const sellHotel = (g: string, p: string, r: string, v: number) => buildingRpc('sell_hotel', g, p, r, v);
+/** Hipotecar (sin construcciones en el grupo). */
+export const mortgageProperty = (g: string, p: string, r: string, v: number) => buildingRpc('mortgage_property', g, p, r, v);
+/** Deshipotecar (paga hipoteca + 10%). */
+export const unmortgageProperty = (g: string, p: string, r: string, v: number) => buildingRpc('unmortgage_property', g, p, r, v);
+
 /** Resuelve la bifurcación de la cárcel-guardián: 'own' (seguir en tu tablero) o 'cross' (cruzar al otro). */
 export async function resolveJunction(gameId: string, direction: 'own' | 'cross', requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
   if (!supabase) return fail('UNCONFIGURED');

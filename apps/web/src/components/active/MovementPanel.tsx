@@ -5,7 +5,7 @@ import {
   propertyStatus, canRequestPurchase, canPayRent, ownerName, purchaseBlockReason, junctionChoice,
   physicalAllowed, virtualAllowed, utilityRentInfo, canPayUtilityRent, stationRentInfo,
 } from '../../lib/activeSelectors';
-import { PropertyCardModal } from './PropertyCardModal';
+import { PropertyCardModal, type BuildingActions } from './PropertyCardModal';
 
 // Preferencia LOCAL (por jugador/dispositivo) de qué interfaz física ver: dados o casillas. No es secreto.
 const INPUT_VIEW_KEY = 'physical_input_view';
@@ -138,7 +138,7 @@ function StationSection({ prop, snap, busy, onPay }: {
  *  Las casillas aún no implementadas muestran un aviso de "fase posterior". */
 export function MovementPanel({
   snap, busy, onRoll, onMovePhysical, onMoveManual, onOpenBoard, onRequestPurchase, onPayRent, onPayUtilityRent, onResolveJunction,
-  onPayJailRelease, onUseJailCard, onPayPending,
+  onPayJailRelease, onUseJailCard, onPayPending, buildingActions,
 }: {
   snap: ActiveSnapshot;
   busy: boolean;
@@ -153,6 +153,7 @@ export function MovementPanel({
   onPayJailRelease: () => void;
   onUseJailCard: () => void;
   onPayPending: () => void;
+  buildingActions?: BuildingActions;
 }) {
   const [steps, setSteps] = useState<number | null>(null);
   const [card, setCard] = useState<ActiveProperty | null>(null);
@@ -439,6 +440,8 @@ export function MovementPanel({
               <p>Has caído en propiedad de <span className="font-semibold">{ownerName(prop, snap)}</span> ({prop.name}).</p>
               {snap.current_landing_rent_resolved ? (
                 <p role="note" className="rounded-lg bg-emerald-900/40 px-3 py-2 text-xs text-emerald-200">Alquiler pagado. Ya has pagado el alquiler de esta caída.</p>
+              ) : prop.mortgaged ? (
+                <p role="note" className="rounded-lg bg-amber-900/40 px-3 py-2 text-xs text-amber-200">Propiedad hipotecada. No se debe alquiler.</p>
               ) : prop.kind === 'utility' ? (
                 <UtilitySection prop={prop} snap={snap} busy={busy} onPay={onPayUtilityRent} />
               ) : prop.kind === 'station' || prop.kind === 'transport' ? (
@@ -474,7 +477,7 @@ export function MovementPanel({
         <p className="rounded-lg bg-slate-800 px-3 py-2 text-xs text-slate-300">Estás en la casilla de salida.</p>
       )}
 
-      {card && <PropertyCardModal property={card} snap={snap} onClose={() => setCard(null)} />}
+      {card && <PropertyCardModal property={card} snap={snap} busy={busy} actions={buildingActions ?? {}} onClose={() => setCard(null)} />}
     </section>
   );
 }

@@ -118,6 +118,20 @@ const MESSAGES: Record<string, string> = {
   NOT_A_UTILITY: 'Esa propiedad no es un servicio.',
   UTILITY_ROLL_REQUIRED: 'Este servicio necesita una tirada para calcular el alquiler.',
   RENT_ALREADY_PAID: 'Ya has pagado el alquiler de esta caída.',
+  // Fase 6 — construcciones e hipotecas
+  NOT_OWNER: 'No eres el propietario de esta propiedad.',
+  PROPERTY_NOT_STREET: 'Solo se puede construir o hipotecar en calles de color.',
+  GROUP_NOT_COMPLETE: 'Necesitas tener el grupo de color completo.',
+  PROPERTY_MORTGAGED: 'La propiedad está hipotecada.',
+  GROUP_HAS_MORTGAGE: 'No puedes construir mientras el grupo tenga propiedades hipotecadas.',
+  HAS_BUILDINGS: 'No puedes hipotecar con construcciones en el grupo.',
+  UNEVEN_BUILDING: 'Debes construir (o vender) de forma uniforme en el grupo.',
+  INSUFFICIENT_HOUSES_AVAILABLE: 'No hay casas disponibles en el banco.',
+  INSUFFICIENT_HOTELS_AVAILABLE: 'No hay hoteles disponibles en el banco.',
+  NO_BUILDING_TO_SELL: 'No hay construcciones que vender en esta propiedad.',
+  ALREADY_MORTGAGED: 'Esta propiedad ya está hipotecada.',
+  NOT_MORTGAGED: 'Esta propiedad no está hipotecada.',
+  PLAYER_NOT_ACTIVE: 'No participas activamente en la partida.',
 };
 
 /** Mensaje legible para un código de error conocido (o genérico si no lo es). */

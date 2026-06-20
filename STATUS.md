@@ -1,5 +1,32 @@
 # Estado del proyecto — lista viva
 
+## Fase 6 — Casas, hoteles e hipotecas · **`Fase 6: COMPLETADA` (pendiente validación manual)** · migraciones `0052`–`0055`
+- **Alcance:** solo CALLES de color (no estaciones/servicios/especiales). Grupos de color por TABLERO (no se combinan
+  entre tableros, a diferencia de servicios/estaciones).
+- **Modelo (`0052`):** `game_property_state(houses 0–4, has_hotel, mortgaged)` por propiedad (deny-all, solo vía RPC);
+  stock por partida en `game_runtime` (`houses_available=32`, `hotels_available=12`); helpers de monopolio
+  (board+group), uniformidad (nivel mín/máx) e hipoteca; trigger que al liberar una propiedad devuelve sus
+  construcciones al stock. Nuevos kinds de ledger en las dos constraints (`building_purchase/sale`,
+  `hotel_purchase/sale`, `mortgage_received`, `unmortgage_payment`).
+- **RPCs (`0053`):** `build_house`, `build_hotel`, `sell_house`, `sell_hotel`, `mortgage_property`,
+  `unmortgage_property`. Validan propietario activo, calle, monopolio, uniformidad, grupo sin hipoteca, stock, saldo,
+  pausa/fin; idempotencia + `FOR UPDATE` + `runtime_version` + ledger/auditoría + broadcast. Hotel = 4 casas en todo
+  el grupo → consume 1 hotel y devuelve 4 casas; vender hotel repone 4 casas (o bloquea sin stock). Venta = 50%.
+  Hipoteca: solo sin construcciones en el grupo; deshipoteca = hipoteca + 10%. Errores saneados completos
+  (`NOT_OWNER`, `GROUP_NOT_COMPLETE`, `UNEVEN_BUILDING`, `PROPERTY_MORTGAGED`, `GROUP_HAS_MORTGAGE`, `HAS_BUILDINGS`,
+  `INSUFFICIENT_HOUSES/HOTELS_AVAILABLE`, `ALREADY/NOT_MORTGAGED`, …).
+- **Alquiler avanzado (`0054`):** `pay_rent` en calles: hipotecada→0 (`NO_RENT_DUE`) · hotel→`rent_hotel` · 1–4 casas
+  →`rent_N` · monopolio sin casas→`base×2` · si no→`base`. Mantiene estaciones (escala 1–8), servicios
+  (`pay_utility_rent`) y el bloqueo de doble pago (`RENT_ALREADY_PAID`).
+- **Snapshot (`0055`):** por propiedad `houses/has_hotel/mortgaged/monopoly/rent_due`; a nivel de partida
+  `building_stock`. Saneado (sin ids internos), saldos privados.
+- **UI:** ficha de propiedad con estado/monopolio/construcción/alquiler actual y acciones (construir/vender casa y
+  hotel, hipotecar/deshipotecar) con explicación cuando no proceden; indicadores 🏠/🏨/🔒 en el tablero visual y en el
+  tablero de propiedades; resumen de banco (casas/hoteles disponibles). Ledger con los 6 kinds nuevos.
+- **Tests:** SQL `buildings`/`hotel`/`mortgage`/`advanced_rent`/`rls` phase6 (**32 casos**) + batería 1–6 (**52 suites,
+  0 fallos**) tras `db reset`; unit **327**; E2E `buildings` (comprar grupo → construir → alquiler con casa →
+  hipoteca/deshipoteca → stock) Chromium+WebKit. **No se avanza a Fase 7.**
+
 ## Fase 5 — Casillas especiales · **`Fase 5: COMPLETADA` (pendiente validación manual)**
 - **Corrección 4 (2026-06-20) — estaciones acumulativas + doble pago + selector de dados (`0049`/`0050`/`0051`):**
   - **Estaciones/transportes acumulativos entre tableros:** `pay_rent` detecta `kind` station/transport y cobra por

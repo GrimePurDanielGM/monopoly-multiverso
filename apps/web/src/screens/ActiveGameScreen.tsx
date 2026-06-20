@@ -9,6 +9,7 @@ import {
   requestBankruptcy, resolveBankruptcy,
   movePlayer, rollAndMove, moveWithPhysicalRoll, hostSetPlayerPosition, resolveJunction,
   payJailRelease, redeemJailCard, resolveCard, payPending, payUtilityRent, setDiceMode,
+  buildHouse, buildHotel, sellHouse, sellHotel, mortgageProperty, unmortgageProperty,
   type ApiResult, type ExitResolution, type BankruptcyKind,
 } from '../lib/api';
 import { useCardDraw } from '../hooks/useCardDraw';
@@ -237,6 +238,16 @@ export function ActiveGameScreen({
   const doPayUtilityRent = useCallback((p: ActiveProperty, d1: number | null, d2: number | null) => {
     void run(() => payUtilityRent(gameId, p.property_ref, d1, d2, newRequestId(), snap?.runtime_version ?? 0));
   }, [gameId, snap?.runtime_version, run]);
+  // Fase 6 — construcciones e hipotecas (todas con la firma estándar game/property/req/version).
+  const buildingActions = useMemo(() => {
+    const call = (fn: (g: string, p: string, r: string, v: number) => Promise<ApiResult<unknown>>) =>
+      (p: ActiveProperty) => void run(() => fn(gameId, p.property_ref, newRequestId(), snap?.runtime_version ?? 0));
+    return {
+      onBuildHouse: call(buildHouse), onBuildHotel: call(buildHotel),
+      onSellHouse: call(sellHouse), onSellHotel: call(sellHotel),
+      onMortgage: call(mortgageProperty), onUnmortgage: call(unmortgageProperty),
+    };
+  }, [gameId, snap?.runtime_version, run]);
   const doResolveJunction = useCallback((dir: 'own' | 'cross') => {
     void run(() => resolveJunction(gameId, dir, newRequestId(), snap?.runtime_version ?? 0));
   }, [gameId, snap?.runtime_version, run]);
@@ -340,8 +351,9 @@ export function ActiveGameScreen({
             onRequestPurchase={(p) => setBuyTarget(p)}
             onPayRent={(p) => setRentTarget(p)}
             onPayUtilityRent={doPayUtilityRent}
+            buildingActions={buildingActions}
           />
-          <PropertiesSummary snap={snap} onOpenBoard={() => setBoardOpen(true)} />
+          <PropertiesSummary snap={snap} onOpenBoard={() => setBoardOpen(true)} buildingActions={buildingActions} busy={busy} />
         </div>
 
         <div className="mt-3 flex flex-col gap-3 lg:mt-0">
@@ -540,6 +552,7 @@ export function ActiveGameScreen({
           onBid={(a, amount) => void run(() => placePropertyBid(gameId, a.auction_ref, amount, newRequestId(), ver))}
           onCloseAuction={(a) => void run(() => closePropertyAuction(gameId, a.auction_ref, newRequestId(), ver))}
           onCancelAuction={(a) => void run(() => cancelPropertyAuction(gameId, a.auction_ref, '', newRequestId(), ver))}
+          buildingActions={buildingActions}
         />
       )}
 
@@ -548,6 +561,8 @@ export function ActiveGameScreen({
           snap={snap}
           onClose={() => setBoardViewOpen(false)}
           onRequestPurchase={(p) => { setBoardViewOpen(false); setBuyTarget(p); }}
+          buildingActions={buildingActions}
+          busy={busy}
         />
       )}
     </section>

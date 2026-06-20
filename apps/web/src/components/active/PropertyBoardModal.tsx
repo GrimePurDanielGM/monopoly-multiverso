@@ -6,7 +6,7 @@ import {
   playerStationCount, stationRent,
 } from '../../lib/activeSelectors';
 import { AuctionsPanel } from './AuctionsPanel';
-import { PropertyCardModal } from './PropertyCardModal';
+import { PropertyCardModal, type BuildingActions } from './PropertyCardModal';
 
 const KIND_LABEL: Record<string, string> = {
   street: 'Calle', station: 'Estación', transport: 'Transporte', utility: 'Servicio', special: 'Especial',
@@ -48,6 +48,14 @@ function PropertyCard({
       {(p.kind === 'station' || p.kind === 'transport') && (status === 'owned' || status === 'mine') && p.owner_ref && (
         <p className="text-[11px] text-emerald-300">Estaciones/transportes: {playerStationCount(snap, p.owner_ref)}/8 · Alquiler actual {formatMoney(stationRent(playerStationCount(snap, p.owner_ref)))}</p>
       )}
+      {p.kind === 'street' && (status === 'owned' || status === 'mine') && (
+        <p className="text-[11px]">
+          {p.mortgaged ? <span className="text-amber-300">🔒 Hipotecada</span>
+            : p.has_hotel ? <span className="text-purple-300">🏨 Hotel</span>
+            : (p.houses ?? 0) > 0 ? <span className="text-orange-300">🏠 ×{p.houses}</span>
+            : <span className="text-slate-400">Sin construir{p.monopoly ? ' · monopolio' : ''}</span>}
+        </p>
+      )}
       <button
         type="button"
         onClick={() => onViewCard(p)}
@@ -88,7 +96,7 @@ function PropertyCard({
  *  sin depender de hover). Aquí viven TODAS las acciones de propiedades: solicitar compra, pagar
  *  alquiler y las subastas. Las acciones se bloquean en pausa/finalización y para espectadores. */
 export function PropertyBoardModal({
-  snap, isHost, busy, onClose, onRequestPurchase, onPayRent, onBid, onCloseAuction, onCancelAuction,
+  snap, isHost, busy, onClose, onRequestPurchase, onPayRent, onBid, onCloseAuction, onCancelAuction, buildingActions,
 }: {
   snap: ActiveSnapshot;
   isHost: boolean;
@@ -99,6 +107,7 @@ export function PropertyBoardModal({
   onBid: (a: PropertyAuction, amount: number) => void;
   onCloseAuction: (a: PropertyAuction) => void;
   onCancelAuction: (a: PropertyAuction) => void;
+  buildingActions?: BuildingActions;
 }) {
   const boards = propertyGroupsByBoard(snap);
   const blocked = snap.runtime_status !== 'running' || snap.me.is_spectator;
@@ -198,7 +207,7 @@ export function PropertyBoardModal({
         </footer>
       </div>
 
-      {card && <PropertyCardModal property={card} snap={snap} onClose={() => setCard(null)} />}
+      {card && <PropertyCardModal property={card} snap={snap} busy={busy} actions={buildingActions ?? {}} onClose={() => setCard(null)} />}
     </div>
   );
 }

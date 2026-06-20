@@ -5,7 +5,7 @@ import {
   formatMoney, ownerName, canRequestPurchase,
 } from '../../lib/activeSelectors';
 import { boardGrid } from '../../lib/boardLayout';
-import { PropertyCardModal } from './PropertyCardModal';
+import { PropertyCardModal, type BuildingActions } from './PropertyCardModal';
 
 const TYPE_COLOR: Record<string, string> = {
   start: '#10b981', tax: '#f43f5e', card: '#38bdf8', jail: '#64748b',
@@ -18,11 +18,13 @@ const PLAYER_COLORS = ['#10b981', '#6366f1', '#f59e0b', '#ec4899', '#06b6d4', '#
  *  cada jugador POR NOMBRE, resalta mi posición y el jugador actual, y al tocar una casilla abre su
  *  detalle (nombre, tipo, precio, propietario y jugadores presentes). Permite ver ambos tableros. */
 export function BoardView({
-  snap, onClose, onRequestPurchase,
+  snap, onClose, onRequestPurchase, buildingActions, busy = false,
 }: {
   snap: ActiveSnapshot;
   onClose: () => void;
   onRequestPurchase: (p: ActiveProperty) => void;
+  buildingActions?: BuildingActions;
+  busy?: boolean;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const [board, setBoard] = useState<BoardKey>(snap.my_position?.board_key ?? 'classic');
@@ -123,6 +125,10 @@ export function BoardView({
                   {s.guardian && <span aria-hidden className="absolute right-0 top-1 text-[7px] sm:text-[9px]">🛡️</span>}
                   <span className="flex-1 px-0.5 pt-0.5 text-[6px] leading-[1.05] text-slate-200 line-clamp-3 sm:text-[8px]">{s.name}</span>
                   {prop && <span className="px-0.5 text-[6px] text-slate-400 sm:text-[8px]">{prop.price}</span>}
+                  {/* Indicadores de construcción/hipoteca (Fase 6) en calles ocupadas. */}
+                  {prop?.mortgaged && <span aria-hidden className="px-0.5 text-[6px] text-amber-300 sm:text-[8px]">🔒</span>}
+                  {prop?.has_hotel && <span aria-hidden className="px-0.5 text-[6px] text-purple-300 sm:text-[8px]">🏨</span>}
+                  {!prop?.has_hotel && (prop?.houses ?? 0) > 0 && <span aria-hidden className="px-0.5 text-[6px] text-orange-300 sm:text-[8px]">🏠{prop?.houses}</span>}
                   {s.space_type === 'parking' && snap.parking_pot > 0 && (
                     <span className="px-0.5 text-[6px] font-semibold text-emerald-300 sm:text-[8px]">💰{snap.parking_pot}</span>
                   )}
@@ -224,7 +230,7 @@ export function BoardView({
         </footer>
       </div>
 
-      {card && <PropertyCardModal property={card} snap={snap} onClose={() => setCard(null)} />}
+      {card && <PropertyCardModal property={card} snap={snap} busy={busy} actions={buildingActions ?? {}} onClose={() => setCard(null)} />}
     </div>
   );
 }
