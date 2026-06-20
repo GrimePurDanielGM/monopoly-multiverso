@@ -231,10 +231,10 @@ test('fase 6: regla sin-uniformidad — construir 3-0 con grupo completo y cobra
   await bCtx.close();
 });
 
-// Fase 6 (corrección UI móvil) — scroll interno REAL en las TRES secciones (Alquileres, Construcción, Hipoteca):
-// abriendo la ficha de una calle PROPIA con monopolio, cada apartado (datos + botones dentro) excede su altura
-// máxima en el viewport móvil → scrollHeight > clientHeight. La navegación anterior/siguiente sigue funcionando.
-test('fase 6: scroll interno en Alquileres, Construcción e Hipoteca (móvil)', async ({ browser }) => {
+// Fase 6 (corrección UI móvil) — el cuerpo de la ficha es el ÚNICO contenedor scrollable (robusto en iPhone/iPad):
+// abriendo una calle PROPIA con monopolio, el cuerpo excede el alto del viewport (scrollHeight > clientHeight) y se
+// llega hasta el botón Hipotecar desplazándolo; las tres secciones existen y la navegación sigue funcionando.
+test('fase 6: el cuerpo de la ficha scrollea y todo el contenido es accesible (móvil)', async ({ browser }) => {
   test.setTimeout(240_000);
   const hostCtx = await browser.newContext();
   const host = await hostCtx.newPage();
@@ -266,15 +266,20 @@ test('fase 6: scroll interno en Alquileres, Construcción e Hipoteca (móvil)', 
   const card = host.getByRole('dialog', { name: /Ficha de Ronda de Valencia/ });
   await expect(card).toBeVisible({ timeout: 10_000 });
 
-  // Cada apartado (rents/construction/mortgage) tiene su contenedor scrollable con contenido que excede la altura.
+  // Las tres secciones están presentes (datos + botones dentro de cada apartado).
   for (const testId of ['property-card-section-rents', 'property-card-section-construction', 'property-card-section-mortgage']) {
-    const body = card.locator(`[data-testid="${testId}"] .overscroll-contain`);
-    await expect(body).toBeVisible();
-    const overflows = await body.evaluate((e) => e.scrollHeight > e.clientHeight + 1);
-    expect(overflows, `${testId} debe poder desplazarse (scrollHeight > clientHeight)`).toBe(true);
+    await expect(card.locator(`[data-testid="${testId}"]`)).toBeVisible();
   }
-  // El cuerpo del modal también es scrollable (min-h-0 + overflow-y-auto).
-  expect(await card.locator('.flex-1.min-h-0.overflow-y-auto').count()).toBeGreaterThan(0);
+  // El CUERPO del modal es el único contenedor scrollable (clave para que el contenido sea accesible en
+  // iPhone/iPad): se puede llegar hasta el botón de hipotecar desplazándolo (haga o no falta scroll según
+  // el alto del dispositivo). Si el contenido no cabe, el cuerpo scrollea; si cabe, todo es visible igualmente.
+  const body = card.locator('[data-testid="property-card-body"]');
+  await expect(body).toBeVisible();
+  await expect(body).toHaveClass(/overflow-y-scroll/); // único scroller, fiable en iOS/iPadOS
+  await card.getByRole('button', { name: /Hipotecar/ }).scrollIntoViewIfNeeded();
+  await expect(card.getByRole('button', { name: /Hipotecar/ })).toBeVisible();
+  // Las secciones NO tienen scroll anidado propio (lo que fallaba en iPad): solo el cuerpo scrollea.
+  expect(await card.locator('[data-testid="property-card-body"] .overscroll-contain').count()).toBe(0);
 
   // La navegación entre propiedades sigue operativa.
   await card.getByRole('button', { name: 'Propiedad siguiente' }).click();

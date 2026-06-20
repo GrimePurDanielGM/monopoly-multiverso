@@ -107,6 +107,14 @@
      `max-h-[120px] sm:max-h-[220px]` y `overflow-y-scroll` (robusto en iOS); testids `property-card-section-rents/
      construction/mortgage`. E2E (Chromium+WebKit) verifica `scrollHeight > clientHeight` en **las tres** secciones
      abriendo una calle propia con monopolio.
+     → **Corrección definitiva (2026-06-21):** seguía fallando en iPhone (resto de apartados) y en iPad (ninguno).
+     Causa: el **scroll anidado** (cuerpo + cada apartado) es frágil en iOS/iPadOS y, al subir al breakpoint `sm:`
+     (iPad), las alturas máximas no se superaban. Solución robusta (la alternativa prevista): se **elimina el scroll
+     por apartado**; el ÚNICO contenedor scrollable es el **cuerpo del modal** (`property-card-body`:
+     `flex-1 min-h-0 overflow-y-scroll overflow-x-hidden overscroll-contain touch-pan-y` + `-webkit-overflow-scrolling`),
+     con cabecera y navegación fijas. Cada apartado conserva todo su contenido (datos + mensajes + botones) y su
+     `testId`, pero sin scroll propio. Funciona igual en iPhone, iPad y escritorio. E2E: el cuerpo es el único
+     scroller, se llega al botón Hipotecar desplazándolo y no hay scroll anidado dentro del cuerpo.
   - **No roto:** peones en español + estructura de imágenes, construir-sin-grupo, aprobación del anfitrión, alquiler
     avanzado, hipotecas/deshipotecas, estaciones/servicios, navegación entre tarjetas, inputs del lobby, privacidad
     de saldos, rent-once.

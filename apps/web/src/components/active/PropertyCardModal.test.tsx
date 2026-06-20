@@ -92,43 +92,28 @@ describe('PropertyCardModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  // Las TRES secciones (alquileres, construcción, hipoteca) deben usar el MISMO patrón scrollable.
-  it.each(['property-card-section-rents', 'property-card-section-construction', 'property-card-section-mortgage'])(
-    '%s tiene un contenedor scrollable real (overflow-y-scroll, touch-pan-y, overscroll-contain, max-h px, sin overflow-hidden que lo anule)',
-    (testId) => {
-      // Calle mía con monopolio: muestra construcción + hipoteca con sus acciones dentro.
-      const mineStreet: ActiveProperty = { ...street, owner_ref: 'P-1', monopoly: true, houses: 0, mortgaged: false };
-      const s = snap({ properties: [mineStreet], me: { public_ref: 'P-1', is_host: false, balance: 99999, is_current: true, is_spectator: false } });
-      const { container } = render(<PropertyCardModal property={mineStreet} snap={s} onClose={vi.fn()} actions={{ onBuildHouse: vi.fn(), onMortgage: vi.fn() }} />);
-      const section = container.querySelector(`[data-testid="${testId}"]`);
-      expect(section).not.toBeNull();
-      const body = section!.querySelector('.overscroll-contain') as HTMLElement;
-      expect(body).not.toBeNull();
-      expect(body.className).toMatch(/overflow-y-(scroll|auto)/); // scroll vertical interno
-      expect(body.className).toContain('overflow-x-hidden');      // sin overflow horizontal
-      expect(body.className).toContain('touch-pan-y');            // iOS: gesto vertical = scroll
-      expect(body.className).toContain('min-h-0');                // imprescindible dentro de flex
-      expect(body.className).toMatch(/max-h-\[\d+px\]/);          // altura máxima REAL en px
-      expect(body.className).not.toContain('overflow-hidden');   // nada que anule el scroll
-    },
-  );
+  it('el ÚNICO contenedor scrollable es el cuerpo del modal (robusto en iPhone/iPad): flex-1 min-h-0 overflow-y-scroll touch-pan-y overscroll-contain', () => {
+    const { container } = render(<PropertyCardModal property={street} snap={snap()} onClose={vi.fn()} />);
+    const body = container.querySelector('[data-testid="property-card-body"]') as HTMLElement;
+    expect(body).not.toBeNull();
+    expect(body.className).toContain('flex-1');
+    expect(body.className).toContain('min-h-0');           // imprescindible para scrollear dentro del diálogo
+    expect(body.className).toMatch(/overflow-y-(scroll|auto)/);
+    expect(body.className).toContain('overflow-x-hidden');  // sin overflow horizontal
+    expect(body.className).toContain('touch-pan-y');        // iOS: gesto vertical = scroll nativo
+    expect(body.className).toContain('overscroll-contain'); // no arrastra la página de detrás
+    // Las secciones NO tienen scroll anidado propio (causa de los fallos en iPad): solo el cuerpo scrollea.
+    expect(container.querySelectorAll('[data-testid="property-card-body"] .overscroll-contain').length).toBe(0);
+  });
 
-  it('los botones de construir e hipotecar viven DENTRO de sus apartados (no en una sección aparte)', () => {
+  it('las tres secciones existen con su testid y TODO su contenido (incl. botones) vive dentro de cada apartado', () => {
     const mineStreet: ActiveProperty = { ...street, owner_ref: 'P-1', monopoly: true, houses: 0, mortgaged: false };
     const s = snap({ properties: [mineStreet], me: { public_ref: 'P-1', is_host: false, balance: 99999, is_current: true, is_spectator: false } });
     const { container } = render(<PropertyCardModal property={mineStreet} snap={s} onClose={vi.fn()} actions={{ onBuildHouse: vi.fn(), onMortgage: vi.fn() }} />);
+    expect(container.querySelector('[data-testid="property-card-section-rents"]')).not.toBeNull();
     const construction = container.querySelector('[data-testid="property-card-section-construction"]')!;
-    expect(construction.querySelector('.overscroll-contain')!.textContent).toContain('Solicitar construir casa');
+    expect(construction.textContent).toContain('Solicitar construir casa'); // botón dentro del apartado
     const mortgage = container.querySelector('[data-testid="property-card-section-mortgage"]')!;
-    expect(mortgage.querySelector('.overscroll-contain')!.textContent).toContain('Hipotecar');
-  });
-
-  it('el cuerpo del modal es un flex item scrollable (min-h-0 + flex-1): clave para que NO se recorte', () => {
-    const { container } = render(<PropertyCardModal property={street} snap={snap()} onClose={vi.fn()} />);
-    // El cuerpo es el contenedor con overflow-y-auto que NO es un apartado (no tiene overscroll-contain… sí lo tiene
-    // el cuerpo? no: el cuerpo lleva flex-1). Buscamos el que tiene flex-1 + min-h-0 + overflow-y-auto.
-    const body = container.querySelector('.flex-1.min-h-0.overflow-y-auto');
-    expect(body).not.toBeNull();
-    expect(body!.className).toContain('touch-pan-y');
+    expect(mortgage.textContent).toContain('Hipotecar');                    // botón dentro del apartado
   });
 });
