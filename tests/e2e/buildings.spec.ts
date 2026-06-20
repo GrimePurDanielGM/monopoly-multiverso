@@ -230,3 +230,50 @@ test('fase 6: regla sin-uniformidad — construir 3-0 con grupo completo y cobra
   await hostCtx.close();
   await bCtx.close();
 });
+
+// Fase 6 (corrección UI móvil) — la ficha tiene scroll interno REAL por apartado: en el viewport móvil,
+// el apartado "Alquileres" (6 filas) excede su altura máxima y se puede desplazar (scrollHeight > clientHeight),
+// y la navegación anterior/siguiente sigue funcionando.
+test('fase 6: la ficha de propiedad tiene scroll interno por apartado en móvil', async ({ browser }) => {
+  test.setTimeout(180_000);
+  const hostCtx = await browser.newContext();
+  const host = await hostCtx.newPage();
+  const code = await createGame(host);
+  await host.getByText('Configuración de la sala').click();
+  await host.getByLabel('Mínimo').fill('2');
+  await host.getByRole('button', { name: 'Guardar configuración' }).click();
+  await expect(host.getByLabel('Mínimo')).toHaveValue('2');
+
+  const bCtx = await browser.newContext();
+  const B = await bCtx.newPage();
+  await joinGame(B, code, 'Marty');
+  await host.getByRole('button', { name: 'Marcar Preparado' }).click();
+  await pickAndReady(B, 1);
+  await host.reload();
+  await expect(host.getByRole('button', { name: 'Iniciar partida' })).toBeEnabled({ timeout: 20_000 });
+  await host.getByRole('button', { name: 'Iniciar partida' }).click();
+  await host.getByRole('button', { name: 'Iniciar', exact: true }).click();
+  await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
+
+  // Abrir la ficha de una calle desde el tablero de propiedades.
+  await openBoard(host);
+  await boardCard(host, 'Ronda de Valencia').getByRole('button', { name: 'Ver tarjeta' }).click();
+  const card = host.getByRole('dialog', { name: /Ficha de Ronda de Valencia/ });
+  await expect(card).toBeVisible({ timeout: 10_000 });
+
+  // Al menos un apartado scrollable tiene contenido que excede su altura (scroll interno real, no recorte).
+  const sectionsOverflow = await card.locator('.overscroll-contain').evaluateAll(
+    (els) => els.some((e) => e.scrollHeight > e.clientHeight + 1),
+  );
+  expect(sectionsOverflow).toBe(true);
+  // El cuerpo del modal también es scrollable (min-h-0 + overflow-y-auto).
+  const bodyScrollable = await card.locator('.flex-1.min-h-0.overflow-y-auto').count();
+  expect(bodyScrollable).toBeGreaterThan(0);
+
+  // La navegación entre propiedades sigue operativa.
+  await card.getByRole('button', { name: 'Propiedad siguiente' }).click();
+  await expect(host.getByRole('dialog', { name: /Ficha de/ })).toBeVisible();
+
+  await hostCtx.close();
+  await bCtx.close();
+});

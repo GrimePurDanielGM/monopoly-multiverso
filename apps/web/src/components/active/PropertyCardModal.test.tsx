@@ -92,16 +92,26 @@ describe('PropertyCardModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('los apartados tienen scroll interno táctil (overflow-y-auto, sin overflow horizontal)', () => {
+  it('los apartados tienen scroll interno táctil (max-height real, overflow-y-auto, overscroll-contain, touch-pan-y)', () => {
     const { container } = render(<PropertyCardModal property={street} snap={snap()} onClose={vi.fn()} />);
     const scrollables = container.querySelectorAll('.overscroll-contain'); // apartados internos (no el cuerpo del modal)
     expect(scrollables.length).toBeGreaterThanOrEqual(2); // alquileres + construcción + hipoteca…
     scrollables.forEach((el) => {
       expect(el.className).toContain('overflow-y-auto');    // scroll vertical interno
       expect(el.className).toContain('overflow-x-hidden');  // sin overflow horizontal
-      expect(el.className).toMatch(/max-h-\[/);             // altura máxima razonable
+      expect(el.className).toContain('touch-pan-y');        // iOS: gesto vertical = scroll
+      expect(el.className).toMatch(/max-h-\[\d+px\]/);      // altura máxima REAL en px (no vh inalcanzable)
     });
     // El botón Cerrar y la lectura del nombre siguen accesibles.
     expect(screen.getByRole('button', { name: 'Cerrar' })).toBeInTheDocument();
+  });
+
+  it('el cuerpo del modal es un flex item scrollable (min-h-0 + flex-1): clave para que NO se recorte', () => {
+    const { container } = render(<PropertyCardModal property={street} snap={snap()} onClose={vi.fn()} />);
+    // El cuerpo es el contenedor con overflow-y-auto que NO es un apartado (no tiene overscroll-contain… sí lo tiene
+    // el cuerpo? no: el cuerpo lleva flex-1). Buscamos el que tiene flex-1 + min-h-0 + overflow-y-auto.
+    const body = container.querySelector('.flex-1.min-h-0.overflow-y-auto');
+    expect(body).not.toBeNull();
+    expect(body!.className).toContain('touch-pan-y');
   });
 });

@@ -92,6 +92,13 @@
   2. **Scroll interno táctil por apartado en la ficha:** cada sección (alquileres, construcción, hipoteca, acciones,
      escalas de estaciones/servicios) tiene `overflow-y-auto` + altura máxima + `overscroll-contain` +
      `-webkit-overflow-scrolling: touch`, sin overflow horizontal y sin romper navegación/swipe ni el scroll del modal.
+     → **Corregido (2026-06-21):** no funcionaba en iPhone. Causa raíz: el cuerpo del modal era un flex item sin
+     `min-h-0`/`flex-1`, así que `overflow-y-auto` no enganchaba y el contenido se recortaba; además `max-h-[40vh]`
+     era inalcanzable y faltaba `touch-action: pan-y`. Solución: cuerpo `flex-1 min-h-0 touch-pan-y overflow-y-auto`;
+     componente `CardSectionScrollable` con `max-h-[180px] sm:max-h-[240px] touch-pan-y overscroll-contain` +
+     `-webkit-overflow-scrolling:touch` y pista "Desliza para ver más" cuando hay contenido cortado; el swipe de
+     anterior/siguiente solo dispara con gesto **horizontal-dominante** (`|dx|>|dy|·1.5`), priorizando el scroll
+     vertical. E2E (Chromium+WebKit): `scrollHeight > clientHeight` real en el apartado y navegación intacta.
   - **No roto:** peones en español + estructura de imágenes, construir-sin-grupo, aprobación del anfitrión, alquiler
     avanzado, hipotecas/deshipotecas, estaciones/servicios, navegación entre tarjetas, inputs del lobby, privacidad
     de saldos, rent-once.

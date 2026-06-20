@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { ActiveProperty, ActiveSnapshot } from '../../lib/activeSnapshot';
 import {
   formatMoney, propertyStatus, ownerName, groupLabel, groupSwatch, BOARD_LABEL, type PropertyStatus,
@@ -55,6 +56,41 @@ function Cell({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Apartado de la ficha con scroll interno táctil: si el contenido no cabe, se desliza con el dedo (iPhone)
+ *  sin cerrar la tarjeta. Muestra una pista "Desliza para ver más" cuando hay contenido cortado. */
+function CardSectionScrollable({ title, children, bodyClassName = '' }: { title: string; children: ReactNode; bodyClassName?: string }) {
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    const check = () => setOverflowing(el.scrollHeight > el.clientHeight + 1);
+    check();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
+  return (
+    <section className="overflow-hidden rounded-lg border border-slate-700">
+      <p className="border-b border-slate-700 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-300">{title}</p>
+      <div
+        ref={bodyRef}
+        // El scroll va en el contenedor del CONTENIDO largo, con altura máxima real (móvil/desktop).
+        className={`max-h-[180px] touch-pan-y overflow-y-auto overflow-x-hidden overscroll-contain pr-1 sm:max-h-[240px] ${bodyClassName}`}
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        {children}
+      </div>
+      {overflowing && (
+        <p aria-hidden className="border-t border-slate-800 bg-slate-900/60 px-3 py-1 text-center text-[10px] text-slate-500">
+          Desliza para ver más ↕
+        </p>
+      )}
+    </section>
+  );
+}
+
 /** Ficha de la TARJETA de título: estado, alquileres y acciones, adaptada al tipo (calle/estación/servicio).
  *  Construir/vender pasan por solicitud al anfitrión; hipotecar/deshipotecar son directas. Lee siempre del
  *  snapshot (refresco inmediato) y permite navegar entre propiedades del contexto sin cerrar (item 5). */
@@ -92,13 +128,20 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
     setCurrentRef(order[next]!.property_ref);
   };
   // Deslizamiento horizontal en móvil.
-  const touchX = useRef<number | null>(null);
-  const onTouchStart = (e: React.TouchEvent) => { touchX.current = e.changedTouches[0]?.clientX ?? null; };
+  // Swipe horizontal para cambiar de propiedad, pero SOLO si el gesto es claramente horizontal: un arrastre
+  // vertical (scroll dentro de una sección) nunca debe cambiar de ficha. No se llama a preventDefault, así que
+  // iOS conserva el scroll nativo.
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.changedTouches[0];
+    touchStart.current = t ? { x: t.clientX, y: t.clientY } : null;
+  };
   const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchX.current == null) return;
-    const dx = (e.changedTouches[0]?.clientX ?? touchX.current) - touchX.current;
-    if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
-    touchX.current = null;
+    const s = touchStart.current; touchStart.current = null;
+    if (!s) return;
+    const t = e.changedTouches[0]; if (!t) return;
+    const dx = t.clientX - s.x; const dy = t.clientY - s.y;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) go(dx < 0 ? 1 : -1);
   };
 
   const pendingAction = (a: 'build_house' | 'build_hotel' | 'sell_house' | 'sell_hotel') =>
@@ -120,10 +163,6 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
     ['Con 4 casas', p.rent_4],
     ['Con hotel', p.rent_hotel],
   ];
-
-  // Cada apartado se desliza con el dedo si su contenido no cabe (sin recortes ni overflow horizontal en iPhone).
-  const scrollSection = 'max-h-[40vh] overflow-y-auto overflow-x-hidden overscroll-contain';
-  const scrollStyle = { WebkitOverflowScrolling: 'touch' as const };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center sm:p-4" onClick={onClose}>
@@ -149,7 +188,9 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
           </button>
         </header>
 
-        <div className="flex flex-col gap-3 overflow-y-auto px-4 py-3">
+        {/* Cuerpo: flex-1 + min-h-0 para que SÍ haga scroll dentro del diálogo (si no, el contenido se recorta).
+            touch-pan-y deja el scroll vertical nativo en iOS. */}
+        <div className="flex min-h-0 flex-1 touch-pan-y flex-col gap-3 overflow-y-auto px-4 py-3" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <Cell label="Tablero" value={BOARD_LABEL[p.board_key] ?? p.board_key} />
             <Cell label="Grupo" value={groupLabel(p.group_key)} />
@@ -176,60 +217,45 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
             <Row label="Precio de compra" value={p.is_buyable ? money(p.price) : 'No comprable'} strong />
           </div>
 
-          {/* Alquileres — solo lo que aplica al tipo. */}
+          {/* Alquileres — solo lo que aplica al tipo. Cada apartado con scroll interno táctil. */}
           {isStreetKind(p.kind) && (
-            <div className="overflow-hidden rounded-lg border border-slate-700">
-              <p className="border-b border-slate-700 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-300">Alquileres</p>
-              <div className={`divide-y divide-slate-800 ${scrollSection}`} style={scrollStyle}>
-                {rentRows.map(([label, value]) => <Row key={label} label={label} value={money(value)} />)}
-              </div>
-            </div>
+            <CardSectionScrollable title="Alquileres" bodyClassName="divide-y divide-slate-800">
+              {rentRows.map(([label, value]) => <Row key={label} label={label} value={money(value)} />)}
+            </CardSectionScrollable>
           )}
           {isStationKind(p.kind) && (
-            <div className="overflow-hidden rounded-lg border border-slate-700">
-              <p className="border-b border-slate-700 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-300">Escala de estaciones/transportes</p>
-              <div className={scrollSection} style={scrollStyle}>
-                <ul className="grid grid-cols-2 gap-x-4 gap-y-1 px-3 py-2 text-sm tabular-nums text-slate-200">
-                  <li>1 → 25 €</li><li>2 → 50 €</li><li>3 → 100 €</li><li>4 → 200 €</li>
-                  <li>5 → 300 €</li><li>6 → 400 €</li><li>7 → 500 €</li><li>8 → 600 €</li>
-                </ul>
-                <p className="px-3 pb-2 text-[11px] text-slate-400">Las estaciones y transportes se combinan entre ambos tableros.</p>
-              </div>
-            </div>
+            <CardSectionScrollable title="Escala de estaciones/transportes">
+              <ul className="grid grid-cols-2 gap-x-4 gap-y-1 px-3 py-2 text-sm tabular-nums text-slate-200">
+                <li>1 → 25 €</li><li>2 → 50 €</li><li>3 → 100 €</li><li>4 → 200 €</li>
+                <li>5 → 300 €</li><li>6 → 400 €</li><li>7 → 500 €</li><li>8 → 600 €</li>
+              </ul>
+              <p className="px-3 pb-2 text-[11px] text-slate-400">Las estaciones y transportes se combinan entre ambos tableros.</p>
+            </CardSectionScrollable>
           )}
           {isUtilityKind(p.kind) && (
-            <div className="overflow-hidden rounded-lg border border-slate-700">
-              <p className="border-b border-slate-700 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-300">Escala de servicios</p>
-              <div className={scrollSection} style={scrollStyle}>
-                <ul className="grid grid-cols-2 gap-x-4 gap-y-1 px-3 py-2 text-sm tabular-nums text-slate-200">
-                  <li>1 servicio: tirada ×4</li><li>2 servicios: tirada ×10</li>
-                  <li>3 servicios: tirada ×14</li><li>4 servicios: tirada ×20</li>
-                </ul>
-                <p className="px-3 pb-2 text-[11px] text-slate-400">Los servicios se combinan entre ambos tableros.</p>
-              </div>
-            </div>
+            <CardSectionScrollable title="Escala de servicios">
+              <ul className="grid grid-cols-2 gap-x-4 gap-y-1 px-3 py-2 text-sm tabular-nums text-slate-200">
+                <li>1 servicio: tirada ×4</li><li>2 servicios: tirada ×10</li>
+                <li>3 servicios: tirada ×14</li><li>4 servicios: tirada ×20</li>
+              </ul>
+              <p className="px-3 pb-2 text-[11px] text-slate-400">Los servicios se combinan entre ambos tableros.</p>
+            </CardSectionScrollable>
           )}
 
           {/* Construcción — solo calles. */}
           {isStreetKind(p.kind) && (
-            <div className="overflow-hidden rounded-lg border border-slate-700">
-              <p className="border-b border-slate-700 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-300">Construcción</p>
-              <div className={`divide-y divide-slate-800 ${scrollSection}`} style={scrollStyle}>
-                <Row label="Coste por casa" value={money(p.house_cost)} />
-                <Row label="Coste del hotel" value={money(p.hotel_cost)} />
-              </div>
-            </div>
+            <CardSectionScrollable title="Construcción" bodyClassName="divide-y divide-slate-800">
+              <Row label="Coste por casa" value={money(p.house_cost)} />
+              <Row label="Coste del hotel" value={money(p.hotel_cost)} />
+            </CardSectionScrollable>
           )}
 
           {/* Hipoteca — donde aplica. */}
           {showMortgage && (
-            <div className="overflow-hidden rounded-lg border border-slate-700">
-              <p className="border-b border-slate-700 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-300">Hipoteca</p>
-              <div className={`divide-y divide-slate-800 ${scrollSection}`} style={scrollStyle}>
-                <Row label="Valor de hipoteca" value={money(p.mortgage_value)} />
-                <Row label="Deshipotecar (hipoteca + 10%)" value={money(p.unmortgage_cost)} />
-              </div>
-            </div>
+            <CardSectionScrollable title="Hipoteca" bodyClassName="divide-y divide-slate-800">
+              <Row label="Valor de hipoteca" value={money(p.mortgage_value)} />
+              <Row label="Deshipotecar (hipoteca + 10%)" value={money(p.unmortgage_cost)} />
+            </CardSectionScrollable>
           )}
 
           {/* Acciones del propietario. Construir/vender → solicitud; hipoteca/deshipoteca → directa. Ancho completo. */}
@@ -237,7 +263,7 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
             <div className="flex flex-col gap-2 border-t border-slate-700 pt-3">
               <p className="text-xs font-semibold text-slate-300">Acciones</p>
               {isStreetKind(p.kind) && reason && <p className="text-[11px] text-amber-300/90">{reason}</p>}
-              <div className={`flex flex-col gap-2 ${scrollSection}`} style={scrollStyle}>
+              <div className="flex max-h-[180px] touch-pan-y flex-col gap-2 overflow-y-auto overflow-x-hidden overscroll-contain sm:max-h-[240px]" style={{ WebkitOverflowScrolling: 'touch' }}>
               {isStreetKind(p.kind) && ([
                 ['build_house', 'Solicitar construir casa', canBuildHouse(p, snap), actions.onBuildHouse, 'bg-orange-600', money(p.house_cost)],
                 ['build_hotel', 'Solicitar construir hotel', canBuildHotel(p, snap), actions.onBuildHotel, 'bg-purple-600', money(p.hotel_cost)],
