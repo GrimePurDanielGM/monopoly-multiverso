@@ -73,6 +73,20 @@ describe('parseActiveSnapshot', () => {
     }
   });
 
+  it('parsea last_global_event y last_roll.jail (Fase 5 corrección)', () => {
+    const raw = {
+      ...valid,
+      last_roll: { d1: 4, d2: 4, total: 8, player_ref: 'P-AAAA', jail: 'doubles' },
+      last_global_event: { kind: 'parking_pot_payout', player_ref: 'P-AAAA', amount: 450, event_id: 'ev-1' },
+    };
+    const r = parseActiveSnapshot(raw);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.data.last_roll?.jail).toBe('doubles');
+      expect(r.data.last_global_event).toEqual({ kind: 'parking_pot_payout', player_ref: 'P-AAAA', amount: 450, event_id: 'ev-1' });
+    }
+  });
+
   it('parsea los campos de casillas especiales (Fase 5): bote, cárcel, mazos, carta e inventario', () => {
     const raw = {
       ...valid, parking_pot: 250,

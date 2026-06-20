@@ -69,12 +69,11 @@ do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host
     and (snap->'my_jail'->>'board_key')='classic' and (snap->'last_move'->'effect'->>'type')='go_to_jail');
 end $$;
 
--- J4) en la cárcel NO se puede mover (IN_JAIL).
-do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; p1u text:=pg_temp._ctx('p1_uid'); ok boolean:=false; okr boolean:=false; begin
+-- J4) en la cárcel NO se puede MOVER manualmente (IN_JAIL). (Tirar dados es un intento de dobles, no bloqueo.)
+do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; p1u text:=pg_temp._ctx('p1_uid'); ok boolean:=false; begin
   perform pg_temp._as_user(p1u);
   begin perform move_player(gid,3,gen_random_uuid(),pg_temp._ver(gid)); exception when others then ok:=(sqlerrm='IN_JAIL'); end;
-  begin perform roll_and_move(gid,gen_random_uuid(),pg_temp._ver(gid)); exception when others then okr:=(sqlerrm='IN_JAIL'); end;
-  perform pg_temp._as_admin(); perform pg_temp._rec('J4) en la cárcel no se puede mover/tirar (IN_JAIL)', ok and okr);
+  perform pg_temp._as_admin(); perform pg_temp._rec('J4) en la cárcel no se puede mover manualmente (IN_JAIL)', ok);
 end $$;
 
 -- J5) pagar 50 libera; saldo -50; el bote sube 50.

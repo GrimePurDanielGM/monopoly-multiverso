@@ -1,6 +1,23 @@
 # Estado del proyecto — lista viva
 
 ## Fase 5 — Casillas especiales · **`Fase 5: COMPLETADA` (pendiente validación manual)**
+- **Corrección (2026-06-20) — cárcel 3 turnos, sonidos y banner global (`0042`/`0043`):**
+  - **Cárcel completa:** estando preso, `roll_and_move` ya no se bloquea, es un **intento de dobles**:
+    sacar **dobles** libera sin pagar y mueve (`jail_released_by_doubles`); fallar suma intento sin
+    moverse; al **3er fallo** paga **50 forzado** y mueve (`jail_forced_release_after_3_turns`), o queda
+    **pago pendiente** `jail_forced` si no llega (pagar/bancarrota). `pay_pending` con kind `jail_forced`
+    también libera. `move_player` (manual) sigue bloqueado con `IN_JAIL`. `end_turn` ya no toca
+    `jail_turns`. UI: «Intentar sacar dobles», «Intento N/3» y mensajes del resultado.
+  - **Sonidos de cárcel:** assets locales `police-siren.wav` (entrar) y `jail-door-open.wav` (salir),
+    generados de forma determinista (`apps/web/scripts/gen-jail-sounds.mjs`). `lib/sfx.ts` + hook
+    `useJailSounds` con el mismo patrón robusto iOS que el dinero (desbloqueo por gesto, falla en
+    silencio, sin duplicar por `runtime_version`, comparte el interruptor de sonido).
+  - **Banner global del bote:** `game_runtime.last_global_event` (`parking_pot_payout`: jugador +
+    importe + `event_id`) expuesto en el snapshot; hook `useGlobalEvent` + `GlobalBanner` central ~3s a
+    **todos** (independiente del banner privado), basado en `event_id` (no se duplica ni reaparece al
+    recargar). `last_roll.jail` indica el resultado del intento. Saneado, saldos privados.
+  - Tests: SQL `jail_turns_phase5` (11) + batería 1–5 (40 suites) tras `db reset`; unit 305 (intentos,
+    sonidos, banner global, parser); E2E `jail_doubles`. Aplicado a dev (`0042`,`0043`). **No se avanza a Fase 6.**
 - **Alcance (2026-06-20):** impuestos, bote de Parking, cárcel y cartas. Integrado con movimiento,
   guardianes, ledger, snapshot y UI. **No** incluye casas/hoteles/hipotecas/alquiler avanzado (Fase 6+).
   Migraciones `0039` (modelo + ledger + catálogo de cartas), `0040` (RPC) y `0041` (snapshot). **No se avanza a Fase 6.**

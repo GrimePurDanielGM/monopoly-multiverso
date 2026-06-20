@@ -82,6 +82,15 @@ export function MovementPanel({
               Última tirada: <span className="font-semibold">{roll.d1} + {roll.d2} = {roll.total}</span>
             </p>
           )}
+          {/* Resultado del intento de dobles en la cárcel (solo para quien tiró). */}
+          {roll?.jail && roll.player_ref === snap.me.public_ref && (
+            <p className={`text-xs font-medium ${roll.jail === 'doubles' ? 'text-emerald-300' : 'text-amber-300'}`}>
+              {roll.jail === 'doubles' && 'Has sacado dobles y sales de la cárcel.'}
+              {roll.jail === 'failed' && 'No has sacado dobles. Sigues en la cárcel.'}
+              {roll.jail === 'forced_paid' && 'Tercer intento fallido. Pagas 50 ₥ y sales de la cárcel.'}
+              {roll.jail === 'forced_pending' && 'Tercer intento fallido. Debes pagar 50 ₥ para salir.'}
+            </p>
+          )}
           {move && (
             <p className="text-xs text-slate-300">
               {move.method === 'roll' ? 'Tirada' : move.method === 'manual' ? 'Movimiento' : 'Movimiento'}: avanzó {move.steps}{' '}
@@ -156,9 +165,19 @@ export function MovementPanel({
         </div>
       ) : myJail ? (
         <div className="flex flex-col gap-2 rounded-lg border border-amber-600 bg-amber-950/40 px-3 py-2">
-          <p className="text-sm font-semibold text-amber-100">🔒 Estás en la cárcel.</p>
+          <p className="text-sm font-semibold text-amber-100">
+            🔒 Estás en la cárcel. <span className="font-normal">Intento {Math.min(myJail.jail_turns + 1, 3)}/3.</span>
+          </p>
           {snap.me.is_current ? (
             <>
+              <button
+                type="button"
+                onClick={onRoll}
+                disabled={busy}
+                className="min-h-[44px] rounded-xl bg-emerald-600 px-4 text-base font-semibold disabled:opacity-40"
+              >
+                🎲 Intentar sacar dobles
+              </button>
               <button
                 type="button"
                 onClick={onPayJailRelease}
@@ -177,10 +196,10 @@ export function MovementPanel({
                   Usar carta «Sal de la cárcel gratis»
                 </button>
               )}
-              <p className="text-[11px] text-amber-200/80">No puedes tirar ni mover hasta salir de la cárcel.</p>
+              <p className="text-[11px] text-amber-200/80">Si no sales antes, al tercer intento pagas 50 ₥ y sales. No puedes mover manualmente.</p>
             </>
           ) : (
-            <p className="text-[11px] text-amber-200/80">Espera tu turno para pagar la multa o usar una carta.</p>
+            <p className="text-[11px] text-amber-200/80">Espera tu turno para intentar dobles, pagar la multa o usar una carta.</p>
           )}
         </div>
       ) : mine ? (

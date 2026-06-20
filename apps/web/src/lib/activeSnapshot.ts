@@ -146,11 +146,20 @@ export interface CurrentSpace {
   property_ref: string | null;
   is_start: boolean;
 }
+export type JailRollResult = 'doubles' | 'failed' | 'forced_paid' | 'forced_pending';
 export interface LastRoll {
   d1: number;
   d2: number;
   total: number;
   player_ref: string;
+  jail?: JailRollResult | null; // si la tirada fue un intento de dobles dentro de la cárcel
+}
+/** Evento global de partida (Fase 5 corrección): p. ej. alguien cobra el bote del Parking → banner a todos. */
+export interface GlobalEvent {
+  kind: string;          // 'parking_pot_payout'
+  player_ref: string;
+  amount: number;
+  event_id: string;      // identificador único para no repetir el banner
 }
 /** Efecto de la casilla al caer (Fase 5): impuesto, parking (bote), ir a la cárcel o carta. */
 export interface LandingEffect {
@@ -281,6 +290,7 @@ export interface ActiveSnapshot {
   my_held_cards: MyHeldCard[];
   pending_card: PendingCard | null;
   pending_payment: PendingPayment | null;
+  last_global_event: GlobalEvent | null;
   runtime_status: RuntimeStatus;
   control: ActiveControl;
   runtime_version: number;
@@ -539,7 +549,9 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
   if (isObj(raw.last_roll)) {
     const lr = raw.last_roll;
     if (!isNum(lr.d1) || !isNum(lr.d2) || !isNum(lr.total) || !isStr(lr.player_ref)) return bad('last_roll inválido');
-    lastRoll = { d1: lr.d1, d2: lr.d2, total: lr.total, player_ref: lr.player_ref };
+    const jr = lr.jail;
+    const jail = (jr === 'doubles' || jr === 'failed' || jr === 'forced_paid' || jr === 'forced_pending') ? jr : null;
+    lastRoll = { d1: lr.d1, d2: lr.d2, total: lr.total, player_ref: lr.player_ref, jail };
   }
   let lastMove: LastMove | null = null;
   if (isObj(raw.last_move)) {
@@ -619,6 +631,13 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
         board: pp.board, space_index: isNum(pp.space_index) ? pp.space_index : 0, space_name: isStr(pp.space_name) ? pp.space_name : '' };
     }
   }
+  let lastGlobalEvent: GlobalEvent | null = null;
+  if (isObj(raw.last_global_event)) {
+    const ge = raw.last_global_event;
+    if (isStr(ge.kind) && isStr(ge.player_ref) && isNum(ge.amount) && isStr(ge.event_id)) {
+      lastGlobalEvent = { kind: ge.kind, player_ref: ge.player_ref, amount: ge.amount, event_id: ge.event_id };
+    }
+  }
 
   if (!isNum(raw.runtime_version)) return bad('runtime_version inválido');
   const rs = raw.runtime_status;
@@ -661,6 +680,7 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
       my_held_cards: myHeldCards,
       pending_card: pendingCard,
       pending_payment: pendingPayment,
+      last_global_event: lastGlobalEvent,
       runtime_status: rs,
       control: { paused_by_ref: ctl.paused_by_ref, finished_by_ref: ctl.finished_by_ref, reason: ctl.reason },
       runtime_version: raw.runtime_version,

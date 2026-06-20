@@ -13,6 +13,10 @@ import {
 } from '../lib/api';
 import { useCardDraw } from '../hooks/useCardDraw';
 import { CardModal } from '../components/active/CardModal';
+import { useJailSounds } from '../hooks/useJailSounds';
+import { useGlobalEvent } from '../hooks/useGlobalEvent';
+import { GlobalBanner } from '../components/active/GlobalBanner';
+import { primeSfx } from '../lib/sfx';
 import { useActiveStore } from '../store/active';
 import { useRealtimeStore } from '../store/realtime';
 import { useLobbyStore } from '../store/lobby';
@@ -87,6 +91,8 @@ export function ActiveGameScreen({
   // Efecto "dinero recibido": suena + flash cuando MI saldo aumenta (no en el primer snapshot).
   const receivedFlash = useReceiveMoney(snap);
   const { show: cardShow, dismiss: dismissCard } = useCardDraw(snap);
+  useJailSounds(snap);                          // sirena al entrar / puerta al salir de la cárcel
+  const globalBanner = useGlobalEvent(snap);    // banner global (cobro del bote del Parking) para todos
 
   // Historial local: afina el estado (en curso/pausa/finalizada) y el rol con el snapshot activo.
   const histStatus = snap ? (snap.runtime_status === 'running' ? 'active' : snap.runtime_status) : null;
@@ -106,7 +112,7 @@ export function ActiveGameScreen({
   // dentro del gesto, así que escuchamos varios eventos de gesto (el primero que llegue desbloquea;
   // primeCashSound es idempotente). passive: no bloquea el scroll/tap.
   useEffect(() => {
-    const unlock = () => primeCashSound();
+    const unlock = () => { primeCashSound(); primeSfx(); };
     const events: (keyof WindowEventMap)[] = ['pointerdown', 'touchend', 'click'];
     events.forEach((e) => window.addEventListener(e, unlock, { once: true, passive: true }));
     return () => events.forEach((e) => window.removeEventListener(e, unlock));
@@ -265,6 +271,7 @@ export function ActiveGameScreen({
   return (
     <section className="flex flex-col gap-3">
       <MoneyBanner flash={receivedFlash} />
+      <GlobalBanner banner={globalBanner} />
       {cardShow && <CardModal show={cardShow} busy={busy} onAccept={dismissCard} onResolve={doResolveCard} />}
       <ConnectionBar status={channelStatus} onRetry={onReconnect} />
 

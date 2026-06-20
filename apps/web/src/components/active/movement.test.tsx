@@ -25,7 +25,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     ],
     auctions: [], purchase_requests: [], leave_requests: [], bankruptcy_requests: [], late_join_requests: [],
     boards: [{ board_key: 'classic', ring_size: 2, start_bonus: 200, provisional: false }, { board_key: 'back_to_the_future', ring_size: 1, start_bonus: 200, provisional: false }],
-    spaces, board_links: [], guardians: [], pending_junction: null, parking_pot: 0, jail: [], my_jail: null, card_decks: [], last_card_draw: null, held_cards: [], my_held_cards: [], pending_card: null, pending_payment: null, positions,
+    spaces, board_links: [], guardians: [], pending_junction: null, parking_pot: 0, jail: [], my_jail: null, card_decks: [], last_card_draw: null, held_cards: [], my_held_cards: [], pending_card: null, pending_payment: null, last_global_event: null, positions,
     my_position: { board_key: 'classic', space_index: 1 },
     current_space: { space_ref: 'cl-1', board_key: 'classic', space_index: 1, name: 'Mediterráneo', space_type: 'property', property_ref: 'cl-1', is_start: false },
     last_roll: { d1: 2, d2: 3, total: 5, player_ref: 'P-1' },
@@ -120,14 +120,38 @@ describe('MovementPanel', () => {
     expect(c.onResolveJunction).toHaveBeenCalledWith('own');
   });
 
-  it('en la cárcel: muestra el estado, deja pagar la multa y NO deja tirar', () => {
+  it('en la cárcel: estado + "Intento 1/3", intentar dobles (onRoll), pagar la multa y NO mover manual', () => {
     const c = cbs();
     const s = snap({ my_jail: { board_key: 'classic', jail_turns: 0, fine: 50 } });
     render(<MovementPanel snap={s} busy={false} {...c} />);
     expect(screen.getByText(/Estás en la cárcel/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Tirar dados/ })).toBeNull();
+    expect(screen.getByText(/Intento 1\/3/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Tirar dados/ })).toBeNull();     // no es tirada normal
+    expect(screen.queryByRole('button', { name: '1 casilla' })).toBeNull();        // no se mueve manualmente
+    fireEvent.click(screen.getByRole('button', { name: /Intentar sacar dobles/ }));
+    expect(c.onRoll).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole('button', { name: /Pagar 50 ₥ para salir/ }));
     expect(c.onPayJailRelease).toHaveBeenCalledTimes(1);
+  });
+
+  it('cárcel: el contador de intentos avanza (jail_turns=2 → "Intento 3/3")', () => {
+    const c = cbs();
+    render(<MovementPanel snap={snap({ my_jail: { board_key: 'classic', jail_turns: 2, fine: 50 } })} busy={false} {...c} />);
+    expect(screen.getByText(/Intento 3\/3/)).toBeInTheDocument();
+  });
+
+  it('cárcel: mensajes del intento de dobles (fallo / dobles / 3er forzado)', () => {
+    const c = cbs();
+    const base = snap().last_roll!;
+    const failed = snap({ my_jail: { board_key: 'classic', jail_turns: 1, fine: 50 }, last_roll: { ...base, d1: 2, d2: 5, jail: 'failed' } });
+    const { rerender } = render(<MovementPanel snap={failed} busy={false} {...c} />);
+    expect(screen.getByText(/No has sacado dobles\. Sigues en la cárcel/)).toBeInTheDocument();
+    const doubles = snap({ my_jail: null, last_roll: { ...base, d1: 4, d2: 4, jail: 'doubles' } });
+    rerender(<MovementPanel snap={doubles} busy={false} {...c} />);
+    expect(screen.getByText(/Has sacado dobles y sales de la cárcel/)).toBeInTheDocument();
+    const forced = snap({ my_jail: null, last_roll: { ...base, d1: 2, d2: 3, jail: 'forced_paid' } });
+    rerender(<MovementPanel snap={forced} busy={false} {...c} />);
+    expect(screen.getByText(/Tercer intento fallido\. Pagas 50 ₥ y sales/)).toBeInTheDocument();
   });
 
   it('en la cárcel con carta: ofrece usar la carta «Sal de la cárcel gratis»', () => {
