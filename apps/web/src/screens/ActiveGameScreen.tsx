@@ -8,8 +8,11 @@ import {
   startPropertyAuction, placePropertyBid, closePropertyAuction, cancelPropertyAuction,
   requestBankruptcy, resolveBankruptcy,
   movePlayer, rollAndMove, hostSetPlayerPosition, resolveJunction,
+  payJailRelease, redeemJailCard, resolveCard, payPending,
   type ApiResult, type ExitResolution, type BankruptcyKind,
 } from '../lib/api';
+import { useCardDraw } from '../hooks/useCardDraw';
+import { CardModal } from '../components/active/CardModal';
 import { useActiveStore } from '../store/active';
 import { useRealtimeStore } from '../store/realtime';
 import { useLobbyStore } from '../store/lobby';
@@ -83,6 +86,7 @@ export function ActiveGameScreen({
 
   // Efecto "dinero recibido": suena + flash cuando MI saldo aumenta (no en el primer snapshot).
   const receivedFlash = useReceiveMoney(snap);
+  const { show: cardShow, dismiss: dismissCard } = useCardDraw(snap);
 
   // Historial local: afina el estado (en curso/pausa/finalizada) y el rol con el snapshot activo.
   const histStatus = snap ? (snap.runtime_status === 'running' ? 'active' : snap.runtime_status) : null;
@@ -224,6 +228,19 @@ export function ActiveGameScreen({
   const doResolveJunction = useCallback((dir: 'own' | 'cross') => {
     void run(() => resolveJunction(gameId, dir, newRequestId(), snap?.runtime_version ?? 0));
   }, [gameId, snap?.runtime_version, run]);
+  // Fase 5 — casillas especiales.
+  const doPayJailRelease = useCallback(() => {
+    void run(() => payJailRelease(gameId, newRequestId(), snap?.runtime_version ?? 0));
+  }, [gameId, snap?.runtime_version, run]);
+  const doUseJailCard = useCallback(() => {
+    void run(() => redeemJailCard(gameId, newRequestId(), snap?.runtime_version ?? 0));
+  }, [gameId, snap?.runtime_version, run]);
+  const doResolveCard = useCallback(() => {
+    void run(() => resolveCard(gameId, newRequestId(), snap?.runtime_version ?? 0));
+  }, [gameId, snap?.runtime_version, run]);
+  const doPayPending = useCallback(() => {
+    void run(() => payPending(gameId, newRequestId(), snap?.runtime_version ?? 0));
+  }, [gameId, snap?.runtime_version, run]);
   const doSetPosition = useCallback((ref: string, board: BoardKey, index: number, reason: string) => {
     void run(() => hostSetPlayerPosition(gameId, ref, board, index, reason, newRequestId(), snap?.runtime_version ?? 0));
   }, [gameId, snap?.runtime_version, run]);
@@ -248,6 +265,7 @@ export function ActiveGameScreen({
   return (
     <section className="flex flex-col gap-3">
       <MoneyBanner flash={receivedFlash} />
+      {cardShow && <CardModal show={cardShow} busy={busy} onAccept={dismissCard} onResolve={doResolveCard} />}
       <ConnectionBar status={channelStatus} onRetry={onReconnect} />
 
       <header className="rounded-xl border border-slate-700 p-4">
@@ -301,6 +319,9 @@ export function ActiveGameScreen({
             onRoll={doRoll}
             onMoveManual={doMoveManual}
             onResolveJunction={doResolveJunction}
+            onPayJailRelease={doPayJailRelease}
+            onUseJailCard={doUseJailCard}
+            onPayPending={doPayPending}
             onOpenBoard={() => setBoardViewOpen(true)}
             onRequestPurchase={(p) => setBuyTarget(p)}
             onPayRent={(p) => setRentTarget(p)}

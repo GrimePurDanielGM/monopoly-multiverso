@@ -33,7 +33,7 @@ function makeSnap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     bankruptcy_requests: [],
     late_join_requests: [],
     boards: [{ board_key: 'classic', ring_size: 40, start_bonus: 200, provisional: false }, { board_key: 'back_to_the_future', ring_size: 29, start_bonus: 200, provisional: true }],
-    spaces: [], board_links: [], guardians: [], pending_junction: null, positions: [], my_position: null, current_space: null, last_roll: null, last_move: null,
+    spaces: [], board_links: [], guardians: [], pending_junction: null, parking_pot: 0, jail: [], my_jail: null, card_decks: [], last_card_draw: null, held_cards: [], my_held_cards: [], pending_card: null, pending_payment: null, positions: [], my_position: null, current_space: null, last_roll: null, last_move: null,
     runtime_status: 'running',
     control: { paused_by_ref: null, finished_by_ref: null, reason: null },
     runtime_version: 7,

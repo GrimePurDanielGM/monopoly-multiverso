@@ -101,9 +101,25 @@ const KIND_LABEL: Record<LedgerKind, string> = {
   bankruptcy_cash_to_player: 'Bancarrota: efectivo al acreedor',
   pass_start_bonus: 'Bonus por pasar por salida',
   guardian_toll: 'Peaje del guardián',
+  tax_payment: 'Pago de impuesto',
+  parking_pot_payout: 'Cobro del bote de Parking',
+  jail_release_payment: 'Salida de la cárcel',
+  card_bank_payment: 'Carta: cobras de la banca',
+  card_bank_charge: 'Carta: pagas a la banca',
+  card_player_payment: 'Carta: pagas a un jugador',
+  card_player_charge: 'Carta: cobras de un jugador',
 };
 export function kindLabel(kind: LedgerKind): string {
   return KIND_LABEL[kind];
+}
+
+// ── Fase 5: cartas, cárcel, impuestos ──
+const DECK_LABEL: Record<string, string> = {
+  chance: 'Suerte', community_chest: 'Caja de Comunidad', past: 'Pasado', future: 'Futuro',
+};
+/** Etiqueta legible de un mazo de cartas. */
+export function deckLabel(deck: string): string {
+  return DECK_LABEL[deck] ?? deck;
 }
 
 /** Formatea un importe entero con separador de miles (.) y la marca monetaria.

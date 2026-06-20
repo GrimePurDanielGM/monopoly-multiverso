@@ -1,5 +1,40 @@
 # Estado del proyecto — lista viva
 
+## Fase 5 — Casillas especiales · **`Fase 5: COMPLETADA` (pendiente validación manual)**
+- **Alcance (2026-06-20):** impuestos, bote de Parking, cárcel y cartas. Integrado con movimiento,
+  guardianes, ledger, snapshot y UI. **No** incluye casas/hoteles/hipotecas/alquiler avanzado (Fase 6+).
+  Migraciones `0039` (modelo + ledger + catálogo de cartas), `0040` (RPC) y `0041` (snapshot). **No se avanza a Fase 6.**
+- **Impuestos:** al caer en una casilla `tax` se cobra a la banca (`tax_payment`) y el importe alimenta el
+  **bote de Parking** (tope 2.500; excedente a banca). Classic: idx 4 = Impuesto sobre el capital (200),
+  idx 38 = Impuesto de lujo (100). RdF: idx 4 = Mecánico (200), idx 38 = Dona a la Torre del Reloj (100).
+  Si no hay saldo, el movimiento NO se bloquea: queda `pending_payment` y el jugador elige **Pagar**
+  (`pay_pending`) o declararse en bancarrota; no puede terminar el turno hasta resolverlo.
+- **Parking gratuito (bote):** único, compartido por ambos tableros (idx 20). Al caer se cobra el bote
+  entero (`parking_pot_payout`), vuelve a 0; si está a 0 no cobra. Visible en el panel y en la casilla del
+  tablero visual. Cruzar al Parking del otro tablero también lo cobra.
+- **Cárcel:** estado por jugador (`game_jail`). Solo-visitas (idx 10) no encarcela; **Ve a la cárcel**
+  (idx 30) mueve a idx 10 sin cobrar salida (`sent_to_jail`) y marca `in_jail`. En la cárcel no se puede
+  tirar/mover (`IN_JAIL`); se sale **pagando 50** (`jail_release_payment`, al bote) o con **carta «Sal de
+  la cárcel gratis»** (`use_jail_card`, se descarta). `jail_turns` preparado (sin triples dobles aún).
+- **Cartas:** 4 mazos (`chance`/`community_chest` en Classic; `past`/`future` en RdF), estado por partida
+  (`game_card_decks`: robo/descarte con orden persistente, sin azar). Al caer en una casilla `card` se roba
+  y se aplica el efecto soportado: cobrar/pagar banca, cobrar/pagar a cada jugador (mejor esfuerzo),
+  ir a Salida (cobra sueldo), ir a la cárcel, retroceder, y **«Sal de la cárcel gratis» conservable**
+  (inventario). Las **no soportadas** quedan en **resolución manual** (`pending_card` → `resolve_card`).
+  Mazos sembrados con **cartas TEMPORALES marcadas** (pendientes de las cartas reales). Modal de carta con
+  «Aceptar» / «Marcar como resuelta».
+- **Snapshot/seguridad:** `parking_pot`, `jail`, `my_jail`, `card_decks` (recuentos), `last_card_draw`,
+  `held_cards` (recuentos), `my_held_cards` (inventario completo solo del propio jugador), `pending_card`,
+  `pending_payment`. Tablas internas deny-all (`game_jail`/`card_catalog`/`game_card_decks`/`game_held_cards`),
+  snapshot saneado (sin ids internos), saldos privados. Nuevos ledger kinds reflejados en el parser
+  (`LedgerKind`/`KINDS`/`kindLabel`).
+- **Tests:** SQL `tax/parking/jail/cards/snapshot/rls_phase5` (33 PASS) + batería 1–5 **39 suites verdes**
+  tras `db reset`; unit 293; E2E `special_spaces` (impuesto→bote→Parking→cárcel→pagar→carta) en
+  Chromium+WebKit; typecheck/lint/build verdes. Aplicado a dev (`0039`,`0040`,`0041`).
+- **Riesgos / Fase 6:** cartas reales (sustituir las temporales); alquiler por casas/hoteles; construcción
+  e hipotecas; triples dobles y conteo de turnos en cárcel; cartas que cruzan de tablero (hoy manuales);
+  cada-jugador a importe completo con deuda (hoy mejor esfuerzo).
+
 ## Fase 4 — Movimiento y tablero (base) · **`Fase 4: COMPLETADA` (pendiente validación manual)**
 - **Pulido Fase 4 (2026-06-19) — UX y consulta antes de Fase 5 (5 mejoras):**
   1. **Historial de partidas local** (`lib/gameHistory.ts`): al crear/unirse/recuperar/late-join/volver, se

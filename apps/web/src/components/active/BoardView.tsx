@@ -123,6 +123,9 @@ export function BoardView({
                   {s.guardian && <span aria-hidden className="absolute right-0 top-1 text-[7px] sm:text-[9px]">🛡️</span>}
                   <span className="flex-1 px-0.5 pt-0.5 text-[6px] leading-[1.05] text-slate-200 line-clamp-3 sm:text-[8px]">{s.name}</span>
                   {prop && <span className="px-0.5 text-[6px] text-slate-400 sm:text-[8px]">{prop.price}</span>}
+                  {s.space_type === 'parking' && snap.parking_pot > 0 && (
+                    <span className="px-0.5 text-[6px] font-semibold text-emerald-300 sm:text-[8px]">💰{snap.parking_pot}</span>
+                  )}
                   {here.length > 0 && (
                     <span className="flex flex-wrap gap-px px-0.5 pb-0.5">
                       {here.map((ref) => (

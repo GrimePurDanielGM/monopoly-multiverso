@@ -62,6 +62,42 @@ describe('parseActiveSnapshot', () => {
     expect(parseActiveSnapshot(ok).ok).toBe(true);
   });
 
+  it('acepta los ledgers de Fase 5 (impuesto, bote, cárcel, cartas)', () => {
+    for (const [kind, from_ref, to_ref] of [
+      ['tax_payment', 'P-AAAA', null], ['parking_pot_payout', null, 'P-AAAA'], ['jail_release_payment', 'P-AAAA', null],
+      ['card_bank_payment', null, 'P-AAAA'], ['card_bank_charge', 'P-AAAA', null],
+      ['card_player_payment', 'P-AAAA', 'P-BBBB'], ['card_player_charge', 'P-BBBB', 'P-AAAA'],
+    ] as const) {
+      const ok = { ...valid, ledger_recent: [{ ...valid.ledger_recent[0], kind, from_ref, to_ref }] };
+      expect(parseActiveSnapshot(ok).ok, kind).toBe(true);
+    }
+  });
+
+  it('parsea los campos de casillas especiales (Fase 5): bote, cárcel, mazos, carta e inventario', () => {
+    const raw = {
+      ...valid, parking_pot: 250,
+      jail: [{ player_ref: 'P-AAAA', board_key: 'classic', jail_turns: 1 }],
+      my_jail: { board_key: 'classic', jail_turns: 1, fine: 50 },
+      card_decks: [{ deck_key: 'chance', board_key: 'classic', draw_count: 8, discard_count: 1 }],
+      last_card_draw: { draw_id: 'd1', player_ref: 'P-AAAA', deck_key: 'chance', board_key: 'classic', card_ref: 'chance-credit-200',
+        title: 'Cobras', description: 'Cobra 200', effect_type: 'bank_credit', amount: 200, keepable: false, temporary: true, manual: false },
+      held_cards: [{ player_ref: 'P-AAAA', count: 1 }],
+      my_held_cards: [{ card_ref: 'chance-jail-free', title: 'Sal de la cárcel', description: '', deck_key: 'chance', effect_type: 'jail_free' }],
+      pending_card: null,
+      pending_payment: { kind: 'tax', player_ref: 'P-AAAA', amount: 100, board: 'classic', space_index: 38, space_name: 'Impuesto de lujo' },
+    };
+    const r = parseActiveSnapshot(raw);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.data.parking_pot).toBe(250);
+      expect(r.data.my_jail?.fine).toBe(50);
+      expect(r.data.card_decks[0]?.draw_count).toBe(8);
+      expect(r.data.last_card_draw?.card_ref).toBe('chance-credit-200');
+      expect(r.data.my_held_cards[0]?.effect_type).toBe('jail_free');
+      expect(r.data.pending_payment?.amount).toBe(100);
+    }
+  });
+
   it('rechaza tipos incorrectos en balance', () => {
     const bad = { ...valid, me: { ...valid.me, balance: 'mucho' } };
     expect(parseActiveSnapshot(bad).ok).toBe(false);

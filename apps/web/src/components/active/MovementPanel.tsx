@@ -15,6 +15,7 @@ const face = (n: number) => DICE[n - 1] ?? '🎲';
  *  Las casillas aún no implementadas muestran un aviso de "fase posterior". */
 export function MovementPanel({
   snap, busy, onRoll, onMoveManual, onOpenBoard, onRequestPurchase, onPayRent, onResolveJunction,
+  onPayJailRelease, onUseJailCard, onPayPending,
 }: {
   snap: ActiveSnapshot;
   busy: boolean;
@@ -24,11 +25,20 @@ export function MovementPanel({
   onRequestPurchase: (p: ActiveProperty) => void;
   onPayRent: (p: ActiveProperty) => void;
   onResolveJunction: (dir: 'own' | 'cross') => void;
+  onPayJailRelease: () => void;
+  onUseJailCard: () => void;
+  onPayPending: () => void;
 }) {
   const [steps, setSteps] = useState<number | null>(null);
   const [card, setCard] = useState<ActiveProperty | null>(null);
   const choice = junctionChoice(snap);
-  const mine = canRoll(snap);
+  const myJail = snap.my_jail;                 // estoy en la cárcel
+  const pendingPay = snap.pending_payment;     // pago obligado pendiente (ya viene filtrado a mí)
+  const pot = snap.parking_pot;
+  const effect = snap.last_move?.effect ?? null;
+  const hasJailCard = snap.my_held_cards.some((c) => c.effect_type === 'jail_free');
+  // Solo se puede tirar/mover si me toca, no estoy en la cárcel y no tengo pagos/cartas pendientes.
+  const mine = canRoll(snap) && !myJail && !pendingPay;
   const myPos = snap.my_position;
   const cur = snap.current_space;
   const roll = snap.last_roll;
@@ -79,6 +89,37 @@ export function MovementPanel({
               {move.passed_start && <span className="text-emerald-300"> · pasó por salida (+{formatMoney(move.bonus)})</span>}
             </p>
           )}
+          {/* Efecto de la casilla en la que se cayó (impuesto / parking / cárcel / carta). */}
+          {effect && effect.type !== 'none' && (
+            <p className="text-xs font-medium">
+              {effect.type === 'tax' && (effect.paid
+                ? <span className="text-rose-300">Has pagado {formatMoney(effect.amount ?? 0)} de impuesto.</span>
+                : <span className="text-rose-300">Debes pagar {formatMoney(effect.amount ?? 0)} de impuesto.</span>)}
+              {effect.type === 'parking' && ((effect.payout ?? 0) > 0
+                ? <span className="text-emerald-300">Has cobrado el bote de Parking: {formatMoney(effect.payout ?? 0)}.</span>
+                : <span className="text-slate-400">Parking gratuito. No hay bote acumulado.</span>)}
+              {effect.type === 'go_to_jail' && <span className="text-amber-300">Has sido enviado a la cárcel.</span>}
+              {effect.type === 'card' && !effect.empty && <span className="text-amber-200">Has robado una carta{effect.title ? `: ${effect.title}` : ''}.</span>}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Bote del Parking gratuito (compartido entre ambos tableros). */}
+      <div className="flex items-center justify-between rounded-lg bg-slate-900/50 px-3 py-1.5 text-xs">
+        <span className="text-slate-400">Bote Parking</span>
+        <span className="font-semibold tabular-nums text-emerald-200">{formatMoney(pot)}</span>
+      </div>
+
+      {/* Inventario de cartas conservables (p. ej. "Sal de la cárcel gratis"). */}
+      {snap.my_held_cards.length > 0 && (
+        <div className="rounded-lg border border-slate-700 px-3 py-2 text-xs">
+          <p className="text-slate-400">Tus cartas</p>
+          <ul className="mt-0.5 flex flex-col gap-0.5">
+            {snap.my_held_cards.map((c, i) => (
+              <li key={`${c.card_ref}-${i}`} className="truncate text-slate-200">🃏 {c.title}</li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -99,6 +140,48 @@ export function MovementPanel({
               {opt.guarded ? <span className="ml-1 text-[11px] font-normal">· peaje {formatMoney(opt.toll)}</span> : <span className="ml-1 text-[11px] font-normal">· gratis</span>}
             </button>
           ))}
+        </div>
+      ) : pendingPay ? (
+        <div className="flex flex-col gap-2 rounded-lg border border-rose-600 bg-rose-950/40 px-3 py-2">
+          <p className="text-sm font-semibold text-rose-100">Debes pagar {formatMoney(pendingPay.amount)} ({pendingPay.space_name}).</p>
+          <p className="text-[11px] text-rose-200/80">Págalo si puedes; si no, decláralo en bancarrota desde el panel de saldos.</p>
+          <button
+            type="button"
+            onClick={onPayPending}
+            disabled={busy || !snap.me.is_current}
+            className="min-h-[44px] rounded-xl bg-rose-600 px-4 text-sm font-semibold disabled:opacity-40"
+          >
+            {busy ? 'Procesando…' : `Pagar ${formatMoney(pendingPay.amount)}`}
+          </button>
+        </div>
+      ) : myJail ? (
+        <div className="flex flex-col gap-2 rounded-lg border border-amber-600 bg-amber-950/40 px-3 py-2">
+          <p className="text-sm font-semibold text-amber-100">🔒 Estás en la cárcel.</p>
+          {snap.me.is_current ? (
+            <>
+              <button
+                type="button"
+                onClick={onPayJailRelease}
+                disabled={busy}
+                className="min-h-[44px] rounded-xl bg-amber-600 px-4 text-sm font-semibold disabled:opacity-40"
+              >
+                {busy ? 'Procesando…' : `Pagar ${formatMoney(myJail.fine)} para salir`}
+              </button>
+              {hasJailCard && (
+                <button
+                  type="button"
+                  onClick={onUseJailCard}
+                  disabled={busy}
+                  className="min-h-[44px] rounded-xl border border-amber-500 px-4 text-sm font-semibold text-amber-200 disabled:opacity-40"
+                >
+                  Usar carta «Sal de la cárcel gratis»
+                </button>
+              )}
+              <p className="text-[11px] text-amber-200/80">No puedes tirar ni mover hasta salir de la cárcel.</p>
+            </>
+          ) : (
+            <p className="text-[11px] text-amber-200/80">Espera tu turno para pagar la multa o usar una carta.</p>
+          )}
         </div>
       ) : mine ? (
         <div className="flex flex-col gap-2">

@@ -40,12 +40,14 @@ declare host text:='ec000000-0000-0000-0000-0000000000e1'; j1 text:='ec000000-00
 end $f$;
 do $$ begin perform pg_temp._build(); end $$;
 
--- Provoca varias vueltas por salida en el jugador actual.
+-- Provoca varias vueltas por salida en el jugador actual. Se aterriza en una PROPIEDAD (idx 3, sin
+-- efecto monetario) para aislar el bonus de salida; los efectos de casilla (impuesto/carta/parking) se
+-- reconcilian en sus propias suites de Fase 5.
 do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host'); cur text; uid text; ring int; i int; begin
   cur:=pg_temp._cur(gid); uid:=pg_temp._uid(gid,cur); ring:=public._p4_ring_size('classic');
   for i in 1..3 loop
     perform pg_temp._as_user(host); perform host_set_player_position(gid,cur,'classic',ring-2,'preparar vuelta',gen_random_uuid(),pg_temp._ver(gid));
-    perform pg_temp._as_user(uid); perform move_player(gid,4,gen_random_uuid(),pg_temp._ver(gid));  -- da la vuelta cada vez
+    perform pg_temp._as_user(uid); perform move_player(gid,5,gen_random_uuid(),pg_temp._ver(gid));  -- 38→3 (propiedad), da la vuelta
     perform pg_temp._as_admin();
   end loop;
 end $$;

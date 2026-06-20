@@ -25,7 +25,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     ],
     auctions: [], purchase_requests: [], leave_requests: [], bankruptcy_requests: [], late_join_requests: [],
     boards: [{ board_key: 'classic', ring_size: 2, start_bonus: 200, provisional: false }, { board_key: 'back_to_the_future', ring_size: 1, start_bonus: 200, provisional: false }],
-    spaces, board_links: [], guardians: [], pending_junction: null, positions,
+    spaces, board_links: [], guardians: [], pending_junction: null, parking_pot: 0, jail: [], my_jail: null, card_decks: [], last_card_draw: null, held_cards: [], my_held_cards: [], pending_card: null, pending_payment: null, positions,
     my_position: { board_key: 'classic', space_index: 1 },
     current_space: { space_ref: 'cl-1', board_key: 'classic', space_index: 1, name: 'Mediterráneo', space_type: 'property', property_ref: 'cl-1', is_start: false },
     last_roll: { d1: 2, d2: 3, total: 5, player_ref: 'P-1' },
@@ -38,7 +38,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
 }
 
 describe('MovementPanel', () => {
-  const cbs = () => ({ onRoll: vi.fn(), onMoveManual: vi.fn(), onOpenBoard: vi.fn(), onRequestPurchase: vi.fn(), onPayRent: vi.fn(), onResolveJunction: vi.fn() });
+  const cbs = () => ({ onRoll: vi.fn(), onMoveManual: vi.fn(), onOpenBoard: vi.fn(), onRequestPurchase: vi.fn(), onPayRent: vi.fn(), onResolveJunction: vi.fn(), onPayJailRelease: vi.fn(), onUseJailCard: vi.fn(), onPayPending: vi.fn() });
 
   it('mi turno: "Tirar dados" llama onRoll y muestra la última tirada', () => {
     const c = cbs();
@@ -118,6 +118,60 @@ describe('MovementPanel', () => {
     expect(screen.getByRole('button', { name: /Cruzar.*Parking gratuito.*peaje/ })).toBeInTheDocument();
     fireEvent.click(seguir);
     expect(c.onResolveJunction).toHaveBeenCalledWith('own');
+  });
+
+  it('en la cárcel: muestra el estado, deja pagar la multa y NO deja tirar', () => {
+    const c = cbs();
+    const s = snap({ my_jail: { board_key: 'classic', jail_turns: 0, fine: 50 } });
+    render(<MovementPanel snap={s} busy={false} {...c} />);
+    expect(screen.getByText(/Estás en la cárcel/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Tirar dados/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Pagar 50 ₥ para salir/ }));
+    expect(c.onPayJailRelease).toHaveBeenCalledTimes(1);
+  });
+
+  it('en la cárcel con carta: ofrece usar la carta «Sal de la cárcel gratis»', () => {
+    const c = cbs();
+    const s = snap({
+      my_jail: { board_key: 'classic', jail_turns: 0, fine: 50 },
+      my_held_cards: [{ card_ref: 'chance-jail-free', title: 'Sal de la cárcel gratis', description: '', deck_key: 'chance', effect_type: 'jail_free' }],
+    });
+    render(<MovementPanel snap={s} busy={false} {...c} />);
+    fireEvent.click(screen.getByRole('button', { name: /Usar carta/ }));
+    expect(c.onUseJailCard).toHaveBeenCalledTimes(1);
+  });
+
+  it('pago pendiente (impuesto sin saldo): ofrece pagar y NO deja tirar', () => {
+    const c = cbs();
+    const s = snap({ pending_payment: { kind: 'tax', player_ref: 'P-1', amount: 100, board: 'classic', space_index: 38, space_name: 'Impuesto de lujo' } });
+    render(<MovementPanel snap={s} busy={false} {...c} />);
+    expect(screen.getByText(/Debes pagar/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Tirar dados/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Pagar 100 ₥/ }));
+    expect(c.onPayPending).toHaveBeenCalledTimes(1);
+  });
+
+  it('muestra el bote de Parking y el inventario de cartas', () => {
+    const c = cbs();
+    const s = snap({
+      parking_pot: 250,
+      my_held_cards: [{ card_ref: 'chance-jail-free', title: 'Sal de la cárcel gratis', description: '', deck_key: 'chance', effect_type: 'jail_free' }],
+    });
+    render(<MovementPanel snap={s} busy={false} {...c} />);
+    expect(screen.getByText('Bote Parking')).toBeInTheDocument();
+    expect(screen.getByText('250 ₥')).toBeInTheDocument();
+    expect(screen.getByText(/Sal de la cárcel gratis/)).toBeInTheDocument();
+  });
+
+  it('nota del efecto de casilla: impuesto pagado y bote cobrado', () => {
+    const c = cbs();
+    const base = snap().last_move!;
+    const taxS = snap({ last_move: { ...base, effect: { type: 'tax', name: 'Impuesto de lujo', amount: 100, paid: true } } });
+    const { rerender } = render(<MovementPanel snap={taxS} busy={false} {...c} />);
+    expect(screen.getByText(/Has pagado 100 ₥ de impuesto/)).toBeInTheDocument();
+    const parkS = snap({ last_move: { ...base, effect: { type: 'parking', payout: 300 } } });
+    rerender(<MovementPanel snap={parkS} busy={false} {...c} />);
+    expect(screen.getByText(/Has cobrado el bote de Parking: 300 ₥/)).toBeInTheDocument();
   });
 });
 

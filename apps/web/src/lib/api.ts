@@ -570,6 +570,40 @@ export async function resolveJunction(gameId: string, direction: 'own' | 'cross'
   return { ok: true, data: true };
 }
 
+// ── Fase 5 — casillas especiales (cárcel, cartas, pago pendiente) ──
+
+/** Salir de la cárcel pagando la multa (50). */
+export async function payJailRelease(gameId: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('pay_jail_release', { p_game: gameId, p_request_id: requestId, p_expected_version: expectedVersion });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Salir de la cárcel usando una carta "Sal de la cárcel gratis". */
+export async function redeemJailCard(gameId: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('use_jail_card', { p_game: gameId, p_request_id: requestId, p_expected_version: expectedVersion });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Marcar como resuelta una carta de resolución manual. */
+export async function resolveCard(gameId: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('resolve_card', { p_game: gameId, p_request_id: requestId, p_expected_version: expectedVersion });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Pagar un impuesto que quedó pendiente por falta de saldo. */
+export async function payPending(gameId: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('pay_pending', { p_game: gameId, p_request_id: requestId, p_expected_version: expectedVersion });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
 /** El anfitrión corrige la posición de un jugador (motivo obligatorio; no cobra salida ni dispara acciones). */
 export async function hostSetPlayerPosition(
   gameId: string, playerRef: string, boardKey: string, spaceIndex: number,

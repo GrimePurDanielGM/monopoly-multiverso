@@ -8,9 +8,16 @@ export type LedgerKind =
   | 'player_exit_to_bank' | 'player_exit_distribution' | 'player_exit_remainder_to_bank'
   | 'property_purchase' | 'rent_payment' | 'property_auction_purchase'
   | 'bankruptcy_cash_to_bank' | 'bankruptcy_cash_to_player'
-  | 'pass_start_bonus' | 'guardian_toll';
+  | 'pass_start_bonus' | 'guardian_toll'
+  // Fase 5 — casillas especiales
+  | 'tax_payment' | 'parking_pot_payout' | 'jail_release_payment'
+  | 'card_bank_payment' | 'card_bank_charge' | 'card_player_payment' | 'card_player_charge';
 
 export type BoardKey = 'classic' | 'back_to_the_future';
+export type DeckKey = 'chance' | 'community_chest' | 'past' | 'future';
+export type CardEffectType =
+  | 'bank_credit' | 'bank_debit' | 'each_player_credit' | 'each_player_debit'
+  | 'to_start' | 'to_jail' | 'back_steps' | 'jail_free' | 'manual';
 export type SpaceType = 'start' | 'property' | 'tax' | 'card' | 'jail' | 'go_to_jail' | 'parking' | 'special';
 export type PropertyKind = 'street' | 'station' | 'transport' | 'utility' | 'special';
 export interface ActiveProperty {
@@ -145,6 +152,24 @@ export interface LastRoll {
   total: number;
   player_ref: string;
 }
+/** Efecto de la casilla al caer (Fase 5): impuesto, parking (bote), ir a la cárcel o carta. */
+export interface LandingEffect {
+  type: 'tax' | 'parking' | 'go_to_jail' | 'card' | 'none';
+  name?: string;            // tax: nombre del impuesto
+  amount?: number | null;   // tax: importe; card: importe de la carta
+  paid?: boolean;           // tax: ¿se cobró?
+  pending?: boolean;        // tax: quedó pendiente por falta de saldo
+  payout?: number;          // parking: bote cobrado
+  jailed?: boolean;         // go_to_jail
+  board?: string;           // go_to_jail
+  deck?: string;            // card
+  card_ref?: string;        // card
+  title?: string;           // card
+  effect_type?: string;     // card
+  manual?: boolean;         // card: requiere resolución manual
+  keepable?: boolean;       // card: conservable
+  empty?: boolean;          // card: mazo vacío
+}
 export interface LastMove {
   player_ref: string;
   board: BoardKey;
@@ -158,7 +183,20 @@ export interface LastMove {
   space_name: string;
   space_type: SpaceType;
   property_ref: string | null;
+  effect?: LandingEffect | null;
 }
+export interface JailEntry { player_ref: string; board_key: BoardKey; jail_turns: number; }
+export interface MyJail { board_key: BoardKey; jail_turns: number; fine: number; }
+export interface CardDeckSummary { deck_key: DeckKey; board_key: BoardKey; draw_count: number; discard_count: number; }
+export interface LastCardDraw {
+  draw_id: string; player_ref: string; deck_key: DeckKey; board_key: BoardKey; card_ref: string;
+  title: string; description: string; effect_type: CardEffectType; amount: number | null;
+  keepable: boolean; temporary: boolean; manual: boolean;
+}
+export interface HeldCardCount { player_ref: string; count: number; }
+export interface MyHeldCard { card_ref: string; title: string; description: string; deck_key: DeckKey; effect_type: CardEffectType; }
+export interface PendingCard { player_ref: string; card_ref: string; deck_key: DeckKey; title: string; description: string; }
+export interface PendingPayment { kind: string; player_ref: string; amount: number; board: BoardKey; space_index: number; space_name: string; }
 export interface LateJoinRequest {
   request_ref: string;
   name: string;
@@ -233,6 +271,16 @@ export interface ActiveSnapshot {
   current_space: CurrentSpace | null;
   last_roll: LastRoll | null;
   last_move: LastMove | null;
+  // Fase 5 — casillas especiales
+  parking_pot: number;
+  jail: JailEntry[];
+  my_jail: MyJail | null;
+  card_decks: CardDeckSummary[];
+  last_card_draw: LastCardDraw | null;
+  held_cards: HeldCardCount[];
+  my_held_cards: MyHeldCard[];
+  pending_card: PendingCard | null;
+  pending_payment: PendingPayment | null;
   runtime_status: RuntimeStatus;
   control: ActiveControl;
   runtime_version: number;
@@ -252,11 +300,42 @@ const KINDS: ReadonlySet<string> = new Set([
   'player_exit_to_bank', 'player_exit_distribution', 'player_exit_remainder_to_bank',
   'property_purchase', 'rent_payment', 'property_auction_purchase', 'bankruptcy_cash_to_bank', 'bankruptcy_cash_to_player',
   'pass_start_bonus', 'guardian_toll',
+  'tax_payment', 'parking_pot_payout', 'jail_release_payment',
+  'card_bank_payment', 'card_bank_charge', 'card_player_payment', 'card_player_charge',
 ]);
+const DECKS: ReadonlySet<string> = new Set(['chance', 'community_chest', 'past', 'future']);
+const CARD_EFFECTS: ReadonlySet<string> = new Set([
+  'bank_credit', 'bank_debit', 'each_player_credit', 'each_player_debit', 'to_start', 'to_jail', 'back_steps', 'jail_free', 'manual',
+]);
+const isDeck = (v: unknown): v is DeckKey => typeof v === 'string' && DECKS.has(v);
+const isCardEffect = (v: unknown): v is CardEffectType => typeof v === 'string' && CARD_EFFECTS.has(v);
 const BOARDS: ReadonlySet<string> = new Set(['classic', 'back_to_the_future']);
 const PKINDS: ReadonlySet<string> = new Set(['street', 'station', 'transport', 'utility', 'special']);
 const SPACE_TYPES: ReadonlySet<string> = new Set(['start', 'property', 'tax', 'card', 'jail', 'go_to_jail', 'parking', 'special']);
 const isBoard = (v: unknown): v is BoardKey => v === 'classic' || v === 'back_to_the_future';
+
+/** Parseo tolerante del efecto de casilla en last_move (Fase 5): copia los campos conocidos. */
+function parseEffect(v: unknown): LandingEffect | null {
+  if (!isObj(v) || !isStr(v.type)) return null;
+  const t = v.type;
+  if (t !== 'tax' && t !== 'parking' && t !== 'go_to_jail' && t !== 'card' && t !== 'none') return null;
+  const e: LandingEffect = { type: t };
+  if (isStr(v.name)) e.name = v.name;
+  if (isNumOrNull(v.amount)) e.amount = v.amount;
+  if (isBool(v.paid)) e.paid = v.paid;
+  if (isBool(v.pending)) e.pending = v.pending;
+  if (isNum(v.payout)) e.payout = v.payout;
+  if (isBool(v.jailed)) e.jailed = v.jailed;
+  if (isStr(v.board)) e.board = v.board;
+  if (isStr(v.deck)) e.deck = v.deck;
+  if (isStr(v.card_ref)) e.card_ref = v.card_ref;
+  if (isStr(v.title)) e.title = v.title;
+  if (isStr(v.effect_type)) e.effect_type = v.effect_type;
+  if (isBool(v.manual)) e.manual = v.manual;
+  if (isBool(v.keepable)) e.keepable = v.keepable;
+  if (isBool(v.empty)) e.empty = v.empty;
+  return e;
+}
 
 function parseSpaceLike(s: Record<string, unknown>): BoardSpace | null {
   if (!isStr(s.space_ref) || !isBoard(s.board_key) || !isNum(s.space_index) || !isStr(s.name) ||
@@ -474,7 +553,71 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
       player_ref: lm.player_ref, board: lm.board, from: lm.from, to: lm.to, steps: lm.steps, method: lm.method,
       passed_start: lm.passed_start, bonus: lm.bonus, space_ref: lm.space_ref, space_name: lm.space_name,
       space_type: lm.space_type as SpaceType, property_ref: lm.property_ref,
+      effect: parseEffect(lm.effect),
     };
+  }
+
+  // ── Fase 5: casillas especiales (parseo tolerante; campos opcionales no rompen el snapshot) ──
+  const parkingPot = isNum(raw.parking_pot) ? raw.parking_pot : 0;
+  const jail: JailEntry[] = [];
+  if (Array.isArray(raw.jail)) for (const j of raw.jail) {
+    if (isObj(j) && isStr(j.player_ref) && isBoard(j.board_key)) {
+      jail.push({ player_ref: j.player_ref, board_key: j.board_key, jail_turns: isNum(j.jail_turns) ? j.jail_turns : 0 });
+    }
+  }
+  let myJail: MyJail | null = null;
+  if (isObj(raw.my_jail)) {
+    const mj = raw.my_jail;
+    if (isBoard(mj.board_key)) {
+      myJail = { board_key: mj.board_key, jail_turns: isNum(mj.jail_turns) ? mj.jail_turns : 0, fine: isNum(mj.fine) ? mj.fine : 50 };
+    }
+  }
+  const cardDecks: CardDeckSummary[] = [];
+  if (Array.isArray(raw.card_decks)) for (const d of raw.card_decks) {
+    if (isObj(d) && isDeck(d.deck_key) && isBoard(d.board_key)) {
+      cardDecks.push({ deck_key: d.deck_key, board_key: d.board_key, draw_count: isNum(d.draw_count) ? d.draw_count : 0, discard_count: isNum(d.discard_count) ? d.discard_count : 0 });
+    }
+  }
+  let lastCardDraw: LastCardDraw | null = null;
+  if (isObj(raw.last_card_draw)) {
+    const cd = raw.last_card_draw;
+    if (isStr(cd.card_ref) && isDeck(cd.deck_key)) {
+      lastCardDraw = {
+        draw_id: isStr(cd.draw_id) ? cd.draw_id : cd.card_ref, player_ref: isStr(cd.player_ref) ? cd.player_ref : '',
+        deck_key: cd.deck_key, board_key: isBoard(cd.board_key) ? cd.board_key : 'classic', card_ref: cd.card_ref,
+        title: isStr(cd.title) ? cd.title : '', description: isStr(cd.description) ? cd.description : '',
+        effect_type: isCardEffect(cd.effect_type) ? cd.effect_type : 'manual', amount: isNumOrNull(cd.amount) ? cd.amount : null,
+        keepable: isBool(cd.keepable) ? cd.keepable : false, temporary: isBool(cd.temporary) ? cd.temporary : false,
+        manual: isBool(cd.manual) ? cd.manual : false,
+      };
+    }
+  }
+  const heldCards: HeldCardCount[] = [];
+  if (Array.isArray(raw.held_cards)) for (const h of raw.held_cards) {
+    if (isObj(h) && isStr(h.player_ref)) heldCards.push({ player_ref: h.player_ref, count: isNum(h.count) ? h.count : 0 });
+  }
+  const myHeldCards: MyHeldCard[] = [];
+  if (Array.isArray(raw.my_held_cards)) for (const h of raw.my_held_cards) {
+    if (isObj(h) && isStr(h.card_ref) && isDeck(h.deck_key)) {
+      myHeldCards.push({ card_ref: h.card_ref, title: isStr(h.title) ? h.title : '', description: isStr(h.description) ? h.description : '',
+        deck_key: h.deck_key, effect_type: isCardEffect(h.effect_type) ? h.effect_type : 'jail_free' });
+    }
+  }
+  let pendingCard: PendingCard | null = null;
+  if (isObj(raw.pending_card)) {
+    const pc = raw.pending_card;
+    if (isStr(pc.card_ref) && isDeck(pc.deck_key) && isStr(pc.player_ref)) {
+      pendingCard = { player_ref: pc.player_ref, card_ref: pc.card_ref, deck_key: pc.deck_key,
+        title: isStr(pc.title) ? pc.title : '', description: isStr(pc.description) ? pc.description : '' };
+    }
+  }
+  let pendingPayment: PendingPayment | null = null;
+  if (isObj(raw.pending_payment)) {
+    const pp = raw.pending_payment;
+    if (isStr(pp.player_ref) && isNum(pp.amount) && isBoard(pp.board)) {
+      pendingPayment = { kind: isStr(pp.kind) ? pp.kind : 'tax', player_ref: pp.player_ref, amount: pp.amount,
+        board: pp.board, space_index: isNum(pp.space_index) ? pp.space_index : 0, space_name: isStr(pp.space_name) ? pp.space_name : '' };
+    }
   }
 
   if (!isNum(raw.runtime_version)) return bad('runtime_version inválido');
@@ -509,6 +652,15 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
       current_space: currentSpace,
       last_roll: lastRoll,
       last_move: lastMove,
+      parking_pot: parkingPot,
+      jail,
+      my_jail: myJail,
+      card_decks: cardDecks,
+      last_card_draw: lastCardDraw,
+      held_cards: heldCards,
+      my_held_cards: myHeldCards,
+      pending_card: pendingCard,
+      pending_payment: pendingPayment,
       runtime_status: rs,
       control: { paused_by_ref: ctl.paused_by_ref, finished_by_ref: ctl.finished_by_ref, reason: ctl.reason },
       runtime_version: raw.runtime_version,

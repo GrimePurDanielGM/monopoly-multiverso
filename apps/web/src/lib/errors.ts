@@ -101,6 +101,14 @@ const MESSAGES: Record<string, string> = {
   JUNCTION_PENDING: 'Tienes que elegir por dónde seguir en la cárcel antes de continuar.',
   NO_PENDING_JUNCTION: 'No hay ninguna decisión de cruce pendiente.',
   NOT_YOUR_JUNCTION: 'Esa decisión de cruce no es tuya.',
+  // Fase 5 — casillas especiales (cárcel, cartas, impuestos)
+  IN_JAIL: 'Estás en la cárcel: paga la multa o usa una carta para salir.',
+  NOT_IN_JAIL: 'No estás en la cárcel.',
+  NO_JAIL_CARD: 'No tienes ninguna carta para salir de la cárcel.',
+  CARD_PENDING: 'Tienes una carta pendiente de resolver.',
+  NO_PENDING_CARD: 'No tienes ninguna carta pendiente.',
+  PAYMENT_PENDING: 'Tienes un pago pendiente: págalo o decláralo en bancarrota.',
+  NO_PENDING_PAYMENT: 'No tienes ningún pago pendiente.',
 };
 
 /** Mensaje legible para un código de error conocido (o genérico si no lo es). */
