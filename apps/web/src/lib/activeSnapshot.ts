@@ -92,6 +92,17 @@ export function parseDiceMode(v: unknown): DiceMode {
   return v === 'physical_allowed' || v === 'physical_only' ? v : 'virtual_only';
 }
 
+/** Acción de construcción/venta sujeta a aprobación del anfitrión (Fase 6 pulido). */
+export type BuildingAction = 'build_house' | 'build_hotel' | 'sell_house' | 'sell_hotel';
+export interface BuildingRequest {
+  request_ref: string;
+  property_ref: string;
+  property_name: string;
+  action: BuildingAction;
+  requester_ref: string;
+  requester_name: string;
+}
+
 export interface ActiveConfig {
   initial_money: number;
   min_players: number;
@@ -99,6 +110,9 @@ export interface ActiveConfig {
   allow_late_join: boolean;
   start_bonus: number;
   dice_mode: DiceMode;
+  initial_houses_available: number;
+  initial_hotels_available: number;
+  allow_build_without_monopoly: boolean;
 }
 
 // ── Fase 4: tablero, casillas y posiciones ────────────────────────────────────────
@@ -313,6 +327,10 @@ export interface ActiveSnapshot {
   current_landing_rent_resolved: boolean;
   /** Stock físico del banco (Fase 6): casas/hoteles disponibles. */
   building_stock: { houses_available: number; hotels_available: number } | null;
+  /** Solicitudes de construcción pendientes (solo el anfitrión las recibe). */
+  building_requests: BuildingRequest[];
+  /** Mis solicitudes de construcción pendientes (para mostrar "pendiente" en la ficha). */
+  my_building_requests: Array<{ property_ref: string; action: BuildingAction }>;
   control: ActiveControl;
   runtime_version: number;
 }
@@ -321,6 +339,7 @@ function isObj(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === 'object' && !Array.isArray(v);
 }
 const isStr = (v: unknown): v is string => typeof v === 'string';
+const isBuildingAction = (v: unknown): v is BuildingAction => v === 'build_house' || v === 'build_hotel' || v === 'sell_house' || v === 'sell_hotel';
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const isBool = (v: unknown): v is boolean => typeof v === 'boolean';
 const isStrOrNull = (v: unknown): v is string | null => v === null || typeof v === 'string';
@@ -676,7 +695,7 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
   return {
     ok: true,
     data: {
-      game: { code: g.code, status: 'active', config: { initial_money: cfg.initial_money, min_players: cfg.min_players, max_players: cfg.max_players, allow_late_join: cfg.allow_late_join, start_bonus: isNum(cfg.start_bonus) ? cfg.start_bonus : 200, dice_mode: parseDiceMode(cfg.dice_mode) } },
+      game: { code: g.code, status: 'active', config: { initial_money: cfg.initial_money, min_players: cfg.min_players, max_players: cfg.max_players, allow_late_join: cfg.allow_late_join, start_bonus: isNum(cfg.start_bonus) ? cfg.start_bonus : 200, dice_mode: parseDiceMode(cfg.dice_mode), initial_houses_available: isNum(cfg.initial_houses_available) ? cfg.initial_houses_available : 32, initial_hotels_available: isNum(cfg.initial_hotels_available) ? cfg.initial_hotels_available : 12, allow_build_without_monopoly: cfg.allow_build_without_monopoly === true } },
       me: { public_ref: m.public_ref, is_host: m.is_host, balance: m.balance, is_current: m.is_current, is_spectator: m.is_spectator },
       turn: { turn_number: t.turn_number, current_player_ref: t.current_player_ref, order: t.order as string[] },
       players,
@@ -711,6 +730,14 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
       current_landing_rent_resolved: raw.current_landing_rent_resolved === true,
       building_stock: isObj(raw.building_stock) && isNum(raw.building_stock.houses_available) && isNum(raw.building_stock.hotels_available)
         ? { houses_available: raw.building_stock.houses_available, hotels_available: raw.building_stock.hotels_available } : null,
+      building_requests: Array.isArray(raw.building_requests)
+        ? raw.building_requests.filter(isObj).filter((b) => isBuildingAction(b.action)).map((b) => ({
+            request_ref: String(b.request_ref), property_ref: String(b.property_ref),
+            property_name: isStr(b.property_name) ? b.property_name : String(b.property_ref),
+            action: b.action as BuildingAction, requester_ref: String(b.requester_ref),
+            requester_name: isStr(b.requester_name) ? b.requester_name : '' })) : [],
+      my_building_requests: Array.isArray(raw.my_building_requests)
+        ? raw.my_building_requests.filter(isObj).filter((m) => isBuildingAction(m.action)).map((m) => ({ property_ref: String(m.property_ref), action: m.action as BuildingAction })) : [],
       control: { paused_by_ref: ctl.paused_by_ref, finished_by_ref: ctl.finished_by_ref, reason: ctl.reason },
       runtime_version: raw.runtime_version,
     },

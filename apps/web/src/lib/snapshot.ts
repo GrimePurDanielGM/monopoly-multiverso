@@ -12,6 +12,9 @@ export interface SnapConfig {
   token_catalog_version: number;
   allow_late_join?: boolean;
   dice_mode: 'virtual_only' | 'physical_allowed' | 'physical_only';
+  initial_houses_available: number;
+  initial_hotels_available: number;
+  allow_build_without_monopoly: boolean;
 }
 export interface SnapGame {
   id: string;
@@ -169,6 +172,9 @@ export function parseSnapshot(raw: unknown): ParseResult {
           token_catalog_version: cfg.token_catalog_version,
           allow_late_join: cfg.allow_late_join === true,
           dice_mode: cfg.dice_mode === 'physical_allowed' || cfg.dice_mode === 'physical_only' ? cfg.dice_mode : 'virtual_only',
+          initial_houses_available: typeof cfg.initial_houses_available === 'number' ? cfg.initial_houses_available : 32,
+          initial_hotels_available: typeof cfg.initial_hotels_available === 'number' ? cfg.initial_hotels_available : 12,
+          allow_build_without_monopoly: cfg.allow_build_without_monopoly === true,
         },
       },
       players,

@@ -16,6 +16,17 @@ begin insert into _t values (p_name,p_ok) on conflict (name) do update set ok=ex
   raise notice '%: %', case when p_ok then 'PASS' else 'FAIL' end, p_name; end $f$;
 create or replace function pg_temp._ctx(k text) returns text language sql as $f$ select v from _ctx where k=$1 $f$;
 create or replace function pg_temp._ver(gid uuid) returns bigint language sql security definer as $f$ select runtime_version from public.game_runtime where game_id=gid $f$;
+create or replace function pg_temp._bld(gid uuid, owner_uid text, host_uid text, prop text, action text) returns jsonb language plpgsql as $f$
+declare rref text; r jsonb; begin
+  perform pg_temp._as_user(owner_uid);
+  rref := (case action
+    when 'build_house' then request_build_house(gid, prop, gen_random_uuid())
+    when 'build_hotel' then request_build_hotel(gid, prop, gen_random_uuid())
+    when 'sell_house'  then request_sell_house(gid, prop, gen_random_uuid())
+    when 'sell_hotel'  then request_sell_hotel(gid, prop, gen_random_uuid()) end)->>'request_ref';
+  perform pg_temp._as_user(host_uid); r := resolve_building_request(rref, true, pg_temp._ver(gid));
+  perform pg_temp._as_admin(); return r;
+end $f$;
 create or replace function pg_temp._own(gid uuid, prop text, owner_ref text) returns void language sql security definer as $f$
   insert into public.property_ownership(game_id,property_ref,owner_ref) values (gid,prop,owner_ref) on conflict do nothing $f$;
 create or replace function pg_temp._land(gid uuid) returns void language sql security definer as $f$ update public.game_runtime set landing_seq=landing_seq+1 where game_id=gid $f$;
@@ -30,9 +41,9 @@ end $f$;
 create or replace function pg_temp._round(gid uuid, host text) returns void language plpgsql as $f$
 begin
   perform pg_temp._as_user(host);
-  perform build_house(gid,'cl-cuatro-caminos',gen_random_uuid(),pg_temp._ver(gid));
-  perform build_house(gid,'cl-reina-victoria',gen_random_uuid(),pg_temp._ver(gid));
-  perform build_house(gid,'cl-bravo-murillo',gen_random_uuid(),pg_temp._ver(gid));
+  perform pg_temp._bld(gid, host, host, 'cl-cuatro-caminos', 'build_house');
+  perform pg_temp._bld(gid, host, host, 'cl-reina-victoria', 'build_house');
+  perform pg_temp._bld(gid, host, host, 'cl-bravo-murillo', 'build_house');
   perform pg_temp._as_admin();
 end $f$;
 
@@ -77,7 +88,7 @@ end $$;
 
 -- A7) hotel cobra rent_hotel (550).
 do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; p1u text:=pg_temp._ctx('p1_uid'); host text:=pg_temp._ctx('host'); begin
-  perform pg_temp._as_user(host); perform build_hotel(gid,'cl-cuatro-caminos',gen_random_uuid(),pg_temp._ver(gid)); perform pg_temp._as_admin();
+  perform pg_temp._as_user(host); perform pg_temp._bld(gid, host, host, 'cl-cuatro-caminos', 'build_hotel'); perform pg_temp._as_admin();
   perform pg_temp._rec('A7) hotel cobra rent_hotel (550)', pg_temp._pay(gid,p1u,'cl-cuatro-caminos')=550);
 end $$;
 

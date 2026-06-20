@@ -132,6 +132,7 @@ const MESSAGES: Record<string, string> = {
   ALREADY_MORTGAGED: 'Esta propiedad ya está hipotecada.',
   NOT_MORTGAGED: 'Esta propiedad no está hipotecada.',
   PLAYER_NOT_ACTIVE: 'No participas activamente en la partida.',
+  INVALID_BUILDING_STOCK: 'El stock mínimo es 32 casas y 12 hoteles.',
 };
 
 /** Mensaje legible para un código de error conocido (o genérico si no lo es). */

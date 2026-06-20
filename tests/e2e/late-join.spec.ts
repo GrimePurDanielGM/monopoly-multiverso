@@ -31,9 +31,10 @@ async function pickAndReady(page: Page, tokenIndex: number) {
 async function enableLateJoin(host: Page, max: number) {
   await host.getByText('Configuración de la sala').click();
   await host.getByLabel('Máximo').fill(String(max));
-  await host.getByRole('checkbox').check();
+  const lateJoin = host.getByRole('checkbox', { name: /Permitir que entren jugadores después de iniciar/ });
+  await lateJoin.check();
   await host.getByRole('button', { name: 'Guardar configuración' }).click();
-  await expect(host.getByRole('checkbox')).toBeChecked();
+  await expect(lateJoin).toBeChecked();
 }
 async function startWith(host: Page, code: string, names: string[]): Promise<{ ctxs: BrowserContext[]; pages: Page[] }> {
   const ctxs: BrowserContext[] = [];

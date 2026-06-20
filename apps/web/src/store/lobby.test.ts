@@ -11,7 +11,7 @@ function snap(code: string, refs: string[]): LobbySnapshot {
     game: {
       id: `id-${code}`, code, name: `Sala ${code}`, status: 'lobby', version: 0,
       started_at: null, cancelled_at: null, host_public_ref: refs[0] ?? null,
-      config: { min_players: 6, max_players: 16, initial_money: 3000, token_catalog_version: 0, dice_mode: 'virtual_only' },
+      config: { min_players: 6, max_players: 16, initial_money: 3000, token_catalog_version: 0, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false },
     },
     players,
     me: { public_ref: refs[0] ?? 'P-1', is_host: true, join_status: 'joined', token_id: null, membership: 'active' },

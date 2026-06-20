@@ -592,8 +592,8 @@ export async function payUtilityRent(gameId: string, propertyRef: string, die1: 
   return { ok: true, data: true };
 }
 
-// ── Fase 6 — construcciones e hipotecas (solo calles) ──────────────────────────────
-/** Genérico: una RPC de construcción/hipoteca con la firma estándar (game, property_ref, req, version). */
+// ── Fase 6 — construcciones (con aprobación del anfitrión) e hipotecas (directas) ──────────────────────
+/** Hipoteca/deshipoteca: directas (game, property_ref, req, version). */
 async function buildingRpc(fn: string, gameId: string, propertyRef: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
   if (!supabase) return fail('UNCONFIGURED');
   const { error } = await supabase.rpc(fn, {
@@ -602,18 +602,33 @@ async function buildingRpc(fn: string, gameId: string, propertyRef: string, requ
   if (error) return fail(error.message);
   return { ok: true, data: true };
 }
-/** Construir una casa (monopolio, uniforme, no hipotecada). */
-export const buildHouse = (g: string, p: string, r: string, v: number) => buildingRpc('build_house', g, p, r, v);
-/** Construir un hotel (4 casas en todo el grupo). */
-export const buildHotel = (g: string, p: string, r: string, v: number) => buildingRpc('build_hotel', g, p, r, v);
-/** Vender una casa (50% del coste; uniformidad inversa). */
-export const sellHouse = (g: string, p: string, r: string, v: number) => buildingRpc('sell_house', g, p, r, v);
-/** Vender un hotel (50%; vuelve a 4 casas si hay stock). */
-export const sellHotel = (g: string, p: string, r: string, v: number) => buildingRpc('sell_hotel', g, p, r, v);
 /** Hipotecar (sin construcciones en el grupo). */
 export const mortgageProperty = (g: string, p: string, r: string, v: number) => buildingRpc('mortgage_property', g, p, r, v);
 /** Deshipotecar (paga hipoteca + 10%). */
 export const unmortgageProperty = (g: string, p: string, r: string, v: number) => buildingRpc('unmortgage_property', g, p, r, v);
+
+/** Solicitud de construcción/venta (el propietario crea la solicitud; sin versión, la valida el host al aprobar). */
+async function buildingReq(fn: string, gameId: string, propertyRef: string, requestId: string): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc(fn, { p_game: gameId, p_property_ref: propertyRef, p_request_id: requestId });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+/** Solicitar construir una casa (requiere aprobación del anfitrión). */
+export const requestBuildHouse = (g: string, p: string, r: string) => buildingReq('request_build_house', g, p, r);
+/** Solicitar construir un hotel. */
+export const requestBuildHotel = (g: string, p: string, r: string) => buildingReq('request_build_hotel', g, p, r);
+/** Solicitar vender una casa. */
+export const requestSellHouse = (g: string, p: string, r: string) => buildingReq('request_sell_house', g, p, r);
+/** Solicitar vender un hotel. */
+export const requestSellHotel = (g: string, p: string, r: string) => buildingReq('request_sell_hotel', g, p, r);
+/** El anfitrión aprueba (ejecuta) o rechaza una solicitud de construcción. */
+export async function resolveBuildingRequest(requestRef: string, accept: boolean, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('resolve_building_request', { p_request_ref: requestRef, p_accept: accept, p_expected_version: expectedVersion });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
 
 /** Resuelve la bifurcación de la cárcel-guardián: 'own' (seguir en tu tablero) o 'cross' (cruzar al otro). */
 export async function resolveJunction(gameId: string, direction: 'own' | 'cross', requestId: string, expectedVersion: number): Promise<ApiResult<true>> {

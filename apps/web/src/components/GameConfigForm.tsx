@@ -11,6 +11,9 @@ export interface ConfigPatch {
   initial_money: number;
   allow_late_join: boolean;
   dice_mode: DiceModeOption;
+  initial_houses_available: number;
+  initial_hotels_available: number;
+  allow_build_without_monopoly: boolean;
 }
 
 interface Props {
@@ -20,6 +23,9 @@ interface Props {
   initialMoney: number;
   allowLateJoin: boolean;
   diceMode: DiceModeOption;
+  housesAvailable: number;
+  hotelsAvailable: number;
+  allowBuildWithoutMonopoly: boolean;
   currentPlayers: number;
   busy: boolean;
   onSubmit: (patch: ConfigPatch) => void;
@@ -31,21 +37,26 @@ const numField = (v: string, fallback: number): number => {
 };
 
 /** Edición de la configuración del lobby (solo whitelist de update_config). */
-export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, allowLateJoin, diceMode, currentPlayers, busy, onSubmit }: Props) {
+export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, allowLateJoin, diceMode, housesAvailable, hotelsAvailable, allowBuildWithoutMonopoly, currentPlayers, busy, onSubmit }: Props) {
   const [n, setN] = useState(name);
   const [min, setMin] = useState(minPlayers);
   const [max, setMax] = useState(maxPlayers);
   const [money, setMoney] = useState(initialMoney);
   const [late, setLate] = useState(allowLateJoin);
   const [dice, setDice] = useState<DiceModeOption>(diceMode);
+  const [houses, setHouses] = useState(housesAvailable);
+  const [hotels, setHotels] = useState(hotelsAvailable);
+  const [noMono, setNoMono] = useState(allowBuildWithoutMonopoly);
 
+  const stockErr = houses < 32 || hotels < 12 ? 'El mínimo son 32 casas y 12 hoteles.' : null;
   const errs = configErrors({ name: n, minPlayers: min, maxPlayers: max, initialMoney: money }, currentPlayers);
-  const valid = errs.length === 0;
+  const valid = errs.length === 0 && !stockErr;
 
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!valid || busy) return;
-    onSubmit({ name: n.trim(), min_players: min, max_players: max, initial_money: money, allow_late_join: late, dice_mode: dice });
+    onSubmit({ name: n.trim(), min_players: min, max_players: max, initial_money: money, allow_late_join: late, dice_mode: dice,
+      initial_houses_available: houses, initial_hotels_available: hotels, allow_build_without_monopoly: noMono });
   }
 
   return (
@@ -77,6 +88,29 @@ export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, all
           <option value="physical_allowed">Permitir dados físicos y virtuales</option>
           <option value="physical_only">Solo dados físicos</option>
         </select>
+      </label>
+
+      <div className="grid grid-cols-2 gap-2">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-slate-300">Casas disponibles</span>
+          <input type="number" inputMode="numeric" min={32} value={houses} onChange={(e) => setHouses(numField(e.target.value, houses))} className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base" />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-slate-300">Hoteles disponibles</span>
+          <input type="number" inputMode="numeric" min={12} value={hotels} onChange={(e) => setHotels(numField(e.target.value, hotels))} className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base" />
+        </label>
+      </div>
+      <p className="text-xs text-slate-500">El mínimo son 32 casas y 12 hoteles. Puedes aumentar el stock si la partida usa dos tableros.</p>
+      {stockErr && <p className="text-xs text-amber-300">{stockErr}</p>}
+
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" checked={noMono} onChange={(e) => setNoMono(e.target.checked)} className="mt-1 h-4 w-4" />
+        <span className="flex flex-col">
+          <span className="text-slate-200">Permitir construir casas sin tener el grupo completo</span>
+          <span className="text-xs text-slate-500">
+            Si está activado, cada jugador puede construir en propiedades suyas aunque no tenga todo el grupo de color. El grupo completo sigue dando alquiler doble si no hay construcciones.
+          </span>
+        </span>
       </label>
 
       <label className="flex items-start gap-2 text-sm">

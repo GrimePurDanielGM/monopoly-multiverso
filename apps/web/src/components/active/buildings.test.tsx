@@ -8,7 +8,7 @@ import { canBuildHouse, canBuildHotel, canMortgage, canUnmortgage, canSellHouse 
 // Grupo marron (2 calles) en Classic; "me" = P-1 posee ambas (monopolio).
 function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
   return {
-    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only' } },
+    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false } },
     me: { public_ref: 'P-1', is_host: false, balance: 3000, is_current: true, is_spectator: false },
     turn: { turn_number: 1, current_player_ref: 'P-1', order: ['P-1', 'P-2'] },
     players: [
@@ -25,7 +25,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     spaces: [], board_links: [], guardians: [], pending_junction: null, parking_pot: 0, jail: [], my_jail: null, card_decks: [], last_card_draw: null, held_cards: [], my_held_cards: [], pending_card: null, pending_payment: null, last_global_event: null, positions: [],
     my_position: null, current_space: null, last_roll: null, last_move: null,
     runtime_status: 'running', current_landing_rent_resolved: false,
-    building_stock: { houses_available: 32, hotels_available: 12 },
+    building_stock: { houses_available: 32, hotels_available: 12 }, building_requests: [], my_building_requests: [],
     control: { paused_by_ref: null, finished_by_ref: null, reason: null }, runtime_version: 1,
     ...over,
   };
@@ -62,7 +62,7 @@ describe('PropertyCardModal (Fase 6)', () => {
     const s = snap(); const a = actions();
     render(<PropertyCardModal property={prop(s, 'cl-m1')} snap={s} onClose={vi.fn()} busy={false} actions={a} />);
     expect(screen.getByText('Sin construir')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Construir casa/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Solicitar construir casa/ }));
     expect(a.onBuildHouse).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole('button', { name: /Hipotecar/ }));
     expect(a.onMortgage).toHaveBeenCalledTimes(1);
@@ -72,7 +72,7 @@ describe('PropertyCardModal (Fase 6)', () => {
     const s = snap({ properties: snap().properties.map((p) => ({ ...p, monopoly: false })) });
     render(<PropertyCardModal property={prop(s, 'cl-m1')} snap={s} onClose={vi.fn()} actions={actions()} />);
     expect(screen.getByText(/Necesitas tener el grupo de color completo/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Construir casa/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Solicitar construir casa/ })).toBeNull();
   });
 
   it('propiedad de otro hipotecada avisa "no se debe alquiler"', () => {

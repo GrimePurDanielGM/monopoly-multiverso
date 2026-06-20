@@ -16,7 +16,7 @@ const players: ActivePlayer[] = [
   { public_ref: 'P-BBBB', display_name: 'Beto', token_id: 'boot', balance: 1000, is_current: false, status: 'active' },
 ];
 const snap: ActiveSnapshot = {
-  game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 6, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only' } },
+  game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 6, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false } },
   me: { public_ref: 'P-BBBB', is_host: true, balance: 1000, is_current: false, is_spectator: false },
   turn: { turn_number: 5, current_player_ref: 'P-AAAA', order: ['P-AAAA', 'P-BBBB'] },
   players,
@@ -29,7 +29,7 @@ const snap: ActiveSnapshot = {
   late_join_requests: [],
     boards: [], spaces: [], board_links: [], guardians: [], pending_junction: null, parking_pot: 0, jail: [], my_jail: null, card_decks: [], last_card_draw: null, held_cards: [], my_held_cards: [], pending_card: null, pending_payment: null, last_global_event: null, positions: [], my_position: null, current_space: null, last_roll: null, last_move: null,
   runtime_status: 'running',
-  current_landing_rent_resolved: false, building_stock: { houses_available: 32, hotels_available: 12 }, control: { paused_by_ref: null, finished_by_ref: null, reason: null },
+  current_landing_rent_resolved: false, building_stock: { houses_available: 32, hotels_available: 12 }, building_requests: [], my_building_requests: [], control: { paused_by_ref: null, finished_by_ref: null, reason: null },
   runtime_version: 7,
 };
 

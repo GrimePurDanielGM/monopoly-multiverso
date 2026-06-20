@@ -21,7 +21,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     { player_ref: 'P-2', board_key: 'classic', space_index: 1 },
   ];
   return {
-    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only' } },
+    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false } },
     me: { public_ref: 'P-1', is_host: false, balance: 3000, is_current: true, is_spectator: false },
     turn: { turn_number: 1, current_player_ref: 'P-1', order: ['P-1', 'P-2'] },
     players: [
@@ -42,7 +42,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     current_space: { space_ref: 'cl-1', board_key: 'classic', space_index: 1, name: 'Mediterráneo', space_type: 'property', property_ref: 'cl-1', is_start: false },
     last_roll: null, last_move: null,
     runtime_status: 'running',
-    current_landing_rent_resolved: false, building_stock: { houses_available: 32, hotels_available: 12 }, control: { paused_by_ref: null, finished_by_ref: null, reason: null },
+    current_landing_rent_resolved: false, building_stock: { houses_available: 32, hotels_available: 12 }, building_requests: [], my_building_requests: [], control: { paused_by_ref: null, finished_by_ref: null, reason: null },
     runtime_version: 1,
     ...over,
   };

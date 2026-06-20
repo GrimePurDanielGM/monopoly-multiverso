@@ -1,6 +1,6 @@
 # Estado del proyecto — lista viva
 
-## Fase 6 — Casas, hoteles e hipotecas · **`Fase 6: COMPLETADA` (pendiente validación manual)** · migraciones `0052`–`0055`
+## Fase 6 — Casas, hoteles e hipotecas · **`Fase 6: COMPLETADA` (pendiente validación manual)** · migraciones `0052`–`0058`
 - **Alcance:** solo CALLES de color (no estaciones/servicios/especiales). Grupos de color por TABLERO (no se combinan
   entre tableros, a diferencia de servicios/estaciones).
 - **Modelo (`0052`):** `game_property_state(houses 0–4, has_hotel, mortgaged)` por propiedad (deny-all, solo vía RPC);
@@ -26,6 +26,34 @@
 - **Tests:** SQL `buildings`/`hotel`/`mortgage`/`advanced_rent`/`rls` phase6 (**32 casos**) + batería 1–6 (**52 suites,
   0 fallos**) tras `db reset`; unit **327**; E2E `buildings` (comprar grupo → construir → alquiler con casa →
   hipoteca/deshipoteca → stock) Chromium+WebKit. **No se avanza a Fase 7.**
+
+- **Pulido Fase 6 (2026-06-20) — 6 correcciones (migraciones `0056`–`0058`):**
+  1. **Cobro de alquiler avanzado en la UI:** el botón/diálogo de "Pagar alquiler" muestra el alquiler **calculado**
+     (`rent_due`: hipotecada→0 · hotel→`rent_hotel` · 1–4 casas→`rent_N` · monopolio sin casas→`base×2` · si no→`base`),
+     no el base. El backend ya cobraba el importe correcto (SQL `advanced_rent_phase6`); la corrección era de
+     presentación (`ActiveGameScreen`/`MovementPanel`). Auditoría existente `rent_paid` con importe real.
+  2. **Stock inicial configurable (`0056`):** el anfitrión fija en el lobby `initial_houses_available` (mín 32) e
+     `initial_hotels_available` (mín 12) — puede subirlos, no bajarlos (`INVALID_BUILDING_STOCK`); `start_game` los usa.
+  3. **Regla opcional "construir sin el grupo completo" (`0056`):** config `allow_build_without_monopoly` (def. false);
+     activada, cada jugador construye en lo suyo aunque no tenga el grupo, con uniformidad evaluada **solo sobre las
+     propiedades del grupo que posee**; el grupo completo sigue dando alquiler doble si no hay construcciones.
+  4. **Construir/vender con aprobación del anfitrión (`0057`):** `request_build_house/hotel`, `request_sell_house/hotel`
+     (propietario) + `resolve_building_request` (anfitrión); las RPC directas `build_*`/`sell_*` quedan revocadas a
+     `authenticated`. Validación en la solicitud **y revalidación al aprobar** (el estado puede haber cambiado,
+     p. ej. `INSUFFICIENT_FUNDS`). Tabla `game_building_requests` (deny-all). Snapshot (`0058`): bandeja del anfitrión
+     `building_requests` y `my_building_requests` propias; la ficha ofrece "Solicitar construir/vender…" y muestra
+     "solicitud pendiente de aprobación". (Hipoteca/deshipoteca siguen siendo directas.)
+  5. **Refresco de la ficha sin cerrar:** `PropertyCardModal` lee la propiedad fresca del snapshot por `property_ref`
+     en cada render → tras deshipotecar/hipotecar/construir/aprobar el estado y los botones se actualizan en el sitio.
+  6. **Layout de la ficha:** acciones a una columna (sin recortes de etiquetas), objetivos táctiles 44px; secciones de
+     construcción/hipoteca legibles en móvil/iPhone.
+  - **No roto:** construcción uniforme, stock de casas/hoteles, hipotecas, alquiler 0 en hipotecada, indicadores del
+    tablero, servicios/estaciones combinados, una caída = un alquiler, dados físicos/virtuales, cárcel, parking,
+    cartas, privacidad de saldos.
+  - **Validación:** `pnpm typecheck/lint/test` (**335** unit) `build` verdes; SQL Fases 1–6 (**54 suites, 0 fallos**,
+    + `building_requests_phase6`, `config_stock_phase6`) tras `db reset`; E2E Chromium+WebKit (**44**, `buildings`
+    adaptado al flujo de solicitud); sin secretos ni ids internos en `dist`. Aplicado a dev (`0056`,`0057`,`0058`).
+    **No se avanza a Fase 7.**
 
 ## Fase 5 — Casillas especiales · **`Fase 5: COMPLETADA` (pendiente validación manual)**
 - **Corrección 4 (2026-06-20) — estaciones acumulativas + doble pago + selector de dados (`0049`/`0050`/`0051`):**

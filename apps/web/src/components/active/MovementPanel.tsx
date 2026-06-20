@@ -453,7 +453,7 @@ export function MovementPanel({
                   disabled={busy || !canPayRent(prop, snap)}
                   className="min-h-[40px] rounded-lg border border-amber-600 px-3 text-xs font-semibold text-amber-200 disabled:opacity-40"
                 >
-                  Pagar alquiler ({formatMoney(prop.base_rent)})
+                  Pagar alquiler ({formatMoney(prop.rent_due ?? prop.base_rent)})
                 </button>
               ) : null}
             </>

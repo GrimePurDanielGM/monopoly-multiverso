@@ -9,7 +9,8 @@ import {
   requestBankruptcy, resolveBankruptcy,
   movePlayer, rollAndMove, moveWithPhysicalRoll, hostSetPlayerPosition, resolveJunction,
   payJailRelease, redeemJailCard, resolveCard, payPending, payUtilityRent, setDiceMode,
-  buildHouse, buildHotel, sellHouse, sellHotel, mortgageProperty, unmortgageProperty,
+  requestBuildHouse, requestBuildHotel, requestSellHouse, requestSellHotel, resolveBuildingRequest,
+  mortgageProperty, unmortgageProperty,
   type ApiResult, type ExitResolution, type BankruptcyKind,
 } from '../lib/api';
 import { useCardDraw } from '../hooks/useCardDraw';
@@ -42,7 +43,7 @@ import { PropertyBoardModal } from '../components/active/PropertyBoardModal';
 import { MovementPanel } from '../components/active/MovementPanel';
 import { BoardView } from '../components/active/BoardView';
 import type { BoardKey } from '../lib/activeSnapshot';
-import { PurchaseRequestsTray, LeaveRequestsTray, BankruptcyRequestsTray } from '../components/active/HostRequestTrays';
+import { PurchaseRequestsTray, LeaveRequestsTray, BankruptcyRequestsTray, BuildingRequestsTray } from '../components/active/HostRequestTrays';
 import { BankruptcyDialog } from '../components/active/BankruptcyDialog';
 import { formatMoney, ownerName } from '../lib/activeSelectors';
 import { useReceiveMoney } from '../hooks/useReceiveMoney';
@@ -238,16 +239,22 @@ export function ActiveGameScreen({
   const doPayUtilityRent = useCallback((p: ActiveProperty, d1: number | null, d2: number | null) => {
     void run(() => payUtilityRent(gameId, p.property_ref, d1, d2, newRequestId(), snap?.runtime_version ?? 0));
   }, [gameId, snap?.runtime_version, run]);
-  // Fase 6 — construcciones e hipotecas (todas con la firma estándar game/property/req/version).
+  // Fase 6 — construcción/venta por SOLICITUD (sin versión) e hipoteca/deshipoteca directas (con versión).
   const buildingActions = useMemo(() => {
-    const call = (fn: (g: string, p: string, r: string, v: number) => Promise<ApiResult<unknown>>) =>
+    const reqCall = (fn: (g: string, p: string, r: string) => Promise<ApiResult<unknown>>) =>
+      (p: ActiveProperty) => void run(() => fn(gameId, p.property_ref, newRequestId()));
+    const dirCall = (fn: (g: string, p: string, r: string, v: number) => Promise<ApiResult<unknown>>) =>
       (p: ActiveProperty) => void run(() => fn(gameId, p.property_ref, newRequestId(), snap?.runtime_version ?? 0));
     return {
-      onBuildHouse: call(buildHouse), onBuildHotel: call(buildHotel),
-      onSellHouse: call(sellHouse), onSellHotel: call(sellHotel),
-      onMortgage: call(mortgageProperty), onUnmortgage: call(unmortgageProperty),
+      onBuildHouse: reqCall(requestBuildHouse), onBuildHotel: reqCall(requestBuildHotel),
+      onSellHouse: reqCall(requestSellHouse), onSellHotel: reqCall(requestSellHotel),
+      onMortgage: dirCall(mortgageProperty), onUnmortgage: dirCall(unmortgageProperty),
     };
   }, [gameId, snap?.runtime_version, run]);
+  // El anfitrión aprueba/rechaza una solicitud de construcción.
+  const doResolveBuilding = useCallback((requestRef: string, accept: boolean) => {
+    void run(() => resolveBuildingRequest(requestRef, accept, snap?.runtime_version ?? 0));
+  }, [snap?.runtime_version, run]);
   const doResolveJunction = useCallback((dir: 'own' | 'cross') => {
     void run(() => resolveJunction(gameId, dir, newRequestId(), snap?.runtime_version ?? 0));
   }, [gameId, snap?.runtime_version, run]);
@@ -369,6 +376,7 @@ export function ActiveGameScreen({
           {host && <PurchaseRequestsTray snap={snap} busy={busy}
             onResolve={(r, accept) => void run(() => resolvePropertyPurchase(r.request_ref, accept, ver))}
             onAuction={(r) => void run(() => startPropertyAuction(gameId, r.property_ref, newRequestId(), ver))} />}
+          {host && <BuildingRequestsTray snap={snap} busy={busy} onResolve={(r, accept) => doResolveBuilding(r.request_ref, accept)} />}
           {host && <LeaveRequestsTray snap={snap} busy={busy}
             onResolve={(r, accept, resolution) => void run(() => resolveLeaveActive(r.request_ref, accept, resolution, ver))} />}
           {host && <BankruptcyRequestsTray snap={snap} busy={busy}
@@ -526,7 +534,7 @@ export function ActiveGameScreen({
         open={rentTarget !== null}
         title="Pagar alquiler"
         busy={busy}
-        message={rentTarget ? <>¿Pagar {formatMoney(rentTarget.base_rent)} de alquiler a <span className="font-semibold">{ownerName(rentTarget, snap)}</span> por <span className="font-semibold">{rentTarget.name}</span>?</> : ''}
+        message={rentTarget ? <>¿Pagar {formatMoney(rentTarget.rent_due ?? rentTarget.base_rent)} de alquiler a <span className="font-semibold">{ownerName(rentTarget, snap)}</span> por <span className="font-semibold">{rentTarget.name}</span>?</> : ''}
         confirmLabel="Pagar alquiler"
         cancelLabel="Cancelar"
         onConfirm={doPayRent}

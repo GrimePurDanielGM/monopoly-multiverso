@@ -15,6 +15,17 @@ begin insert into _t values (p_name,p_ok) on conflict (name) do update set ok=ex
   raise notice '%: %', case when p_ok then 'PASS' else 'FAIL' end, p_name; end $f$;
 create or replace function pg_temp._ctx(k text) returns text language sql as $f$ select v from _ctx where k=$1 $f$;
 create or replace function pg_temp._ver(gid uuid) returns bigint language sql security definer as $f$ select runtime_version from public.game_runtime where game_id=gid $f$;
+create or replace function pg_temp._bld(gid uuid, owner_uid text, host_uid text, prop text, action text) returns jsonb language plpgsql as $f$
+declare rref text; r jsonb; begin
+  perform pg_temp._as_user(owner_uid);
+  rref := (case action
+    when 'build_house' then request_build_house(gid, prop, gen_random_uuid())
+    when 'build_hotel' then request_build_hotel(gid, prop, gen_random_uuid())
+    when 'sell_house'  then request_sell_house(gid, prop, gen_random_uuid())
+    when 'sell_hotel'  then request_sell_hotel(gid, prop, gen_random_uuid()) end)->>'request_ref';
+  perform pg_temp._as_user(host_uid); r := resolve_building_request(rref, true, pg_temp._ver(gid));
+  perform pg_temp._as_admin(); return r;
+end $f$;
 create or replace function pg_temp._own(gid uuid, prop text, owner_ref text) returns void language sql security definer as $f$
   insert into public.property_ownership(game_id,property_ref,owner_ref) values (gid,prop,owner_ref) on conflict do nothing $f$;
 create or replace function pg_temp._hstock(gid uuid) returns int language sql security definer as $f$ select houses_available from public.game_runtime where game_id=gid $f$;
@@ -39,8 +50,8 @@ declare host text:='f2000000-0000-0000-0000-0000000000a1'; j1 text:='f2000000-00
   update public.player_balances set balance=100000 where game_id=gid and player_ref=href;
   perform pg_temp._as_user(host);
   for i in 1..4 loop
-    perform build_house(gid,'cl-ronda-valencia',gen_random_uuid(),pg_temp._ver(gid));
-    perform build_house(gid,'cl-plaza-lavapies',gen_random_uuid(),pg_temp._ver(gid));
+    perform pg_temp._bld(gid, host, host, 'cl-ronda-valencia', 'build_house');
+    perform pg_temp._bld(gid, host, host, 'cl-plaza-lavapies', 'build_house');
   end loop;
   perform pg_temp._as_admin();
 end $f$;
@@ -48,9 +59,9 @@ do $$ begin perform pg_temp._build(); end $$;
 
 -- H1) hotel requiere que TODO el grupo esté a 4: bajar lavapiés a 3 → build_hotel en ronda falla (UNEVEN_BUILDING).
 do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host'); ok boolean:=false; begin
-  perform pg_temp._as_user(host); perform sell_house(gid,'cl-plaza-lavapies',gen_random_uuid(),pg_temp._ver(gid)); -- 4-3
-  begin perform build_hotel(gid,'cl-ronda-valencia',gen_random_uuid(),pg_temp._ver(gid)); exception when others then ok:=(sqlerrm='UNEVEN_BUILDING'); end;
-  perform pg_temp._as_user(host); perform build_house(gid,'cl-plaza-lavapies',gen_random_uuid(),pg_temp._ver(gid)); -- vuelve a 4-4
+  perform pg_temp._as_user(host); perform pg_temp._bld(gid, host, host, 'cl-plaza-lavapies', 'sell_house'); -- 4-3
+  begin perform pg_temp._bld(gid, host, host, 'cl-ronda-valencia', 'build_hotel'); exception when others then ok:=(sqlerrm='UNEVEN_BUILDING'); end;
+  perform pg_temp._as_user(host); perform pg_temp._bld(gid, host, host, 'cl-plaza-lavapies', 'build_house'); -- vuelve a 4-4
   perform pg_temp._as_admin();
   perform pg_temp._rec('H1) hotel exige todo el grupo a 4 (UNEVEN_BUILDING si no)', ok);
 end $$;
@@ -60,7 +71,7 @@ do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host
             hs0 int; ts0 int; b0 bigint; b1 bigint; res jsonb; begin
   perform pg_temp._as_admin(); hs0:=pg_temp._hstock(gid); ts0:=pg_temp._tstock(gid);
   select balance into b0 from public.player_balances where game_id=gid and player_ref=href;
-  perform pg_temp._as_user(host); res := build_hotel(gid,'cl-ronda-valencia',gen_random_uuid(),pg_temp._ver(gid));
+  perform pg_temp._as_user(host); res := pg_temp._bld(gid, host, host, 'cl-ronda-valencia', 'build_hotel');
   perform pg_temp._as_admin(); select balance into b1 from public.player_balances where game_id=gid and player_ref=href;
   perform pg_temp._rec('H2) hotel: cobra 50, hotel=true, hoteles-1, casas+4',
     (res->>'has_hotel')='true' and b0-b1=50 and pg_temp._hh(gid,'cl-ronda-valencia')
@@ -72,7 +83,7 @@ do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host
             hs0 int; ts0 int; b0 bigint; b1 bigint; res jsonb; begin
   perform pg_temp._as_admin(); hs0:=pg_temp._hstock(gid); ts0:=pg_temp._tstock(gid);
   select balance into b0 from public.player_balances where game_id=gid and player_ref=href;
-  perform pg_temp._as_user(host); res := sell_hotel(gid,'cl-ronda-valencia',gen_random_uuid(),pg_temp._ver(gid));
+  perform pg_temp._as_user(host); res := pg_temp._bld(gid, host, host, 'cl-ronda-valencia', 'sell_hotel');
   perform pg_temp._as_admin(); select balance into b1 from public.player_balances where game_id=gid and player_ref=href;
   perform pg_temp._rec('H3) vender hotel: reembolso 25, hoteles+1, casas-4, vuelve a 4 casas',
     (res->>'houses')='4' and b1-b0=25 and not pg_temp._hh(gid,'cl-ronda-valencia')
@@ -81,20 +92,20 @@ end $$;
 
 -- H4) vender hotel bloqueado si no hay 4 casas en el stock (INSUFFICIENT_HOUSES_AVAILABLE).
 do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host'); ok boolean:=false; begin
-  perform pg_temp._as_user(host); perform build_hotel(gid,'cl-ronda-valencia',gen_random_uuid(),pg_temp._ver(gid)); -- hotel de nuevo
+  perform pg_temp._as_user(host); perform pg_temp._bld(gid, host, host, 'cl-ronda-valencia', 'build_hotel'); -- hotel de nuevo
   perform pg_temp._as_admin(); update public.game_runtime set houses_available=2 where game_id=gid; -- sin stock para reponer 4
   perform pg_temp._as_user(host);
-  begin perform sell_hotel(gid,'cl-ronda-valencia',gen_random_uuid(),pg_temp._ver(gid)); exception when others then ok:=(sqlerrm='INSUFFICIENT_HOUSES_AVAILABLE'); end;
+  begin perform pg_temp._bld(gid, host, host, 'cl-ronda-valencia', 'sell_hotel'); exception when others then ok:=(sqlerrm='INSUFFICIENT_HOUSES_AVAILABLE'); end;
   perform pg_temp._as_admin(); update public.game_runtime set houses_available=20 where game_id=gid;
   perform pg_temp._rec('H4) vender hotel sin stock de casas → INSUFFICIENT_HOUSES_AVAILABLE', ok);
 end $$;
 
 -- H5) construir hotel sin hoteles en el banco → INSUFFICIENT_HOTELS_AVAILABLE.
 do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host'); ok boolean:=false; begin
-  perform pg_temp._as_user(host); perform sell_hotel(gid,'cl-ronda-valencia',gen_random_uuid(),pg_temp._ver(gid)); -- vuelve a 4 casas
+  perform pg_temp._as_user(host); perform pg_temp._bld(gid, host, host, 'cl-ronda-valencia', 'sell_hotel'); -- vuelve a 4 casas
   perform pg_temp._as_admin(); update public.game_runtime set hotels_available=0 where game_id=gid;
   perform pg_temp._as_user(host);
-  begin perform build_hotel(gid,'cl-ronda-valencia',gen_random_uuid(),pg_temp._ver(gid)); exception when others then ok:=(sqlerrm='INSUFFICIENT_HOTELS_AVAILABLE'); end;
+  begin perform pg_temp._bld(gid, host, host, 'cl-ronda-valencia', 'build_hotel'); exception when others then ok:=(sqlerrm='INSUFFICIENT_HOTELS_AVAILABLE'); end;
   perform pg_temp._as_admin();
   perform pg_temp._rec('H5) construir hotel sin stock de hoteles → INSUFFICIENT_HOTELS_AVAILABLE', ok);
 end $$;

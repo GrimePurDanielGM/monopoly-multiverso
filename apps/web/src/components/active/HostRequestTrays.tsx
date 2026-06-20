@@ -1,5 +1,31 @@
-import type { ActiveSnapshot, PurchaseRequest, LeaveRequest, BankruptcyRequest } from '../../lib/activeSnapshot';
+import type { ActiveSnapshot, PurchaseRequest, LeaveRequest, BankruptcyRequest, BuildingRequest, BuildingAction } from '../../lib/activeSnapshot';
 import type { ExitResolution } from '../../lib/api';
+
+const BUILD_LABEL: Record<BuildingAction, string> = {
+  build_house: 'construir una casa', build_hotel: 'construir un hotel', sell_house: 'vender una casa', sell_hotel: 'vender un hotel',
+};
+
+/** Bandeja: solicitudes de construcción/venta de casas y hoteles (aprobar / rechazar). */
+export function BuildingRequestsTray({
+  snap, busy, onResolve,
+}: {
+  snap: ActiveSnapshot; busy: boolean;
+  onResolve: (r: BuildingRequest, accept: boolean) => void;
+}) {
+  if (snap.building_requests.length === 0) return null;
+  return (
+    <section aria-label="Solicitudes de construcción" className="flex flex-col gap-2 rounded-xl border border-orange-700/50 p-4">
+      <h2 className="text-sm font-bold text-orange-200">Solicitudes de construcción</h2>
+      {snap.building_requests.map((r) => (
+        <div key={r.request_ref} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm">
+          <span className="flex-1 truncate"><span className="font-semibold">{r.requester_name}</span> quiere {BUILD_LABEL[r.action]} en {r.property_name}</span>
+          <button type="button" onClick={() => onResolve(r, true)} disabled={busy} className="min-h-[36px] rounded-lg bg-emerald-600 px-3 text-xs font-semibold disabled:opacity-40">Aprobar</button>
+          <button type="button" onClick={() => onResolve(r, false)} disabled={busy} className="min-h-[36px] rounded-lg border border-slate-600 px-3 text-xs font-semibold disabled:opacity-40">Rechazar</button>
+        </div>
+      ))}
+    </section>
+  );
+}
 
 /** Bandeja: solicitudes de compra de propiedades (aprobar / rechazar / iniciar subasta). */
 export function PurchaseRequestsTray({

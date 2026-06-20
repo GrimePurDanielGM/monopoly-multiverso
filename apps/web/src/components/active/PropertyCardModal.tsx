@@ -40,7 +40,7 @@ function Row({ label, value, strong }: { label: string; value: string; strong?: 
 
 /** Ficha completa de la TARJETA de título (solo consulta): precio, alquileres con casas/hotel, costes de
  *  construcción, hipoteca/deshipoteca y estado. NO incluye acciones de construir/hipotecar (fase posterior). */
-export function PropertyCardModal({ property: p, snap, onClose, busy = false, actions = {} }: {
+export function PropertyCardModal({ property, snap, onClose, busy = false, actions = {} }: {
   property: ActiveProperty;
   snap: ActiveSnapshot;
   onClose: () => void;
@@ -50,6 +50,10 @@ export function PropertyCardModal({ property: p, snap, onClose, busy = false, ac
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   useDialogA11y(true, ref, { onEscape: onClose, initialFocusRef: closeRef });
+  // Lee SIEMPRE la versión fresca del snapshot (refresco inmediato tras construir/hipotecar sin reabrir).
+  const p = snap.properties.find((x) => x.property_ref === property.property_ref) ?? property;
+  const pendingAction = (a: 'build_house' | 'build_hotel' | 'sell_house' | 'sell_hotel') =>
+    snap.my_building_requests.some((m) => m.property_ref === p.property_ref && m.action === a);
   const status = propertyStatus(p, snap);
   const statusText = p.mortgaged
     ? 'Hipotecada'
@@ -167,49 +171,43 @@ export function PropertyCardModal({ property: p, snap, onClose, busy = false, ac
             </div>
           </div>
 
-          {/* Acciones del propietario (Fase 6): construir/vender casas y hoteles, hipotecar/deshipotecar. */}
+          {/* Acciones del propietario (Fase 6). Construir/vender pasan por solicitud al anfitrión;
+              hipotecar/deshipotecar son directas. Una columna para no cortar etiquetas (móvil). */}
           {mine && (
             <div className="flex flex-col gap-2 border-t border-slate-700 pt-3">
               <p className="text-xs font-semibold text-slate-300">Acciones</p>
               {reason && <p className="text-[11px] text-amber-300/90">{reason}</p>}
-              <div className="grid grid-cols-2 gap-2">
-                {canBuildHouse(p, snap) && (
-                  <button type="button" disabled={busy} onClick={() => actions.onBuildHouse?.(p)}
-                    className="min-h-[40px] rounded-lg bg-orange-600 px-3 text-xs font-semibold disabled:opacity-40">
-                    Construir casa ({money(p.house_cost)})
+              {/* Construir/vender: solicitud o "pendiente" si ya hay una. */}
+              {([
+                ['build_house', 'Solicitar construir casa', canBuildHouse(p, snap), actions.onBuildHouse, 'bg-orange-600', money(p.house_cost)],
+                ['build_hotel', 'Solicitar construir hotel', canBuildHotel(p, snap), actions.onBuildHotel, 'bg-purple-600', money(p.hotel_cost)],
+                ['sell_house', 'Solicitar vender casa', canSellHouse(p, snap), actions.onSellHouse, 'border border-slate-600', null],
+                ['sell_hotel', 'Solicitar vender hotel', canSellHotel(p, snap), actions.onSellHotel, 'border border-slate-600', null],
+              ] as const).map(([action, label, can, cb, cls, amount]) =>
+                pendingAction(action) ? (
+                  <p key={action} role="note" className="rounded-lg bg-slate-800 px-3 py-2 text-[11px] text-slate-300">
+                    {label.replace('Solicitar ', '')}: solicitud pendiente de aprobación.
+                  </p>
+                ) : can ? (
+                  <button key={action} type="button" disabled={busy} onClick={() => cb?.(p)}
+                    className={`min-h-[44px] rounded-lg px-3 text-xs font-semibold disabled:opacity-40 ${cls}`}>
+                    {label}{amount ? ` (${amount})` : ''}
                   </button>
-                )}
-                {canBuildHotel(p, snap) && (
-                  <button type="button" disabled={busy} onClick={() => actions.onBuildHotel?.(p)}
-                    className="min-h-[40px] rounded-lg bg-purple-600 px-3 text-xs font-semibold disabled:opacity-40">
-                    Construir hotel ({money(p.hotel_cost)})
-                  </button>
-                )}
-                {canSellHouse(p, snap) && (
-                  <button type="button" disabled={busy} onClick={() => actions.onSellHouse?.(p)}
-                    className="min-h-[40px] rounded-lg border border-slate-600 px-3 text-xs font-semibold disabled:opacity-40">
-                    Vender casa
-                  </button>
-                )}
-                {canSellHotel(p, snap) && (
-                  <button type="button" disabled={busy} onClick={() => actions.onSellHotel?.(p)}
-                    className="min-h-[40px] rounded-lg border border-slate-600 px-3 text-xs font-semibold disabled:opacity-40">
-                    Vender hotel
-                  </button>
-                )}
-                {canMortgage(p, snap) && (
-                  <button type="button" disabled={busy} onClick={() => actions.onMortgage?.(p)}
-                    className="min-h-[40px] rounded-lg border border-amber-700 px-3 text-xs font-semibold text-amber-200 disabled:opacity-40">
-                    Hipotecar ({money(p.mortgage_value)})
-                  </button>
-                )}
-                {canUnmortgage(p, snap) && (
-                  <button type="button" disabled={busy} onClick={() => actions.onUnmortgage?.(p)}
-                    className="min-h-[40px] rounded-lg border border-emerald-700 px-3 text-xs font-semibold text-emerald-200 disabled:opacity-40">
-                    Deshipotecar ({money(p.unmortgage_cost)})
-                  </button>
-                )}
-              </div>
+                ) : null,
+              )}
+              {/* Hipoteca: directa. */}
+              {canMortgage(p, snap) && (
+                <button type="button" disabled={busy} onClick={() => actions.onMortgage?.(p)}
+                  className="min-h-[44px] rounded-lg border border-amber-700 px-3 text-xs font-semibold text-amber-200 disabled:opacity-40">
+                  Hipotecar ({money(p.mortgage_value)})
+                </button>
+              )}
+              {canUnmortgage(p, snap) && (
+                <button type="button" disabled={busy} onClick={() => actions.onUnmortgage?.(p)}
+                  className="min-h-[44px] rounded-lg border border-emerald-700 px-3 text-xs font-semibold text-emerald-200 disabled:opacity-40">
+                  Deshipotecar ({money(p.unmortgage_cost)})
+                </button>
+              )}
             </div>
           )}
         </div>

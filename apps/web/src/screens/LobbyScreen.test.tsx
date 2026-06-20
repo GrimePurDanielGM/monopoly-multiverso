@@ -62,10 +62,11 @@ vi.mock('../lib/api', () => ({
   resumeGame: () => Promise.resolve({ ok: true, data: true }),
   finishGame: () => Promise.resolve({ ok: true, data: true }),
   resolveLateJoin: () => Promise.resolve({ ok: true, data: true }),
-  buildHouse: () => Promise.resolve({ ok: true, data: true }),
-  buildHotel: () => Promise.resolve({ ok: true, data: true }),
-  sellHouse: () => Promise.resolve({ ok: true, data: true }),
-  sellHotel: () => Promise.resolve({ ok: true, data: true }),
+  requestBuildHouse: () => Promise.resolve({ ok: true, data: true }),
+  requestBuildHotel: () => Promise.resolve({ ok: true, data: true }),
+  requestSellHouse: () => Promise.resolve({ ok: true, data: true }),
+  requestSellHotel: () => Promise.resolve({ ok: true, data: true }),
+  resolveBuildingRequest: () => Promise.resolve({ ok: true, data: true }),
   mortgageProperty: () => Promise.resolve({ ok: true, data: true }),
   unmortgageProperty: () => Promise.resolve({ ok: true, data: true }),
 }));
@@ -91,7 +92,7 @@ function mkSnapshot(opts: { status?: GameStatus; players?: SnapPlayer[]; meToken
     game: {
       id: 'g1', code: 'ABC234', name: 'Demo Sala', status: opts.status ?? 'lobby', version: 0,
       started_at: null, cancelled_at: null, host_public_ref: 'P-1',
-      config: { min_players: 6, max_players: 16, initial_money: 3000, token_catalog_version: 0, dice_mode: 'virtual_only' },
+      config: { min_players: 6, max_players: 16, initial_money: 3000, token_catalog_version: 0, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false },
     },
     players,
     me: { public_ref: 'P-1', is_host: true, join_status: 'joined', token_id: opts.meToken === undefined ? 'delorean' : opts.meToken, membership: 'active' },
@@ -193,7 +194,7 @@ describe('LobbyScreen', () => {
         boards: [], spaces: [], board_links: [], guardians: [], pending_junction: null, parking_pot: 0, jail: [], my_jail: null, card_decks: [], last_card_draw: null, held_cards: [], my_held_cards: [], pending_card: null, pending_payment: null, last_global_event: null,
         positions: [], my_position: null, current_space: null, last_roll: null, last_move: null,
         runtime_status: 'running',
-        current_landing_rent_resolved: false, building_stock: { houses_available: 32, hotels_available: 12 }, control: { paused_by_ref: null, finished_by_ref: null, reason: null },
+        current_landing_rent_resolved: false, building_stock: { houses_available: 32, hotels_available: 12 }, building_requests: [], my_building_requests: [], control: { paused_by_ref: null, finished_by_ref: null, reason: null },
         runtime_version: 0,
       },
     });

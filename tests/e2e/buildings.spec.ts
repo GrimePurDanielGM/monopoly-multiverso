@@ -74,7 +74,7 @@ async function buyStreet(host: Page, name: string, index: number) {
   await host.getByRole('region', { name: 'Solicitudes de compra' }).getByRole('button', { name: 'Aprobar' }).click();
   await expect(host.getByText('Solicitudes de compra')).toHaveCount(0, { timeout: 20_000 });
 }
-// Abre la ficha de una propiedad desde el tablero de propiedades y ejecuta una acción de construcción.
+// Abre la ficha de una propiedad desde el tablero de propiedades y ejecuta una acción DIRECTA (hipoteca/deshipoteca).
 async function cardAction(host: Page, name: string, action: RegExp) {
   await host.reload();  // versión fresca (evita VERSION_CONFLICT tras acciones de otro jugador)
   await openBoard(host);
@@ -86,6 +86,22 @@ async function cardAction(host: Page, name: string, action: RegExp) {
   // cerrar ficha y tablero
   await card.getByRole('button', { name: 'Cerrar' }).click();
   await host.getByRole('button', { name: 'Cerrar' }).click();
+}
+// Construir/vender pasan por SOLICITUD: el propietario la pide en la ficha y el anfitrión la aprueba en su bandeja.
+async function cardRequestAction(host: Page, name: string, action: RegExp) {
+  await host.reload();
+  await openBoard(host);
+  await boardCard(host, name).getByRole('button', { name: 'Ver tarjeta' }).click();
+  const card = host.getByRole('dialog', { name: new RegExp(`Ficha de ${name}`) });
+  await expect(card).toBeVisible({ timeout: 10_000 });
+  await card.getByRole('button', { name: action }).click();
+  await expect(host.getByRole('alert')).toHaveCount(0, { timeout: 5_000 });
+  await card.getByRole('button', { name: 'Cerrar' }).click();
+  await host.getByRole('button', { name: 'Cerrar' }).click();
+  // Aprobar la solicitud en la bandeja del anfitrión.
+  await reloadUntil(host, () => host.getByRole('region', { name: 'Solicitudes de construcción' }));
+  await host.getByRole('region', { name: 'Solicitudes de construcción' }).getByRole('button', { name: 'Aprobar' }).click();
+  await expect(host.getByText('Solicitudes de construcción')).toHaveCount(0, { timeout: 20_000 });
 }
 async function landOn(host: Page, B: Page, index: number) {
   await hostFijarTurno(host, 'Marty');
@@ -122,8 +138,8 @@ test('fase 6: comprar grupo, construir, alquiler con casa, hipoteca/deshipoteca 
   await buyStreet(host, 'Ronda de Valencia', RONDA);
   await buyStreet(host, 'Plaza Lavapiés', PLAZA);
 
-  // ── Con monopolio, la ficha ofrece construir; construir una casa en Ronda.
-  await cardAction(host, 'Ronda de Valencia', /Construir casa/);
+  // ── Con monopolio, la ficha ofrece SOLICITAR construir; el anfitrión la aprueba → casa en Ronda.
+  await cardRequestAction(host, 'Ronda de Valencia', /Solicitar construir casa/);
 
   // ── Marty cae en Ronda (1 casa) y paga el alquiler con casa (rent_1 = 10).
   await landOn(host, B, RONDA);
@@ -132,8 +148,8 @@ test('fase 6: comprar grupo, construir, alquiler con casa, hipoteca/deshipoteca 
   await B.getByRole('dialog', { name: 'Pagar alquiler' }).getByRole('button', { name: 'Pagar alquiler' }).click();
   await reloadUntil(B, () => movement(B).getByText(/Ya has pagado el alquiler de esta caída/));
 
-  // ── Para hipotecar hay que vender las construcciones; vender la casa de Ronda y hipotecar Plaza.
-  await cardAction(host, 'Ronda de Valencia', /Vender casa/);
+  // ── Para hipotecar hay que vender las construcciones; vender (por solicitud) la casa de Ronda y hipotecar Plaza.
+  await cardRequestAction(host, 'Ronda de Valencia', /Solicitar vender casa/);
   await cardAction(host, 'Plaza Lavapiés', /Hipotecar/);
 
   // ── La ficha de Plaza muestra el estado "Hipotecada" y la nota de que no se debe alquiler.
