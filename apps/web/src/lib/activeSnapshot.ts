@@ -76,12 +76,21 @@ export interface BankruptcyRequest {
   reason: string | null;
 }
 
+/** Modo de dados configurable por el anfitrión (Fase 5 corrección ampliada). */
+export type DiceMode = 'virtual_only' | 'physical_allowed' | 'physical_only';
+
+/** Normaliza el dice_mode del snapshot; ante cualquier valor desconocido cae a 'virtual_only'. */
+export function parseDiceMode(v: unknown): DiceMode {
+  return v === 'physical_allowed' || v === 'physical_only' ? v : 'virtual_only';
+}
+
 export interface ActiveConfig {
   initial_money: number;
   min_players: number;
   max_players: number;
   allow_late_join: boolean;
   start_bonus: number;
+  dice_mode: DiceMode;
 }
 
 // ── Fase 4: tablero, casillas y posiciones ────────────────────────────────────────
@@ -651,7 +660,7 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
   return {
     ok: true,
     data: {
-      game: { code: g.code, status: 'active', config: { initial_money: cfg.initial_money, min_players: cfg.min_players, max_players: cfg.max_players, allow_late_join: cfg.allow_late_join, start_bonus: isNum(cfg.start_bonus) ? cfg.start_bonus : 200 } },
+      game: { code: g.code, status: 'active', config: { initial_money: cfg.initial_money, min_players: cfg.min_players, max_players: cfg.max_players, allow_late_join: cfg.allow_late_join, start_bonus: isNum(cfg.start_bonus) ? cfg.start_bonus : 200, dice_mode: parseDiceMode(cfg.dice_mode) } },
       me: { public_ref: m.public_ref, is_host: m.is_host, balance: m.balance, is_current: m.is_current, is_spectator: m.is_spectator },
       turn: { turn_number: t.turn_number, current_player_ref: t.current_player_ref, order: t.order as string[] },
       players,

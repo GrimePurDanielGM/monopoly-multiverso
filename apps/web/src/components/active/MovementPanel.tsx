@@ -3,27 +3,123 @@ import type { ActiveProperty, ActiveSnapshot } from '../../lib/activeSnapshot';
 import {
   formatMoney, currentPlayerName, BOARD_LABEL, spaceTypeLabel, canRoll, currentSpaceProperty,
   propertyStatus, canRequestPurchase, canPayRent, ownerName, purchaseBlockReason, junctionChoice,
+  physicalAllowed, virtualAllowed, utilityRentInfo, canPayUtilityRent,
 } from '../../lib/activeSelectors';
 import { PropertyCardModal } from './PropertyCardModal';
 
 const DICE = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 const face = (n: number) => DICE[n - 1] ?? '🎲';
 
+/** Entrada de dados físicos cómoda en iPhone: dos filas de botones 1–6, total y dobles calculados, y
+ *  un botón de confirmar. No usa <input type="number"> (frágil en Safari móvil). */
+function PhysicalDiceInput({ busy, label, cta, onSubmit }: { busy: boolean; label: string; cta: string; onSubmit: (d1: number, d2: number) => void; }) {
+  const [d1, setD1] = useState<number | null>(null);
+  const [d2, setD2] = useState<number | null>(null);
+  const ready = d1 !== null && d2 !== null;
+  const total = (d1 ?? 0) + (d2 ?? 0);
+  const doubles = ready && d1 === d2;
+  const row = (name: string, val: number | null, set: (n: number) => void) => (
+    <div className="flex flex-col gap-1">
+      <p className="text-[11px] text-slate-400">{name}</p>
+      <div className="grid grid-cols-6 gap-1">
+        {[1, 2, 3, 4, 5, 6].map((n) => (
+          <button
+            key={n}
+            type="button"
+            aria-label={`${name}: ${n}`}
+            aria-pressed={val === n}
+            onClick={() => set(n)}
+            disabled={busy}
+            className={`min-h-[44px] rounded-lg text-base tabular-nums disabled:opacity-40 ${val === n ? 'bg-sky-600 text-white' : 'border border-slate-600 text-slate-200 active:bg-slate-800'}`}
+          >
+            {face(n)}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-slate-600 bg-slate-900/40 px-3 py-2">
+      <p className="text-[11px] font-medium text-slate-300">{label}</p>
+      {row('Dado 1', d1, setD1)}
+      {row('Dado 2', d2, setD2)}
+      <p className="text-xs text-slate-300">Total: <span className="font-semibold tabular-nums">{ready ? total : '—'}</span>{doubles && <span className="ml-1 text-emerald-300">· dobles</span>}</p>
+      <button
+        type="button"
+        onClick={() => ready && onSubmit(d1, d2)}
+        disabled={busy || !ready}
+        className="min-h-[44px] rounded-xl bg-emerald-600 px-4 text-sm font-semibold disabled:opacity-40"
+      >
+        {busy ? 'Procesando…' : cta}
+      </button>
+    </div>
+  );
+}
+
+/** Alquiler de un SERVICIO (utility) propiedad de otro: tirada × multiplicador según servicios del
+ *  propietario (combinados entre ambos tableros). Si hay tirada válida del pagador, ofrece pagar; si no,
+ *  pide una tirada (virtual o física, según el modo). */
+function UtilitySection({ prop, snap, busy, onPay }: {
+  prop: ActiveProperty; snap: ActiveSnapshot; busy: boolean;
+  onPay: (p: ActiveProperty, d1: number | null, d2: number | null) => void;
+}) {
+  const info = utilityRentInfo(prop, snap);
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[11px] text-slate-300">
+        Servicios poseídos por {ownerName(prop, snap)}: <span className="font-semibold">{info.count}/4</span> · Multiplicador <span className="font-semibold">×{info.multiplier}</span>
+      </p>
+      {info.total !== null ? (
+        <>
+          <p className="text-[11px] text-slate-300">Tirada: <span className="font-semibold">{info.total}</span> · Alquiler <span className="font-semibold text-amber-200">{formatMoney(info.amount ?? 0)}</span></p>
+          <button
+            type="button"
+            onClick={() => onPay(prop, null, null)}
+            disabled={busy || !canPayUtilityRent(prop, snap)}
+            className="min-h-[40px] rounded-lg border border-amber-600 px-3 text-xs font-semibold text-amber-200 disabled:opacity-40"
+          >
+            Pagar alquiler ({formatMoney(info.amount ?? 0)})
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="text-[11px] text-amber-200/90">Este servicio necesita una tirada para calcular el alquiler.</p>
+          {virtualAllowed(snap) && (
+            <button
+              type="button"
+              onClick={() => onPay(prop, null, null)}
+              disabled={busy || !snap.me.is_current}
+              className="min-h-[40px] rounded-lg bg-emerald-600 px-3 text-xs font-semibold disabled:opacity-40"
+            >
+              🎲 Tirar dados virtuales para el servicio
+            </button>
+          )}
+          {physicalAllowed(snap) && snap.me.is_current && (
+            <PhysicalDiceInput busy={busy} label="Introduce los dados del servicio" cta="Calcular y pagar servicio" onSubmit={(d1, d2) => onPay(prop, d1, d2)} />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 /** Bloque "Movimiento" de la pantalla principal: turno, posición y casilla actuales, última tirada
  *  y resultado del último movimiento. El jugador actual tira dados o mueve manualmente; al caer en
  *  una propiedad ofrece, desde el contexto, solicitar compra o pagar alquiler (reutiliza los flujos).
  *  Las casillas aún no implementadas muestran un aviso de "fase posterior". */
 export function MovementPanel({
-  snap, busy, onRoll, onMoveManual, onOpenBoard, onRequestPurchase, onPayRent, onResolveJunction,
+  snap, busy, onRoll, onMovePhysical, onMoveManual, onOpenBoard, onRequestPurchase, onPayRent, onPayUtilityRent, onResolveJunction,
   onPayJailRelease, onUseJailCard, onPayPending,
 }: {
   snap: ActiveSnapshot;
   busy: boolean;
   onRoll: () => void;
+  onMovePhysical: (d1: number, d2: number) => void;
   onMoveManual: (steps: number) => void;
   onOpenBoard: () => void;
   onRequestPurchase: (p: ActiveProperty) => void;
   onPayRent: (p: ActiveProperty) => void;
+  onPayUtilityRent: (p: ActiveProperty, d1: number | null, d2: number | null) => void;
   onResolveJunction: (dir: 'own' | 'cross') => void;
   onPayJailRelease: () => void;
   onUseJailCard: () => void;
@@ -177,14 +273,19 @@ export function MovementPanel({
             </p>
           ) : (
             <>
-              <button
-                type="button"
-                onClick={onRoll}
-                disabled={busy}
-                className="min-h-[44px] rounded-xl bg-emerald-600 px-4 text-base font-semibold disabled:opacity-40"
-              >
-                🎲 Intentar sacar dobles
-              </button>
+              {virtualAllowed(snap) && (
+                <button
+                  type="button"
+                  onClick={onRoll}
+                  disabled={busy}
+                  className="min-h-[44px] rounded-xl bg-emerald-600 px-4 text-base font-semibold disabled:opacity-40"
+                >
+                  🎲 Intentar sacar dobles
+                </button>
+              )}
+              {physicalAllowed(snap) && (
+                <PhysicalDiceInput busy={busy} label="Intento con dados físicos" cta="Intentar salir con estos dados" onSubmit={onMovePhysical} />
+              )}
               <button
                 type="button"
                 onClick={onPayJailRelease}
@@ -209,14 +310,19 @@ export function MovementPanel({
         </div>
       ) : mine ? (
         <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={onRoll}
-            disabled={busy}
-            className="min-h-[44px] rounded-xl bg-emerald-600 px-4 text-base font-semibold disabled:opacity-40"
-          >
-            🎲 Tirar dados
-          </button>
+          {virtualAllowed(snap) && (
+            <button
+              type="button"
+              onClick={onRoll}
+              disabled={busy}
+              className="min-h-[44px] rounded-xl bg-emerald-600 px-4 text-base font-semibold disabled:opacity-40"
+            >
+              🎲 Tirar dados
+            </button>
+          )}
+          {physicalAllowed(snap) && (
+            <PhysicalDiceInput busy={busy} label="Introducir tirada física" cta="Mover con estos dados" onSubmit={onMovePhysical} />
+          )}
           {/* Mover manualmente: selector de pasos 1–12 con botones grandes (cómodo en iPhone, sin
               depender de <input type="number">, que en Safari móvil no ofrece flechas y complica los
               dígitos). El botón Mover queda deshabilitado hasta elegir un valor válido (1–12). */}
@@ -277,7 +383,9 @@ export function MovementPanel({
           {status === 'owned' && (
             <>
               <p>Has caído en propiedad de <span className="font-semibold">{ownerName(prop, snap)}</span> ({prop.name}).</p>
-              {prop.base_rent > 0 && (
+              {prop.kind === 'utility' ? (
+                <UtilitySection prop={prop} snap={snap} busy={busy} onPay={onPayUtilityRent} />
+              ) : prop.base_rent > 0 ? (
                 <button
                   type="button"
                   onClick={() => onPayRent(prop)}
@@ -286,7 +394,7 @@ export function MovementPanel({
                 >
                   Pagar alquiler ({formatMoney(prop.base_rent)})
                 </button>
-              )}
+              ) : null}
             </>
           )}
           {status === 'in_auction' && <p>{prop.name} está en subasta.</p>}

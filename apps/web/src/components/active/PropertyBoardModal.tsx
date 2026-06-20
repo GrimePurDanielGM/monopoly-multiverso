@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ActiveProperty, ActiveSnapshot, PropertyAuction } from '../../lib/activeSnapshot';
 import {
   formatMoney, propertyStatus, canRequestPurchase, canPayRent, ownerName,
-  propertyGroupsByBoard, purchaseBlockReason,
+  propertyGroupsByBoard, purchaseBlockReason, playerUtilityCount, utilityMultiplier,
 } from '../../lib/activeSelectors';
 import { AuctionsPanel } from './AuctionsPanel';
 import { PropertyCardModal } from './PropertyCardModal';
@@ -41,6 +41,9 @@ function PropertyCard({
           : 'No comprable'}
       </p>
       {status === 'owned' && <p className="text-[11px] text-amber-300">Propiedad de {ownerName(p, snap)}</p>}
+      {p.kind === 'utility' && (status === 'owned' || status === 'mine') && p.owner_ref && (
+        <p className="text-[11px] text-emerald-300">Servicios: {playerUtilityCount(snap, p.owner_ref)}/4 · Multiplicador actual ×{utilityMultiplier(playerUtilityCount(snap, p.owner_ref))}</p>
+      )}
       <button
         type="button"
         onClick={() => onViewCard(p)}

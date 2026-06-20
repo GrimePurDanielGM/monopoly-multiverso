@@ -210,6 +210,48 @@ export function myProperties(snap: ActiveSnapshot): ActiveProperty[] {
   return snap.properties.filter((p) => p.owner_ref === snap.me.public_ref);
 }
 
+// ── Servicios / utilities (Fase 5 corrección ampliada) ──────────────────────────────
+/** Multiplicador de alquiler de servicios según cuántos posea el propietario (1→×4 … 4→×20). */
+export function utilityMultiplier(count: number): number {
+  return count >= 4 ? 20 : count === 3 ? 14 : count === 2 ? 10 : 4;
+}
+
+/** Nº de servicios ACTIVOS de un jugador (combinando ambos tableros). */
+export function playerUtilityCount(snap: ActiveSnapshot, ownerRef: string | null): number {
+  if (!ownerRef) return 0;
+  return snap.properties.filter((p) => p.kind === 'utility' && p.owner_ref === ownerRef).length;
+}
+
+/** Modo de dados de la partida (por defecto 'virtual_only'). */
+export function diceMode(snap: ActiveSnapshot): 'virtual_only' | 'physical_allowed' | 'physical_only' {
+  return snap.game.config.dice_mode ?? 'virtual_only';
+}
+export function physicalAllowed(snap: ActiveSnapshot): boolean { return diceMode(snap) !== 'virtual_only'; }
+export function virtualAllowed(snap: ActiveSnapshot): boolean { return diceMode(snap) !== 'physical_only'; }
+
+/** Datos para mostrar/cobrar el alquiler de un servicio. `total` es la tirada del pagador que le hizo
+ *  caer (si existe y es suya); si falta, hay que pedir una tirada. `amount` = total × multiplicador. */
+export interface UtilityRentInfo {
+  count: number;
+  multiplier: number;
+  total: number | null;   // tirada válida del pagador, o null si hay que pedirla
+  amount: number | null;  // total × multiplier, o null
+}
+export function utilityRentInfo(p: ActiveProperty, snap: ActiveSnapshot): UtilityRentInfo {
+  const count = playerUtilityCount(snap, p.owner_ref);
+  const multiplier = utilityMultiplier(count);
+  const roll = snap.last_roll;
+  const total = roll && roll.player_ref === snap.me.public_ref ? roll.total : null;
+  return { count, multiplier, total, amount: total === null ? null : total * multiplier };
+}
+
+/** ¿Puedo pagar el alquiler de un servicio? (mi turno, dueño ajeno, hay tirada y saldo suficiente). */
+export function canPayUtilityRent(p: ActiveProperty, snap: ActiveSnapshot): boolean {
+  if (!(canActAsMe(snap) && p.kind === 'utility' && p.owner_ref !== null && p.owner_ref !== snap.me.public_ref)) return false;
+  const info = utilityRentInfo(p, snap);
+  return info.amount !== null && snap.me.balance >= info.amount;
+}
+
 /** Número de propiedades activas por jugador (public_ref -> cantidad). */
 export function propertyCountByPlayer(snap: ActiveSnapshot): Record<string, number> {
   const counts: Record<string, number> = {};

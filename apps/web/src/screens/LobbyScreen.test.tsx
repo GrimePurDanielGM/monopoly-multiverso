@@ -58,7 +58,7 @@ function mkSnapshot(opts: { status?: GameStatus; players?: SnapPlayer[]; meToken
     game: {
       id: 'g1', code: 'ABC234', name: 'Demo Sala', status: opts.status ?? 'lobby', version: 0,
       started_at: null, cancelled_at: null, host_public_ref: 'P-1',
-      config: { min_players: 6, max_players: 16, initial_money: 3000, token_catalog_version: 0 },
+      config: { min_players: 6, max_players: 16, initial_money: 3000, token_catalog_version: 0, dice_mode: 'virtual_only' },
     },
     players,
     me: { public_ref: 'P-1', is_host: true, join_status: 'joined', token_id: opts.meToken === undefined ? 'delorean' : opts.meToken, membership: 'active' },

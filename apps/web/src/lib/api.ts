@@ -560,6 +560,38 @@ export async function rollAndMove(gameId: string, requestId: string, expectedVer
   return { ok: true, data: true };
 }
 
+/** Mueve usando dados FÍSICOS (resultado introducido a mano). Sirve también como intento de cárcel.
+ *  Requiere que el modo de dados permita físicos; el backend valida d1/d2 ∈ 1..6. */
+export async function moveWithPhysicalRoll(gameId: string, die1: number, die2: number, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('move_with_physical_roll', {
+    p_game: gameId, p_die1: die1, p_die2: die2, p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Cambia el modo de dados de la partida (anfitrión; lobby o activa). */
+export async function setDiceMode(gameId: string, mode: 'virtual_only' | 'physical_allowed' | 'physical_only', requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('set_dice_mode', {
+    p_game: gameId, p_mode: mode, p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
+/** Paga el alquiler de un SERVICIO (combinable entre tableros): tirada × multiplicador según servicios
+ *  del propietario. Si die1/die2 son null usa la última tirada válida (o genera virtual si el modo lo permite). */
+export async function payUtilityRent(gameId: string, propertyRef: string, die1: number | null, die2: number | null, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('pay_utility_rent', {
+    p_game: gameId, p_property_ref: propertyRef, p_die1: die1, p_die2: die2, p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
 /** Resuelve la bifurcación de la cárcel-guardián: 'own' (seguir en tu tablero) o 'cross' (cruzar al otro). */
 export async function resolveJunction(gameId: string, direction: 'own' | 'cross', requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
   if (!supabase) return fail('UNCONFIGURED');

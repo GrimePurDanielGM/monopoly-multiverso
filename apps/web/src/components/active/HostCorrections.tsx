@@ -1,9 +1,16 @@
 import { useState } from 'react';
-import type { ActiveSnapshot, BoardKey } from '../../lib/activeSnapshot';
-import { parseAmount, parseBalance, isValidReason, ringSize, BOARD_LABEL } from '../../lib/activeSelectors';
+import type { ActiveSnapshot, BoardKey, DiceMode } from '../../lib/activeSnapshot';
+import { parseAmount, parseBalance, isValidReason, ringSize, BOARD_LABEL, diceMode } from '../../lib/activeSelectors';
+
+const DICE_MODE_LABEL: Record<DiceMode, string> = {
+  virtual_only: 'Solo dados virtuales',
+  physical_allowed: 'Permitir dados físicos y virtuales',
+  physical_only: 'Solo dados físicos',
+};
 
 /** Correcciones del anfitrión (auditadas, motivo obligatorio): ajustar saldo, fijar turno,
- *  transferir en nombre de otro jugador y corregir posición (tablero + casilla). */
+ *  transferir en nombre de otro jugador y corregir posición (tablero + casilla). Incluye la
+ *  configuración de dados (físicos/virtuales), aplicable también en partida activa. */
 export function HostCorrections({
   snap,
   busy,
@@ -11,6 +18,7 @@ export function HostCorrections({
   onSetTurn,
   onHostTransfer,
   onSetPosition,
+  onSetDiceMode,
 }: {
   snap: ActiveSnapshot;
   busy: boolean;
@@ -18,8 +26,11 @@ export function HostCorrections({
   onSetTurn: (targetRef: string, reason: string) => void;
   onHostTransfer: (fromRef: string, toRef: string, amount: number, reason: string) => void;
   onSetPosition: (playerRef: string, board: BoardKey, index: number, reason: string) => void;
+  onSetDiceMode: (mode: DiceMode) => void;
 }) {
   const refs = snap.players;
+  // Configuración de dados
+  const [dm, setDm] = useState<DiceMode>(diceMode(snap));
   // Corregir posición
   const [pRef, setPRef] = useState(refs[0]?.public_ref ?? '');
   const [pBoard, setPBoard] = useState<BoardKey>('classic');
@@ -136,6 +147,23 @@ export function HostCorrections({
         {reasonInput(pReason, setPReason)}
         <button type="submit" disabled={!pOk} className="min-h-[44px] rounded-xl bg-amber-600 px-4 text-sm font-semibold disabled:opacity-40">
           {busy ? 'Aplicando…' : 'Actualizar posición'}
+        </button>
+      </form>
+
+      <form className="mt-4 flex flex-col gap-2 border-t border-slate-800 pt-3"
+        onSubmit={(e) => { e.preventDefault(); if (!busy) onSetDiceMode(dm); }}>
+        <p className="text-sm font-medium text-slate-300">Configuración de dados</p>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-slate-400">Modo de dados</span>
+          <select aria-label="Modo de dados" value={dm} onChange={(e) => setDm(e.target.value as DiceMode)}
+            className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base">
+            <option value="virtual_only">{DICE_MODE_LABEL.virtual_only}</option>
+            <option value="physical_allowed">{DICE_MODE_LABEL.physical_allowed}</option>
+            <option value="physical_only">{DICE_MODE_LABEL.physical_only}</option>
+          </select>
+        </label>
+        <button type="submit" disabled={busy || dm === diceMode(snap)} className="min-h-[44px] rounded-xl bg-amber-600 px-4 text-sm font-semibold disabled:opacity-40">
+          {busy ? 'Aplicando…' : 'Aplicar modo de dados'}
         </button>
       </form>
     </details>

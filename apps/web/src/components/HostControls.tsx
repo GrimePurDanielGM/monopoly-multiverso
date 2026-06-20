@@ -65,6 +65,7 @@ export function HostControls({ game, counts, players, requests, reload }: Props)
             maxPlayers={counts.max_players}
             initialMoney={game.config.initial_money}
             allowLateJoin={game.config.allow_late_join ?? false}
+            diceMode={game.config.dice_mode ?? 'virtual_only'}
             currentPlayers={counts.player_count}
             busy={busy}
             onSubmit={runConfig}

@@ -89,7 +89,18 @@ export function PropertyCardModal({ property: p, snap, onClose }: {
             <div className="divide-y divide-slate-800">
               {rentRows.map(([label, value]) => <Row key={label} label={label} value={money(value)} />)}
             </div>
-            {p.kind === 'utility' && <p className="px-3 py-1.5 text-[11px] text-slate-500">El alquiler de los servicios se cobra por los dados (fase posterior).</p>}
+            {p.kind === 'utility' && (
+              <div className="px-3 py-1.5 text-[11px] text-slate-400">
+                <p className="text-slate-300">El alquiler se cobra por los dados (tirada × multiplicador):</p>
+                <ul className="mt-0.5 grid grid-cols-2 gap-x-3 tabular-nums">
+                  <li>1 servicio: tirada ×4</li>
+                  <li>2 servicios: tirada ×10</li>
+                  <li>3 servicios: tirada ×14</li>
+                  <li>4 servicios: tirada ×20</li>
+                </ul>
+                <p className="mt-1 text-slate-500">Los servicios se combinan entre ambos tableros.</p>
+              </div>
+            )}
           </div>
 
           <div className="overflow-hidden rounded-lg border border-slate-700">

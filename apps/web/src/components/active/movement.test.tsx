@@ -12,7 +12,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
   ];
   const positions: PlayerPosition[] = [{ player_ref: 'P-1', board_key: 'classic', space_index: 1 }];
   return {
-    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200 } },
+    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only' } },
     me: { public_ref: 'P-1', is_host: false, balance: 3000, is_current: true, is_spectator: false },
     turn: { turn_number: 1, current_player_ref: 'P-1', order: ['P-1', 'P-2'] },
     players: [
@@ -38,7 +38,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
 }
 
 describe('MovementPanel', () => {
-  const cbs = () => ({ onRoll: vi.fn(), onMoveManual: vi.fn(), onOpenBoard: vi.fn(), onRequestPurchase: vi.fn(), onPayRent: vi.fn(), onResolveJunction: vi.fn(), onPayJailRelease: vi.fn(), onUseJailCard: vi.fn(), onPayPending: vi.fn() });
+  const cbs = () => ({ onRoll: vi.fn(), onMovePhysical: vi.fn(), onMoveManual: vi.fn(), onPayUtilityRent: vi.fn(), onOpenBoard: vi.fn(), onRequestPurchase: vi.fn(), onPayRent: vi.fn(), onResolveJunction: vi.fn(), onPayJailRelease: vi.fn(), onUseJailCard: vi.fn(), onPayPending: vi.fn() });
 
   it('mi turno: "Tirar dados" llama onRoll y muestra la última tirada', () => {
     const c = cbs();
@@ -258,5 +258,69 @@ describe('BoardView (tablero visual)', () => {
     // El guardián está en la cárcel; al tocarla, su detalle muestra las dos entradas y el peaje.
     fireEvent.click(screen.getByRole('button', { name: /Cárcel \/ Solo visitas \(guardián\)/ }));
     expect(screen.getByText(/Guardián \(peaje 100\)/)).toBeInTheDocument();
+  });
+});
+
+describe('MovementPanel — dados físicos y servicios', () => {
+  const cbs = () => ({ onRoll: vi.fn(), onMovePhysical: vi.fn(), onMoveManual: vi.fn(), onOpenBoard: vi.fn(), onRequestPurchase: vi.fn(), onPayRent: vi.fn(), onPayUtilityRent: vi.fn(), onResolveJunction: vi.fn(), onPayJailRelease: vi.fn(), onUseJailCard: vi.fn(), onPayPending: vi.fn() });
+  const withDice = (dice_mode: 'virtual_only' | 'physical_allowed' | 'physical_only', over: Partial<ActiveSnapshot> = {}) =>
+    snap({ game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode } }, ...over });
+  // Snapshot donde el jugador local cae en un SERVICIO propiedad de Beto (P-2).
+  const utilSnap = (dice_mode: 'virtual_only' | 'physical_allowed' | 'physical_only' = 'virtual_only', over: Partial<ActiveSnapshot> = {}) =>
+    withDice(dice_mode, {
+      properties: [{ property_ref: 'cl-elec', board_key: 'classic', group_key: 'utility', name: 'Compañía de Electricidad', kind: 'utility', price: 150, base_rent: 0, is_buyable: true, sort_order: 1, owner_ref: 'P-2', in_auction: false }],
+      spaces: [
+        { space_ref: 'cl-0', board_key: 'classic', space_index: 0, name: 'Salida', space_type: 'start', property_ref: null, is_start: true },
+        { space_ref: 'cl-elec', board_key: 'classic', space_index: 12, name: 'Compañía de Electricidad', space_type: 'property', property_ref: 'cl-elec', is_start: false },
+      ],
+      positions: [{ player_ref: 'P-1', board_key: 'classic', space_index: 12 }],
+      my_position: { board_key: 'classic', space_index: 12 },
+      current_space: { space_ref: 'cl-elec', board_key: 'classic', space_index: 12, name: 'Compañía de Electricidad', space_type: 'property', property_ref: 'cl-elec', is_start: false },
+      last_roll: { d1: 3, d2: 5, total: 8, player_ref: 'P-1' },
+      ...over,
+    });
+
+  it('physical_allowed: dados físicos 3+4 → onMovePhysical(3,4); sigue habiendo botón virtual', () => {
+    const c = cbs();
+    render(<MovementPanel snap={withDice('physical_allowed')} busy={false} {...c} />);
+    expect(screen.getByRole('button', { name: /Tirar dados/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Dado 1: 3' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Dado 2: 4' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mover con estos dados' }));
+    expect(c.onMovePhysical).toHaveBeenCalledWith(3, 4);
+  });
+
+  it('physical_only: oculta "Tirar dados" y exige introducir la tirada física', () => {
+    render(<MovementPanel snap={withDice('physical_only')} busy={false} {...cbs()} />);
+    expect(screen.queryByRole('button', { name: /Tirar dados/ })).toBeNull();
+    expect(screen.getByText('Introducir tirada física')).toBeInTheDocument();
+  });
+
+  it('cárcel con physical_allowed: intento físico 3+3 → onMovePhysical(3,3)', () => {
+    const c = cbs();
+    const s = withDice('physical_allowed', { my_jail: { board_key: 'classic', jail_turns: 0, fine: 50, action_taken_this_turn: false } });
+    render(<MovementPanel snap={s} busy={false} {...c} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Dado 1: 3' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Dado 2: 3' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Intentar salir con estos dados' }));
+    expect(c.onMovePhysical).toHaveBeenCalledWith(3, 3);
+  });
+
+  it('servicio de otro: muestra servicios/multiplicador/tirada y paga con la última tirada (×4)', () => {
+    const c = cbs();
+    render(<MovementPanel snap={utilSnap()} busy={false} {...c} />);
+    expect(screen.getByText(/Servicios poseídos por Beto:/)).toHaveTextContent('Servicios poseídos por Beto: 1/4 · Multiplicador ×4');
+    expect(screen.getByText(/· Alquiler/)).toHaveTextContent('Tirada: 8 · Alquiler 32 ₥');
+    fireEvent.click(screen.getByRole('button', { name: /Pagar alquiler \(32/ }));
+    expect(c.onPayUtilityRent).toHaveBeenCalledWith(expect.objectContaining({ property_ref: 'cl-elec' }), null, null);
+  });
+
+  it('servicio sin tirada válida: pide una tirada (ofrece dados virtuales)', () => {
+    const c = cbs();
+    const s = utilSnap('virtual_only', { last_roll: { d1: 1, d2: 1, total: 2, player_ref: 'P-2' } });
+    render(<MovementPanel snap={s} busy={false} {...c} />);
+    expect(screen.getByText(/necesita una tirada para calcular el alquiler/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Tirar dados virtuales para el servicio/ }));
+    expect(c.onPayUtilityRent).toHaveBeenCalledWith(expect.objectContaining({ property_ref: 'cl-elec' }), null, null);
   });
 });

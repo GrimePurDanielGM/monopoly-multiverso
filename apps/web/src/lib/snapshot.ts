@@ -11,6 +11,7 @@ export interface SnapConfig {
   initial_money: number;
   token_catalog_version: number;
   allow_late_join?: boolean;
+  dice_mode: 'virtual_only' | 'physical_allowed' | 'physical_only';
 }
 export interface SnapGame {
   id: string;
@@ -167,6 +168,7 @@ export function parseSnapshot(raw: unknown): ParseResult {
           initial_money: cfg.initial_money,
           token_catalog_version: cfg.token_catalog_version,
           allow_late_join: cfg.allow_late_join === true,
+          dice_mode: cfg.dice_mode === 'physical_allowed' || cfg.dice_mode === 'physical_only' ? cfg.dice_mode : 'virtual_only',
         },
       },
       players,

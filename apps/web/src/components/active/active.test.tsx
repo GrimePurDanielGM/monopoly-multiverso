@@ -18,7 +18,7 @@ import type { ActiveProperty, PropertyAuction } from '../../lib/activeSnapshot';
 
 function makeSnap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
   return {
-    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 6, max_players: 16, allow_late_join: false, start_bonus: 200 } },
+    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 6, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only' } },
     me: { public_ref: 'P-BBBB', is_host: true, balance: 1000, is_current: false, is_spectator: false },
     turn: { turn_number: 5, current_player_ref: 'P-AAAA', order: ['P-AAAA', 'P-BBBB'] },
     players: [
@@ -144,9 +144,19 @@ describe('BankPanel', () => {
 });
 
 describe('HostCorrections', () => {
+  it('configuración de dados: cambiar el modo llama a onSetDiceMode', () => {
+    const onSetDiceMode = vi.fn();
+    render(<HostCorrections snap={makeSnap()} busy={false} onAdjust={vi.fn()} onSetTurn={vi.fn()} onHostTransfer={vi.fn()} onSetPosition={vi.fn()} onSetDiceMode={onSetDiceMode} />);
+    const apply = screen.getByRole('button', { name: 'Aplicar modo de dados' });
+    expect(apply).toBeDisabled(); // sin cambios respecto al modo actual
+    fireEvent.change(screen.getByLabelText('Modo de dados'), { target: { value: 'physical_only' } });
+    fireEvent.click(apply);
+    expect(onSetDiceMode).toHaveBeenCalledWith('physical_only');
+  });
+
   it('ajustar saldo exige motivo (deshabilitado sin él)', () => {
     const onAdjust = vi.fn();
-    render(<HostCorrections snap={makeSnap()} busy={false} onAdjust={onAdjust} onSetTurn={vi.fn()} onHostTransfer={vi.fn()} onSetPosition={vi.fn()} />);
+    render(<HostCorrections snap={makeSnap()} busy={false} onAdjust={onAdjust} onSetTurn={vi.fn()} onHostTransfer={vi.fn()} onSetPosition={vi.fn()} onSetDiceMode={vi.fn()} />);
     const balInput = screen.getByLabelText('Nuevo saldo');
     fireEvent.change(balInput, { target: { value: '9000' } });
     const btn = screen.getByRole('button', { name: 'Ajustar saldo' });
@@ -166,7 +176,7 @@ describe('HostCorrections', () => {
         { space_ref: 'cl-5', board_key: 'classic', space_index: 5, name: 'Plaza de España', space_type: 'property', property_ref: 'cl-5', is_start: false },
       ],
     });
-    render(<HostCorrections snap={snap} busy={false} onAdjust={vi.fn()} onSetTurn={vi.fn()} onHostTransfer={vi.fn()} onSetPosition={onSetPosition} />);
+    render(<HostCorrections snap={snap} busy={false} onAdjust={vi.fn()} onSetTurn={vi.fn()} onHostTransfer={vi.fn()} onSetPosition={onSetPosition} onSetDiceMode={vi.fn()} />);
     const casilla = screen.getByLabelText(/Casilla/) as HTMLSelectElement;
     // Se puede elegir por nombre: la opción muestra índice + nombre.
     expect(screen.getByRole('option', { name: '1 — Ronda de Valencia' })).toBeInTheDocument();

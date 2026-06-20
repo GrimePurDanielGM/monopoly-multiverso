@@ -110,6 +110,13 @@ const MESSAGES: Record<string, string> = {
   NO_PENDING_CARD: 'No tienes ninguna carta pendiente.',
   PAYMENT_PENDING: 'Tienes un pago pendiente: págalo o decláralo en bancarrota.',
   NO_PENDING_PAYMENT: 'No tienes ningún pago pendiente.',
+  // Fase 5 corrección ampliada — dados físicos/virtuales y servicios combinados
+  INVALID_DICE_MODE: 'Modo de dados no válido.',
+  PHYSICAL_DICE_DISABLED: 'Esta partida no permite dados físicos. Usa la tirada virtual.',
+  VIRTUAL_DICE_DISABLED: 'Esta partida solo permite dados físicos. Introduce el resultado.',
+  INVALID_DIE_VALUE: 'Cada dado debe ser un número del 1 al 6.',
+  NOT_A_UTILITY: 'Esa propiedad no es un servicio.',
+  UTILITY_ROLL_REQUIRED: 'Este servicio necesita una tirada para calcular el alquiler.',
 };
 
 /** Mensaje legible para un código de error conocido (o genérico si no lo es). */

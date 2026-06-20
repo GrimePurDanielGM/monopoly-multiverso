@@ -7,8 +7,8 @@ import {
   requestPropertyPurchase, resolvePropertyPurchase, payRent,
   startPropertyAuction, placePropertyBid, closePropertyAuction, cancelPropertyAuction,
   requestBankruptcy, resolveBankruptcy,
-  movePlayer, rollAndMove, hostSetPlayerPosition, resolveJunction,
-  payJailRelease, redeemJailCard, resolveCard, payPending,
+  movePlayer, rollAndMove, moveWithPhysicalRoll, hostSetPlayerPosition, resolveJunction,
+  payJailRelease, redeemJailCard, resolveCard, payPending, payUtilityRent, setDiceMode,
   type ApiResult, type ExitResolution, type BankruptcyKind,
 } from '../lib/api';
 import { useCardDraw } from '../hooks/useCardDraw';
@@ -228,8 +228,14 @@ export function ActiveGameScreen({
   const doRoll = useCallback(() => {
     void run(() => rollAndMove(gameId, newRequestId(), snap?.runtime_version ?? 0));
   }, [gameId, snap?.runtime_version, run]);
+  const doMovePhysical = useCallback((d1: number, d2: number) => {
+    void run(() => moveWithPhysicalRoll(gameId, d1, d2, newRequestId(), snap?.runtime_version ?? 0));
+  }, [gameId, snap?.runtime_version, run]);
   const doMoveManual = useCallback((steps: number) => {
     void run(() => movePlayer(gameId, steps, newRequestId(), snap?.runtime_version ?? 0));
+  }, [gameId, snap?.runtime_version, run]);
+  const doPayUtilityRent = useCallback((p: ActiveProperty, d1: number | null, d2: number | null) => {
+    void run(() => payUtilityRent(gameId, p.property_ref, d1, d2, newRequestId(), snap?.runtime_version ?? 0));
   }, [gameId, snap?.runtime_version, run]);
   const doResolveJunction = useCallback((dir: 'own' | 'cross') => {
     void run(() => resolveJunction(gameId, dir, newRequestId(), snap?.runtime_version ?? 0));
@@ -324,6 +330,7 @@ export function ActiveGameScreen({
             snap={snap}
             busy={busy}
             onRoll={doRoll}
+            onMovePhysical={doMovePhysical}
             onMoveManual={doMoveManual}
             onResolveJunction={doResolveJunction}
             onPayJailRelease={doPayJailRelease}
@@ -332,6 +339,7 @@ export function ActiveGameScreen({
             onOpenBoard={() => setBoardViewOpen(true)}
             onRequestPurchase={(p) => setBuyTarget(p)}
             onPayRent={(p) => setRentTarget(p)}
+            onPayUtilityRent={doPayUtilityRent}
           />
           <PropertiesSummary snap={snap} onOpenBoard={() => setBoardOpen(true)} />
         </div>
@@ -367,7 +375,8 @@ export function ActiveGameScreen({
                 onAdjust={(t, b, reason) => void run(() => hostAdjustBalance(gameId, t, b, reason, newRequestId(), ver))}
                 onSetTurn={(t, reason) => void run(() => hostSetTurn(gameId, t, reason, newRequestId(), ver))}
                 onHostTransfer={(f, t, amt, reason) => void run(() => hostPlayerTransfer(gameId, f, t, amt, reason, newRequestId(), ver))}
-                onSetPosition={doSetPosition} />
+                onSetPosition={doSetPosition}
+                onSetDiceMode={(mode) => void run(() => setDiceMode(gameId, mode, newRequestId(), ver))} />
             )}
           </fieldset>
           <section aria-label="Movimientos" className="flex flex-col gap-2 rounded-xl border border-slate-700 p-4">

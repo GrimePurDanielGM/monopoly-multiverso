@@ -14,7 +14,7 @@ import type { SnapCounts, SnapGame, SnapPlayer } from '../lib/snapshot';
 const game: SnapGame = {
   id: 'g1', code: 'ABC234', name: 'Demo', status: 'lobby', version: 7,
   started_at: null, cancelled_at: null, host_public_ref: 'P-1',
-  config: { min_players: 6, max_players: 16, initial_money: 3000, token_catalog_version: 0 },
+  config: { min_players: 6, max_players: 16, initial_money: 3000, token_catalog_version: 0, dice_mode: 'virtual_only' },
 };
 const players: SnapPlayer[] = Array.from({ length: 6 }, (_, i) => ({
   public_ref: `P-${i + 1}`, name: `P-${i + 1}`, token_id: 't', status: 'ready', last_seen_at: 'x',

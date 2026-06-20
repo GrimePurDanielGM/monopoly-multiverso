@@ -1,6 +1,25 @@
 # Estado del proyecto — lista viva
 
 ## Fase 5 — Casillas especiales · **`Fase 5: COMPLETADA` (pendiente validación manual)**
+- **Corrección 3 (2026-06-20) — dados físicos/virtuales configurables + servicios combinados (`0046`/`0047`/`0048`):**
+  - **Modo de dados (`config.dice_mode`):** `virtual_only` (def) · `physical_allowed` · `physical_only`. El
+    anfitrión lo cambia **en lobby** (formulario de sala, vía `update_config`) y **en partida activa**
+    (correcciones del anfitrión, vía `set_dice_mode`); no en finalizada (`GAME_FINISHED`); auditado
+    `dice_mode_changed`. Expuesto en el snapshot (lobby y activo).
+  - **Dados físicos:** `move_with_physical_roll(game,d1,d2,…)` (núcleo compartido `_p5_roll_resolve` con
+    `roll_and_move`) sirve para movimiento normal **y** para el intento de cárcel; valida `d1/d2 ∈ 1..6`.
+    `roll_and_move` (virtual) se bloquea en `physical_only`; el físico se bloquea en `virtual_only`. Respeta
+    la regla de **una acción de cárcel por turno** y los 3 intentos. UI con botones de dado 1–6 (cómodo iPhone).
+    Errores: `PHYSICAL_DICE_DISABLED`, `VIRTUAL_DICE_DISABLED`, `INVALID_DIE_VALUE`, `INVALID_DICE_MODE`.
+  - **Servicios combinables entre tableros:** `pay_utility_rent(game,prop,d1,d2,…)` cobra **tirada ×
+    multiplicador** según los servicios ACTIVOS del propietario en **ambos** tableros (1→×4, 2→×10, 3→×14,
+    4→×20). Fuente de la tirada: última tirada del pagador → dados físicos introducidos → tirada virtual
+    (si el modo lo permite); sin tirada válida → `UTILITY_ROLL_REQUIRED`. Ledger `rent_payment` + auditoría
+    `utility_rent_paid` (total, nº servicios, multiplicador, importe). UI: ficha con tabla ×4/×10/×14/×20 y
+    «se combinan entre tableros»; recuento «Servicios N/4 · ×M» en el propietario.
+  - Tests: SQL `dice_mode`/`physical_dice`/`jail_physical_dice`/`utility_rent` phase5 (25 casos) + batería
+    1–5 (**45 suites, 0 fallos**) tras `db reset`; unit **313**; E2E `dice_utility` (físico, cambio de modo,
+    cárcel física, alquiler de servicio) Chromium+WebKit. Aplicado a dev (`0046`,`0047`,`0048`). **No se avanza a Fase 6.**
 - **Corrección 2 (2026-06-20) — una acción de cárcel por turno + sonido de liberación (`0044`/`0045`):**
   - **Una sola acción por turno:** estando preso, el jugador elige UNA acción por turno (intentar dobles
     / pagar 50 / usar carta). Si tras ella sigue preso (intento fallido o salida forzada sin saldo), no

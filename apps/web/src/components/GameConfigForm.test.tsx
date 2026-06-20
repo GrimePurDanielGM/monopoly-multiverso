@@ -11,6 +11,7 @@ function renderForm(over: Partial<React.ComponentProps<typeof GameConfigForm>> =
       maxPlayers={16}
       initialMoney={3000}
       allowLateJoin={false}
+      diceMode="virtual_only"
       currentPlayers={1}
       busy={false}
       onSubmit={onSubmit}
@@ -19,6 +20,15 @@ function renderForm(over: Partial<React.ComponentProps<typeof GameConfigForm>> =
   );
   return { onSubmit };
 }
+
+describe('GameConfigForm — configuración de dados', () => {
+  it('incluye el modo de dados elegido en el patch', () => {
+    const { onSubmit } = renderForm();
+    fireEvent.change(screen.getByLabelText('Configuración de dados'), { target: { value: 'physical_allowed' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar configuración' }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ dice_mode: 'physical_allowed' }));
+  });
+});
 
 describe('GameConfigForm — mínimo de jugadores', () => {
   it('permite seleccionar 2 como mínimo y lo envía', () => {
