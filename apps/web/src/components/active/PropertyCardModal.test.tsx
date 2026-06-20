@@ -92,17 +92,21 @@ describe('PropertyCardModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('el ÚNICO contenedor scrollable es el cuerpo del modal (robusto en iPhone/iPad): flex-1 min-h-0 overflow-y-scroll touch-pan-y overscroll-contain', () => {
+  it('el backdrop es el ÚNICO scroller; la tarjeta y su cuerpo crecen con el contenido (NADA se comprime)', () => {
     const { container } = render(<PropertyCardModal property={street} snap={snap()} onClose={vi.fn()} />);
+    // El backdrop scrollea (patrón robusto iOS/iPadOS).
+    const backdrop = container.querySelector('[data-testid="property-card-backdrop"]') as HTMLElement;
+    expect(backdrop).not.toBeNull();
+    expect(backdrop.className).toMatch(/overflow-y-(auto|scroll)/);
+    expect(backdrop.className).toContain('touch-pan-y');
+    expect(backdrop.className).toContain('overscroll-contain');
+    // El cuerpo NO comprime ni recorta: sin overflow propio, sin altura máxima, sin flex-shrink (min-h-0).
     const body = container.querySelector('[data-testid="property-card-body"]') as HTMLElement;
     expect(body).not.toBeNull();
-    expect(body.className).toContain('flex-1');
-    expect(body.className).toContain('min-h-0');           // imprescindible para scrollear dentro del diálogo
-    expect(body.className).toMatch(/overflow-y-(scroll|auto)/);
-    expect(body.className).toContain('overflow-x-hidden');  // sin overflow horizontal
-    expect(body.className).toContain('touch-pan-y');        // iOS: gesto vertical = scroll nativo
-    expect(body.className).toContain('overscroll-contain'); // no arrastra la página de detrás
-    // Las secciones NO tienen scroll anidado propio (causa de los fallos en iPad): solo el cuerpo scrollea.
+    expect(body.className).not.toMatch(/overflow-y-(scroll|auto)/); // no scroll interno
+    expect(body.className).not.toMatch(/max-h-/);                   // no altura máxima que recorte
+    expect(body.className).not.toContain('min-h-0');               // no se encoge
+    // Ningún apartado tiene scroll anidado propio (causa de los fallos en iPad).
     expect(container.querySelectorAll('[data-testid="property-card-body"] .overscroll-contain').length).toBe(0);
   });
 

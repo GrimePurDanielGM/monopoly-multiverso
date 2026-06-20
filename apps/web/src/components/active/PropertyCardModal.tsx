@@ -142,18 +142,26 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center sm:p-4" onClick={onClose}>
-      <div
-        ref={ref}
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Ficha de ${p.name}`}
-        tabIndex={-1}
-        onClick={(e) => e.stopPropagation()}
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-        className="flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-slate-700 bg-slate-900 shadow-xl sm:rounded-2xl"
-      >
+    // El backdrop es el ÚNICO que scrollea (patrón de modal robusto en iOS/iPadOS): la tarjeta crece con su
+    // contenido y NUNCA comprime ni recorta nada; si es más alta que la pantalla, se desliza el fondo.
+    <div
+      data-testid="property-card-backdrop"
+      className="fixed inset-0 z-50 touch-pan-y overflow-y-auto overscroll-contain bg-black/60"
+      style={{ WebkitOverflowScrolling: 'touch' }}
+      onClick={onClose}
+    >
+      <div className="flex min-h-full items-end justify-center sm:items-center sm:p-4">
+        <div
+          ref={ref}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Ficha de ${p.name}`}
+          tabIndex={-1}
+          onClick={(e) => e.stopPropagation()}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+          className="flex w-full max-w-md flex-col rounded-t-2xl border border-slate-700 bg-slate-900 shadow-xl sm:rounded-2xl"
+        >
         <header className="flex items-center justify-between gap-2 border-b border-slate-700 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-3">
           <div className="flex min-w-0 items-center gap-2">
             <span className="h-4 w-4 shrink-0 rounded-sm" style={{ backgroundColor: groupSwatch(p.group_key) }} aria-hidden />
@@ -165,12 +173,9 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
           </button>
         </header>
 
-        {/* ÚNICO contenedor scrollable: el cuerpo del modal. flex-1 + min-h-0 hace que SÍ scrollee dentro del
-            diálogo (si no, el contenido se recorta); overflow-y-scroll + touch-pan-y + -webkit-overflow-scrolling
-            dan scroll táctil fiable en iPhone/iPad; overscroll-contain evita arrastrar la página de detrás. */}
-        <div data-testid="property-card-body"
-          className="flex min-h-0 flex-1 touch-pan-y flex-col gap-3 overflow-y-scroll overflow-x-hidden overscroll-contain px-4 py-3"
-          style={{ WebkitOverflowScrolling: 'touch' }}>
+        {/* El cuerpo NO scrollea ni recorta: crece con su contenido (nada se comprime cuando aparecen/desaparecen
+            botones según el estado). Si la tarjeta no cabe, scrollea el backdrop. */}
+        <div data-testid="property-card-body" className="flex flex-col gap-3 px-4 py-3">
           <div className="grid grid-cols-2 gap-2 text-xs">
             <Cell label="Tablero" value={BOARD_LABEL[p.board_key] ?? p.board_key} />
             <Cell label="Grupo" value={groupLabel(p.group_key)} />
@@ -295,6 +300,7 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
         ) : (
           <div className="pb-[max(0.25rem,env(safe-area-inset-bottom))]" />
         )}
+        </div>
       </div>
     </div>
   );

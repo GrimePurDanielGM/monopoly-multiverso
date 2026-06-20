@@ -115,6 +115,14 @@
      con cabecera y navegación fijas. Cada apartado conserva todo su contenido (datos + mensajes + botones) y su
      `testId`, pero sin scroll propio. Funciona igual en iPhone, iPad y escritorio. E2E: el cuerpo es el único
      scroller, se llega al botón Hipotecar desplazándolo y no hay scroll anidado dentro del cuerpo.
+     → **Solución final (2026-06-21):** seguía sin funcionar en iPhone/iPad. A petición del usuario se cambia el
+     enfoque: la tarjeta **no comprime nada**. Se elimina el scroll del cuerpo y el tope de altura del modal; la
+     tarjeta crece con su contenido (sin `max-h`, sin `overflow`, sin `flex` que encoja) y el **backdrop** es el
+     único contenedor scrollable (`property-card-backdrop`: `overflow-y-auto overscroll-contain touch-pan-y` +
+     `-webkit-overflow-scrolling`), con la tarjeta dentro de un wrapper `min-h-full items-end sm:items-center`. Patrón
+     de modal robusto (estilo Headless UI): cuando aparecen/desaparecen botones según el estado, **nada de la
+     información disponible se contrae**; si la tarjeta no cabe, se desliza el fondo. E2E (Chromium+WebKit): el
+     backdrop scrollea, el cuerpo no tiene `overflow`/`max-h` y se llega al botón Hipotecar.
   - **No roto:** peones en español + estructura de imágenes, construir-sin-grupo, aprobación del anfitrión, alquiler
     avanzado, hipotecas/deshipotecas, estaciones/servicios, navegación entre tarjetas, inputs del lobby, privacidad
     de saldos, rent-once.

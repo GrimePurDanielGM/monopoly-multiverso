@@ -231,10 +231,10 @@ test('fase 6: regla sin-uniformidad — construir 3-0 con grupo completo y cobra
   await bCtx.close();
 });
 
-// Fase 6 (corrección UI móvil) — el cuerpo de la ficha es el ÚNICO contenedor scrollable (robusto en iPhone/iPad):
-// abriendo una calle PROPIA con monopolio, el cuerpo excede el alto del viewport (scrollHeight > clientHeight) y se
-// llega hasta el botón Hipotecar desplazándolo; las tres secciones existen y la navegación sigue funcionando.
-test('fase 6: el cuerpo de la ficha scrollea y todo el contenido es accesible (móvil)', async ({ browser }) => {
+// Fase 6 (corrección UI móvil) — la tarjeta crece con su contenido (NADA se comprime); el backdrop es el único
+// scroller (patrón robusto iOS/iPadOS). Abriendo una calle PROPIA con monopolio: las tres secciones existen, el
+// cuerpo no tiene scroll/altura máxima, se llega al botón Hipotecar y la navegación sigue funcionando.
+test('fase 6: la tarjeta no comprime contenido y todo es accesible (móvil)', async ({ browser }) => {
   test.setTimeout(240_000);
   const hostCtx = await browser.newContext();
   const host = await hostCtx.newPage();
@@ -255,11 +255,10 @@ test('fase 6: el cuerpo de la ficha scrollea y todo el contenido es accesible (m
   await host.getByRole('button', { name: 'Iniciar', exact: true }).click();
   await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
 
-  // Comprar el grupo marron completo → Ronda es propia, con monopolio (muestra acciones de construir/hipotecar).
+  // Comprar Ronda (propia) → la ficha muestra la sección Hipoteca con su botón (hipotecar no exige monopolio).
   await buyStreet(host, 'Ronda de Valencia', RONDA);
-  await buyStreet(host, 'Plaza Lavapiés', PLAZA);
 
-  // Abrir la ficha de Ronda (propia, monopolio, 0 casas).
+  // Abrir la ficha de Ronda (propia).
   await host.reload();
   await openBoard(host);
   await boardCard(host, 'Ronda de Valencia').getByRole('button', { name: 'Ver tarjeta' }).click();
@@ -270,16 +269,15 @@ test('fase 6: el cuerpo de la ficha scrollea y todo el contenido es accesible (m
   for (const testId of ['property-card-section-rents', 'property-card-section-construction', 'property-card-section-mortgage']) {
     await expect(card.locator(`[data-testid="${testId}"]`)).toBeVisible();
   }
-  // El CUERPO del modal es el único contenedor scrollable (clave para que el contenido sea accesible en
-  // iPhone/iPad): se puede llegar hasta el botón de hipotecar desplazándolo (haga o no falta scroll según
-  // el alto del dispositivo). Si el contenido no cabe, el cuerpo scrollea; si cabe, todo es visible igualmente.
-  const body = card.locator('[data-testid="property-card-body"]');
-  await expect(body).toBeVisible();
-  await expect(body).toHaveClass(/overflow-y-scroll/); // único scroller, fiable en iOS/iPadOS
+  // El BACKDROP es el único contenedor scrollable (patrón robusto iOS/iPadOS): la tarjeta crece con su
+  // contenido y nada se comprime; se llega hasta el botón de hipotecar desplazando el fondo (haga o no falta).
+  await expect(host.locator('[data-testid="property-card-backdrop"]')).toHaveClass(/overflow-y-auto/);
+  // El cuerpo de la tarjeta NO tiene scroll ni altura máxima (nada se recorta/comprime).
+  const bodyClass = await card.locator('[data-testid="property-card-body"]').getAttribute('class');
+  expect(bodyClass).not.toMatch(/overflow-y-(scroll|auto)/);
+  expect(bodyClass).not.toMatch(/max-h-/);
   await card.getByRole('button', { name: /Hipotecar/ }).scrollIntoViewIfNeeded();
   await expect(card.getByRole('button', { name: /Hipotecar/ })).toBeVisible();
-  // Las secciones NO tienen scroll anidado propio (lo que fallaba en iPad): solo el cuerpo scrollea.
-  expect(await card.locator('[data-testid="property-card-body"] .overscroll-contain').count()).toBe(0);
 
   // La navegación entre propiedades sigue operativa.
   await card.getByRole('button', { name: 'Propiedad siguiente' }).click();
