@@ -231,11 +231,11 @@ test('fase 6: regla sin-uniformidad — construir 3-0 con grupo completo y cobra
   await bCtx.close();
 });
 
-// Fase 6 (corrección UI móvil) — la ficha tiene scroll interno REAL por apartado: en el viewport móvil,
-// el apartado "Alquileres" (6 filas) excede su altura máxima y se puede desplazar (scrollHeight > clientHeight),
-// y la navegación anterior/siguiente sigue funcionando.
-test('fase 6: la ficha de propiedad tiene scroll interno por apartado en móvil', async ({ browser }) => {
-  test.setTimeout(180_000);
+// Fase 6 (corrección UI móvil) — scroll interno REAL en las TRES secciones (Alquileres, Construcción, Hipoteca):
+// abriendo la ficha de una calle PROPIA con monopolio, cada apartado (datos + botones dentro) excede su altura
+// máxima en el viewport móvil → scrollHeight > clientHeight. La navegación anterior/siguiente sigue funcionando.
+test('fase 6: scroll interno en Alquileres, Construcción e Hipoteca (móvil)', async ({ browser }) => {
+  test.setTimeout(240_000);
   const hostCtx = await browser.newContext();
   const host = await hostCtx.newPage();
   const code = await createGame(host);
@@ -255,20 +255,26 @@ test('fase 6: la ficha de propiedad tiene scroll interno por apartado en móvil'
   await host.getByRole('button', { name: 'Iniciar', exact: true }).click();
   await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
 
-  // Abrir la ficha de una calle desde el tablero de propiedades.
+  // Comprar el grupo marron completo → Ronda es propia, con monopolio (muestra acciones de construir/hipotecar).
+  await buyStreet(host, 'Ronda de Valencia', RONDA);
+  await buyStreet(host, 'Plaza Lavapiés', PLAZA);
+
+  // Abrir la ficha de Ronda (propia, monopolio, 0 casas).
+  await host.reload();
   await openBoard(host);
   await boardCard(host, 'Ronda de Valencia').getByRole('button', { name: 'Ver tarjeta' }).click();
   const card = host.getByRole('dialog', { name: /Ficha de Ronda de Valencia/ });
   await expect(card).toBeVisible({ timeout: 10_000 });
 
-  // Al menos un apartado scrollable tiene contenido que excede su altura (scroll interno real, no recorte).
-  const sectionsOverflow = await card.locator('.overscroll-contain').evaluateAll(
-    (els) => els.some((e) => e.scrollHeight > e.clientHeight + 1),
-  );
-  expect(sectionsOverflow).toBe(true);
+  // Cada apartado (rents/construction/mortgage) tiene su contenedor scrollable con contenido que excede la altura.
+  for (const testId of ['property-card-section-rents', 'property-card-section-construction', 'property-card-section-mortgage']) {
+    const body = card.locator(`[data-testid="${testId}"] .overscroll-contain`);
+    await expect(body).toBeVisible();
+    const overflows = await body.evaluate((e) => e.scrollHeight > e.clientHeight + 1);
+    expect(overflows, `${testId} debe poder desplazarse (scrollHeight > clientHeight)`).toBe(true);
+  }
   // El cuerpo del modal también es scrollable (min-h-0 + overflow-y-auto).
-  const bodyScrollable = await card.locator('.flex-1.min-h-0.overflow-y-auto').count();
-  expect(bodyScrollable).toBeGreaterThan(0);
+  expect(await card.locator('.flex-1.min-h-0.overflow-y-auto').count()).toBeGreaterThan(0);
 
   // La navegación entre propiedades sigue operativa.
   await card.getByRole('button', { name: 'Propiedad siguiente' }).click();

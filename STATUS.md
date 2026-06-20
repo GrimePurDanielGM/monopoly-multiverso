@@ -99,6 +99,14 @@
      `-webkit-overflow-scrolling:touch` y pista "Desliza para ver más" cuando hay contenido cortado; el swipe de
      anterior/siguiente solo dispara con gesto **horizontal-dominante** (`|dx|>|dy|·1.5`), priorizando el scroll
      vertical. E2E (Chromium+WebKit): `scrollHeight > clientHeight` real en el apartado y navegación intacta.
+     → **Corrección final (2026-06-21):** Alquileres scrolleaba pero Construcción/Hipoteca no. Causa: sus botones
+     vivían en una sección "Acciones" **aparte** (fuera del apartado) y, sin botones dentro, las dos secciones eran
+     demasiado cortas para superar la altura máxima. Solución: cada `CardSectionScrollable` contiene ahora TODO su
+     contenido — Construcción incluye costes + mensajes + botones de construir/vender; Hipoteca incluye valores +
+     estado + avisos + botones hipotecar/deshipotecar (se elimina la sección "Acciones" suelta). Las dos cortas usan
+     `max-h-[120px] sm:max-h-[220px]` y `overflow-y-scroll` (robusto en iOS); testids `property-card-section-rents/
+     construction/mortgage`. E2E (Chromium+WebKit) verifica `scrollHeight > clientHeight` en **las tres** secciones
+     abriendo una calle propia con monopolio.
   - **No roto:** peones en español + estructura de imágenes, construir-sin-grupo, aprobación del anfitrión, alquiler
     avanzado, hipotecas/deshipotecas, estaciones/servicios, navegación entre tarjetas, inputs del lobby, privacidad
     de saldos, rent-once.

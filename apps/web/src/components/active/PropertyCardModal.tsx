@@ -56,9 +56,12 @@ function Cell({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** Apartado de la ficha con scroll interno táctil: si el contenido no cabe, se desliza con el dedo (iPhone)
- *  sin cerrar la tarjeta. Muestra una pista "Desliza para ver más" cuando hay contenido cortado. */
-function CardSectionScrollable({ title, children, bodyClassName = '' }: { title: string; children: ReactNode; bodyClassName?: string }) {
+/** Apartado de la ficha con scroll interno táctil: TODO el contenido del apartado (datos, mensajes y botones)
+ *  va dentro del contenedor scrollable, con altura máxima REAL en px. Si no cabe, se desliza con el dedo en
+ *  iPhone (overflow-y-scroll + touch-pan-y + -webkit-overflow-scrolling) sin cerrar la tarjeta. */
+function CardSectionScrollable({
+  title, children, bodyClassName = '', testId, maxHeight = 'max-h-[180px] sm:max-h-[240px]',
+}: { title: string; children: ReactNode; bodyClassName?: string; testId?: string; maxHeight?: string }) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const [overflowing, setOverflowing] = useState(false);
   useEffect(() => {
@@ -72,12 +75,12 @@ function CardSectionScrollable({ title, children, bodyClassName = '' }: { title:
     return () => ro.disconnect();
   });
   return (
-    <section className="overflow-hidden rounded-lg border border-slate-700">
+    <section data-testid={testId} className="overflow-hidden rounded-lg border border-slate-700">
       <p className="border-b border-slate-700 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-300">{title}</p>
       <div
         ref={bodyRef}
-        // El scroll va en el contenedor del CONTENIDO largo, con altura máxima real (móvil/desktop).
-        className={`max-h-[180px] touch-pan-y overflow-y-auto overflow-x-hidden overscroll-contain pr-1 sm:max-h-[240px] ${bodyClassName}`}
+        // El scroll va en el contenedor del CONTENIDO largo (datos + mensajes + botones), con altura máxima real.
+        className={`min-h-0 ${maxHeight} touch-pan-y overflow-y-scroll overflow-x-hidden overscroll-contain ${bodyClassName}`}
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {children}
@@ -219,12 +222,12 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
 
           {/* Alquileres — solo lo que aplica al tipo. Cada apartado con scroll interno táctil. */}
           {isStreetKind(p.kind) && (
-            <CardSectionScrollable title="Alquileres" bodyClassName="divide-y divide-slate-800">
+            <CardSectionScrollable title="Alquileres" testId="property-card-section-rents" bodyClassName="divide-y divide-slate-800">
               {rentRows.map(([label, value]) => <Row key={label} label={label} value={money(value)} />)}
             </CardSectionScrollable>
           )}
           {isStationKind(p.kind) && (
-            <CardSectionScrollable title="Escala de estaciones/transportes">
+            <CardSectionScrollable title="Escala de estaciones/transportes" testId="property-card-section-rents">
               <ul className="grid grid-cols-2 gap-x-4 gap-y-1 px-3 py-2 text-sm tabular-nums text-slate-200">
                 <li>1 → 25 €</li><li>2 → 50 €</li><li>3 → 100 €</li><li>4 → 200 €</li>
                 <li>5 → 300 €</li><li>6 → 400 €</li><li>7 → 500 €</li><li>8 → 600 €</li>
@@ -233,7 +236,7 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
             </CardSectionScrollable>
           )}
           {isUtilityKind(p.kind) && (
-            <CardSectionScrollable title="Escala de servicios">
+            <CardSectionScrollable title="Escala de servicios" testId="property-card-section-rents">
               <ul className="grid grid-cols-2 gap-x-4 gap-y-1 px-3 py-2 text-sm tabular-nums text-slate-200">
                 <li>1 servicio: tirada ×4</li><li>2 servicios: tirada ×10</li>
                 <li>3 servicios: tirada ×14</li><li>4 servicios: tirada ×20</li>
@@ -242,59 +245,64 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
             </CardSectionScrollable>
           )}
 
-          {/* Construcción — solo calles. */}
+          {/* Construcción — solo calles. TODO dentro del scrollable: costes + mensajes + botones de construir/vender. */}
           {isStreetKind(p.kind) && (
-            <CardSectionScrollable title="Construcción" bodyClassName="divide-y divide-slate-800">
-              <Row label="Coste por casa" value={money(p.house_cost)} />
-              <Row label="Coste del hotel" value={money(p.hotel_cost)} />
-            </CardSectionScrollable>
-          )}
-
-          {/* Hipoteca — donde aplica. */}
-          {showMortgage && (
-            <CardSectionScrollable title="Hipoteca" bodyClassName="divide-y divide-slate-800">
-              <Row label="Valor de hipoteca" value={money(p.mortgage_value)} />
-              <Row label="Deshipotecar (hipoteca + 10%)" value={money(p.unmortgage_cost)} />
-            </CardSectionScrollable>
-          )}
-
-          {/* Acciones del propietario. Construir/vender → solicitud; hipoteca/deshipoteca → directa. Ancho completo. */}
-          {mine && (
-            <div className="flex flex-col gap-2 border-t border-slate-700 pt-3">
-              <p className="text-xs font-semibold text-slate-300">Acciones</p>
-              {isStreetKind(p.kind) && reason && <p className="text-[11px] text-amber-300/90">{reason}</p>}
-              <div className="flex max-h-[180px] touch-pan-y flex-col gap-2 overflow-y-auto overflow-x-hidden overscroll-contain sm:max-h-[240px]" style={{ WebkitOverflowScrolling: 'touch' }}>
-              {isStreetKind(p.kind) && ([
-                ['build_house', 'Solicitar construir casa', canBuildHouse(p, snap), actions.onBuildHouse, 'bg-orange-600', money(p.house_cost)],
-                ['build_hotel', 'Solicitar construir hotel', canBuildHotel(p, snap), actions.onBuildHotel, 'bg-purple-600', money(p.hotel_cost)],
-                ['sell_house', 'Solicitar vender casa', canSellHouse(p, snap), actions.onSellHouse, 'border border-slate-600', null],
-                ['sell_hotel', 'Solicitar vender hotel', canSellHotel(p, snap), actions.onSellHotel, 'border border-slate-600', null],
-              ] as const).map(([action, label, can, cb, cls, amount]) =>
-                pendingAction(action) ? (
-                  <p key={action} role="note" className="rounded-lg bg-slate-800 px-3 py-2 text-[11px] text-slate-300">
-                    {label.replace('Solicitar ', '')}: solicitud pendiente de aprobación.
-                  </p>
-                ) : can ? (
-                  <button key={action} type="button" disabled={busy} onClick={() => cb?.(p)}
-                    className={`min-h-[44px] w-full rounded-lg px-3 text-sm font-semibold disabled:opacity-40 ${cls}`}>
-                    {label}{amount ? ` (${amount})` : ''}
-                  </button>
-                ) : null,
-              )}
-              {canMortgage(p, snap) && (
-                <button type="button" disabled={busy} onClick={() => actions.onMortgage?.(p)}
-                  className="min-h-[44px] w-full rounded-lg border border-amber-700 px-3 text-sm font-semibold text-amber-200 disabled:opacity-40">
-                  Hipotecar ({money(p.mortgage_value)})
-                </button>
-              )}
-              {canUnmortgage(p, snap) && (
-                <button type="button" disabled={busy} onClick={() => actions.onUnmortgage?.(p)}
-                  className="min-h-[44px] w-full rounded-lg border border-emerald-700 px-3 text-sm font-semibold text-emerald-200 disabled:opacity-40">
-                  Deshipotecar ({money(p.unmortgage_cost)})
-                </button>
-              )}
+            <CardSectionScrollable title="Construcción" testId="property-card-section-construction" maxHeight="max-h-[120px] sm:max-h-[220px]">
+              <div className="divide-y divide-slate-800">
+                <Row label="Coste por casa" value={money(p.house_cost)} />
+                <Row label="Coste del hotel" value={money(p.hotel_cost)} />
               </div>
-            </div>
+              {mine && (
+                <div className="flex flex-col gap-2 border-t border-slate-700 p-3">
+                  {reason && <p className="text-[11px] text-amber-300/90">{reason}</p>}
+                  {([
+                    ['build_house', 'Solicitar construir casa', canBuildHouse(p, snap), actions.onBuildHouse, 'bg-orange-600', money(p.house_cost)],
+                    ['build_hotel', 'Solicitar construir hotel', canBuildHotel(p, snap), actions.onBuildHotel, 'bg-purple-600', money(p.hotel_cost)],
+                    ['sell_house', 'Solicitar vender casa', canSellHouse(p, snap), actions.onSellHouse, 'border border-slate-600', null],
+                    ['sell_hotel', 'Solicitar vender hotel', canSellHotel(p, snap), actions.onSellHotel, 'border border-slate-600', null],
+                  ] as const).map(([action, label, can, cb, cls, amount]) =>
+                    pendingAction(action) ? (
+                      <p key={action} role="note" className="rounded-lg bg-slate-800 px-3 py-2 text-[11px] text-slate-300">
+                        {label.replace('Solicitar ', '')}: solicitud pendiente de aprobación.
+                      </p>
+                    ) : can ? (
+                      <button key={action} type="button" disabled={busy} onClick={() => cb?.(p)}
+                        className={`min-h-[44px] w-full rounded-lg px-3 text-sm font-semibold disabled:opacity-40 ${cls}`}>
+                        {label}{amount ? ` (${amount})` : ''}
+                      </button>
+                    ) : null,
+                  )}
+                </div>
+              )}
+            </CardSectionScrollable>
+          )}
+
+          {/* Hipoteca — donde aplica. TODO dentro del scrollable: valores + avisos + botones hipotecar/deshipotecar. */}
+          {showMortgage && (
+            <CardSectionScrollable title="Hipoteca" testId="property-card-section-mortgage" maxHeight="max-h-[120px] sm:max-h-[220px]">
+              <div className="divide-y divide-slate-800">
+                <Row label="Valor de hipoteca" value={money(p.mortgage_value)} />
+                <Row label="Deshipotecar (hipoteca + 10%)" value={money(p.unmortgage_cost)} />
+              </div>
+              <div className="flex flex-col gap-2 border-t border-slate-700 p-3">
+                <p className="text-[11px] text-slate-400">{p.mortgaged ? 'Estado: hipotecada — no cobra alquiler.' : 'Estado: no hipotecada.'}</p>
+                {mine && canMortgage(p, snap) && (
+                  <button type="button" disabled={busy} onClick={() => actions.onMortgage?.(p)}
+                    className="min-h-[44px] w-full rounded-lg border border-amber-700 px-3 text-sm font-semibold text-amber-200 disabled:opacity-40">
+                    Hipotecar ({money(p.mortgage_value)})
+                  </button>
+                )}
+                {mine && canUnmortgage(p, snap) && (
+                  <button type="button" disabled={busy} onClick={() => actions.onUnmortgage?.(p)}
+                    className="min-h-[44px] w-full rounded-lg border border-emerald-700 px-3 text-sm font-semibold text-emerald-200 disabled:opacity-40">
+                    Deshipotecar ({money(p.unmortgage_cost)})
+                  </button>
+                )}
+                {mine && isStreetKind(p.kind) && !p.mortgaged && ((p.houses ?? 0) > 0 || p.has_hotel) && (
+                  <p className="text-[11px] text-amber-300/90">No puedes hipotecar con construcciones en la propiedad: vende casas/hotel primero.</p>
+                )}
+              </div>
+            </CardSectionScrollable>
           )}
         </div>
 
