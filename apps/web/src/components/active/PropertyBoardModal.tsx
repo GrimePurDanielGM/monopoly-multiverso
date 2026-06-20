@@ -207,7 +207,7 @@ export function PropertyBoardModal({
         </footer>
       </div>
 
-      {card && <PropertyCardModal property={card} snap={snap} busy={busy} actions={buildingActions ?? {}} onClose={() => setCard(null)} />}
+      {card && <PropertyCardModal property={card} snap={snap} busy={busy} actions={buildingActions ?? {}} navScope="all" onClose={() => setCard(null)} />}
     </div>
   );
 }

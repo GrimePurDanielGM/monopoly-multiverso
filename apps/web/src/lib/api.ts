@@ -26,8 +26,13 @@ export interface CreateGameResult {
 
 export interface PublicToken {
   id: string;
+  /** Nombre del peón en español (único texto que se muestra al usuario). */
   label: string;
+  /** Identificador interno de icono (slug); NO se muestra como texto. */
   icon: string;
+  /** Imagen propia del peón (efecto 3D, futuro). Nula hasta que se carguen las fotos reales. */
+  image_url?: string | null;
+  image_alt?: string | null;
 }
 
 export interface PublicPlayer {
@@ -72,7 +77,7 @@ export async function listActiveTokens(catalogVersion = 0): Promise<ApiResult<Pu
   if (!supabase) return fail('UNCONFIGURED');
   const { data, error } = await supabase
     .from('token_catalog')
-    .select('id,label,icon')
+    .select('id,label,icon,image_url,image_alt')
     .eq('active', true)
     .eq('catalog_version', catalogVersion)
     .order('sort_order', { ascending: true });

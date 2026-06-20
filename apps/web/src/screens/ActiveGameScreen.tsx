@@ -46,6 +46,7 @@ import type { BoardKey } from '../lib/activeSnapshot';
 import { PurchaseRequestsTray, LeaveRequestsTray, BankruptcyRequestsTray, BuildingRequestsTray } from '../components/active/HostRequestTrays';
 import { BankruptcyDialog } from '../components/active/BankruptcyDialog';
 import { formatMoney, ownerName } from '../lib/activeSelectors';
+import { tokenEmoji } from '../lib/tokenVisual';
 import { useReceiveMoney } from '../hooks/useReceiveMoney';
 import { rememberGame } from '../lib/gameHistory';
 import { isCashSoundEnabled, setCashSoundEnabled, primeCashSound } from '../lib/cashSound';
@@ -131,7 +132,7 @@ export function ActiveGameScreen({
   useEffect(() => {
     let active = true;
     void listActiveTokens().then((r) => {
-      if (active && r.ok) setIcons(Object.fromEntries(r.data.map((t) => [t.id, t.icon])));
+      if (active && r.ok) setIcons(Object.fromEntries(r.data.map((t) => [t.id, tokenEmoji(t.icon)])));
     });
     return () => { active = false; };
   }, []);

@@ -1,6 +1,6 @@
 # Estado del proyecto — lista viva
 
-## Fase 6 — Casas, hoteles e hipotecas · **`Fase 6: COMPLETADA` (pendiente validación manual)** · migraciones `0052`–`0058`
+## Fase 6 — Casas, hoteles e hipotecas · **`Fase 6: COMPLETADA` (pendiente validación manual)** · migraciones `0052`–`0059`
 - **Alcance:** solo CALLES de color (no estaciones/servicios/especiales). Grupos de color por TABLERO (no se combinan
   entre tableros, a diferencia de servicios/estaciones).
 - **Modelo (`0052`):** `game_property_state(houses 0–4, has_hotel, mortgaged)` por propiedad (deny-all, solo vía RPC);
@@ -54,6 +54,33 @@
     + `building_requests_phase6`, `config_stock_phase6`) tras `db reset`; E2E Chromium+WebKit (**44**, `buildings`
     adaptado al flujo de solicitud); sin secretos ni ids internos en `dist`. Aplicado a dev (`0056`,`0057`,`0058`).
     **No se avanza a Fase 7.**
+
+- **Pulido Fase 6 (2.ª ronda, 2026-06-20) — UX + corrección funcional (migración `0059`):**
+  1. **Fichas (peones) solo en español:** el lobby y las listas de jugadores muestran únicamente el nombre en
+     español (`label`); el `icon` (slug interno en inglés) ya no se pinta como texto — se traduce a emoji
+     (`tokenVisual.ts` + `TokenVisual`). `0059` añade columnas NULLABLE `image_url`/`image_alt` a `token_catalog`
+     (estructura lista para fotos 3D futuras; sin imágenes inventadas).
+  2. **Construir sin grupo completo ahora SÍ funciona en la UI:** los selectores (`canBuildHouse`/`canBuildHotel`/
+     `buildBlockReason`) usan `buildEligible` = monopolio **OR** (`allow_build_without_monopoly` y es mía), en vez de
+     exigir `monopoly===true`. El backend ya lo permitía (revalida en la solicitud y al aprobar); el bug era de la
+     ficha. Alquiler intacto (base / casas / doble por monopolio).
+  3. **Ficha por TIPO de propiedad:** calle → alquileres base/1-4/hotel + construcción + acciones; estación/transporte
+     → escala 1→25…8→600 + "se combinan entre ambos tableros" (sin casas/hotel/construcción); servicio → escala
+     ×4/×10/×14/×20 + "se combinan…" (sin casas/hotel/construcción). Hipoteca solo donde aplica.
+  4. **Layout móvil de la ficha:** secciones con más aire, etiquetas que envuelven, botones a ancho completo (44px),
+     sin recortes ni overflow horizontal en iPhone.
+  5. **Navegación ← Anterior / Siguiente → en la ficha** (y swipe), según el contexto (`navScope`: mis propiedades /
+     tablero de propiedades / tablero visual), orden tablero+`sort_order`, con datos **frescos** del snapshot al
+     cambiar (estado/construcción/hipoteca/botones/solicitud/alquiler). Refuerza el refresco sin cerrar.
+  6. **Inputs numéricos del lobby con `[-] valor [+]`** (`NumberStepper`): mínimo de jugadores, dinero inicial, casas,
+     hoteles. Permite escribir a mano y estados temporales incompletos; valida al guardar (no bloquea al teclear);
+     mínimos 32 casas / 12 hoteles.
+  - **No roto:** alquiler avanzado, construcción uniforme y con aprobación, sin-monopolio, stock, hipoteca/deshipoteca,
+    refresco de ficha, estaciones/servicios combinados, rent-once, dados físicos/virtuales, cárcel, parking, cartas,
+    privacidad de saldos.
+  - **Validación:** `pnpm typecheck/lint/test` (**349** unit) `build` verdes; SQL Fases 1–6 (**54 suites, 0 fallos**;
+    `config_stock_phase6` amplía con uniformidad-solo-poseídas) tras `db reset`; E2E Chromium+WebKit (**45**); sin
+    secretos ni ids internos en `dist`. Aplicado a dev (`0059`). **No se avanza a Fase 7.**
 
 ## Fase 5 — Casillas especiales · **`Fase 5: COMPLETADA` (pendiente validación manual)**
 - **Corrección 4 (2026-06-20) — estaciones acumulativas + doble pago + selector de dados (`0049`/`0050`/`0051`):**

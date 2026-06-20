@@ -5,6 +5,7 @@ import { createGame, listActiveTokens, type PublicToken } from '../lib/api';
 import { ensureAnonSession } from '../lib/session';
 import { isValidPin, PIN_LENGTH } from '../lib/pin';
 import { isCreateReady } from '../lib/create';
+import { TokenVisual } from '../components/TokenVisual';
 
 const MIN_PLAYERS = 6;
 const MAX_PLAYERS = 16;
@@ -120,9 +121,7 @@ export function CreateGameScreen() {
                     selected ? 'border-indigo-400 bg-indigo-950' : 'border-slate-700 active:bg-slate-800'
                   }`}
                 >
-                  <span aria-hidden className="text-2xl leading-none">
-                    {t.icon}
-                  </span>
+                  <TokenVisual token={t} />
                   <span className="truncate text-[10px] text-slate-400">{t.label}</span>
                 </button>
               );

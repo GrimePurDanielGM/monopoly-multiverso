@@ -7,6 +7,7 @@ import { normalizeCode } from '../lib/codes';
 import { useRequestStore } from '../store/request';
 import { useRequestPolling } from '../hooks/useRequestPolling';
 import { RecoveryRequestStatus } from '../components/RecoveryRequestStatus';
+import { TokenVisual } from '../components/TokenVisual';
 
 /** Solicitar entrar como NUEVO jugador en una partida activa (/sala/:code/entrar).
  *  Flujo distinto de recuperación de identidad y de reentrada de expulsados. */
@@ -90,7 +91,7 @@ export function LateJoinScreen() {
                   <button key={t.id} type="button" role="radio" aria-checked={sel} aria-label={t.label}
                     onClick={() => setToken(t.id)}
                     className={`flex flex-col items-center gap-1 rounded-lg border p-2 ${sel ? 'border-indigo-400 bg-indigo-950' : 'border-slate-700'}`}>
-                    <span aria-hidden className="text-2xl leading-none">{t.icon}</span>
+                    <TokenVisual token={t} />
                     <span className="truncate text-[10px] text-slate-400">{t.label}</span>
                   </button>
                 );

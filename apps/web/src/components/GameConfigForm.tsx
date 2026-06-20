@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { configErrors } from '../lib/hostConfig';
+import { NumberStepper } from './NumberStepper';
 
 export type DiceModeOption = 'virtual_only' | 'physical_allowed' | 'physical_only';
 
@@ -30,11 +31,6 @@ interface Props {
   busy: boolean;
   onSubmit: (patch: ConfigPatch) => void;
 }
-
-const numField = (v: string, fallback: number): number => {
-  const n = parseInt(v, 10);
-  return Number.isNaN(n) ? fallback : n;
-};
 
 /** Edición de la configuración del lobby (solo whitelist de update_config). */
 export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, allowLateJoin, diceMode, housesAvailable, hotelsAvailable, allowBuildWithoutMonopoly, currentPlayers, busy, onSubmit }: Props) {
@@ -66,19 +62,19 @@ export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, all
         <input value={n} onChange={(e) => setN(e.target.value)} maxLength={40} className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base" />
       </label>
       <div className="grid grid-cols-2 gap-2">
-        <label className="flex flex-col gap-1 text-sm">
+        <div className="flex flex-col gap-1 text-sm">
           <span className="text-slate-300">Mínimo</span>
-          <input type="number" inputMode="numeric" min={2} max={16} value={min} onChange={(e) => setMin(numField(e.target.value, min))} className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base" />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
+          <NumberStepper ariaLabel="Mínimo" value={min} onChange={setMin} min={2} max={16} />
+        </div>
+        <div className="flex flex-col gap-1 text-sm">
           <span className="text-slate-300">Máximo</span>
-          <input type="number" inputMode="numeric" min={2} max={16} value={max} onChange={(e) => setMax(numField(e.target.value, max))} className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base" />
-        </label>
+          <NumberStepper ariaLabel="Máximo" value={max} onChange={setMax} min={2} max={16} />
+        </div>
       </div>
-      <label className="flex flex-col gap-1 text-sm">
+      <div className="flex flex-col gap-1 text-sm">
         <span className="text-slate-300">Dinero inicial</span>
-        <input type="number" inputMode="numeric" min={1} value={money} onChange={(e) => setMoney(numField(e.target.value, money))} className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base" />
-      </label>
+        <NumberStepper ariaLabel="Dinero inicial" value={money} onChange={setMoney} min={1} step={100} />
+      </div>
 
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-slate-300">Configuración de dados</span>
@@ -91,14 +87,14 @@ export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, all
       </label>
 
       <div className="grid grid-cols-2 gap-2">
-        <label className="flex flex-col gap-1 text-sm">
+        <div className="flex flex-col gap-1 text-sm">
           <span className="text-slate-300">Casas disponibles</span>
-          <input type="number" inputMode="numeric" min={32} value={houses} onChange={(e) => setHouses(numField(e.target.value, houses))} className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base" />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
+          <NumberStepper ariaLabel="Casas disponibles" value={houses} onChange={setHouses} min={32} />
+        </div>
+        <div className="flex flex-col gap-1 text-sm">
           <span className="text-slate-300">Hoteles disponibles</span>
-          <input type="number" inputMode="numeric" min={12} value={hotels} onChange={(e) => setHotels(numField(e.target.value, hotels))} className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base" />
-        </label>
+          <NumberStepper ariaLabel="Hoteles disponibles" value={hotels} onChange={setHotels} min={12} />
+        </div>
       </div>
       <p className="text-xs text-slate-500">El mínimo son 32 casas y 12 hoteles. Puedes aumentar el stock si la partida usa dos tableros.</p>
       {stockErr && <p className="text-xs text-amber-300">{stockErr}</p>}

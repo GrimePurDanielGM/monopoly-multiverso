@@ -45,14 +45,38 @@ describe('PropertyCardModal', () => {
     expect(screen.queryByRole('button', { name: /construir|edificar|hipotecar/i })).toBeNull();
   });
 
-  it('campos ausentes se muestran como "Pendiente de confirmar"', () => {
+  it('campos ausentes (en una calle) se muestran como "Pendiente de confirmar"', () => {
+    const incomplete: ActiveProperty = {
+      ...street, rent_1: null, rent_2: null, rent_3: null, rent_4: null, rent_hotel: null, house_cost: null, hotel_cost: null,
+    };
+    render(<PropertyCardModal property={incomplete} snap={snap()} onClose={vi.fn()} />);
+    expect(screen.getAllByText('Pendiente de confirmar').length).toBeGreaterThan(0);
+  });
+
+  it('una utility (servicio) NO muestra casas/hotel/construcción; muestra la escala ×4..×20', () => {
     const utility: ActiveProperty = {
       ...street, property_ref: 'cl-cia-aguas', name: 'Compañía de Aguas', kind: 'utility', group_key: 'servicios',
       base_rent: 0, rent_1: null, rent_2: null, rent_3: null, rent_4: null, rent_hotel: null, house_cost: null, hotel_cost: null,
       mortgage_value: 75, unmortgage_cost: 83,
     };
-    render(<PropertyCardModal property={utility} snap={snap()} onClose={vi.fn()} />);
-    expect(screen.getAllByText('Pendiente de confirmar').length).toBeGreaterThan(0);
+    const dialog = render(<PropertyCardModal property={utility} snap={snap()} onClose={vi.fn()} />).container;
+    expect(dialog).not.toHaveTextContent('Con 1 casa');
+    expect(dialog).not.toHaveTextContent('Coste por casa');
+    expect(dialog).toHaveTextContent('2 servicios: tirada ×10');
+    expect(dialog).toHaveTextContent('Los servicios se combinan entre ambos tableros');
+    expect(dialog).toHaveTextContent('Valor de hipoteca'); // hipoteca se mantiene
+  });
+
+  it('una estación NO muestra casas/hotel; muestra la escala 1→25..8→600', () => {
+    const station: ActiveProperty = {
+      ...street, property_ref: 'cl-estacion-norte', name: 'Estación del Norte', kind: 'station', group_key: 'estaciones',
+      rent_1: null, rent_2: null, rent_3: null, rent_4: null, rent_hotel: null, house_cost: null, hotel_cost: null,
+    };
+    const dialog = render(<PropertyCardModal property={station} snap={snap()} onClose={vi.fn()} />).container;
+    expect(dialog).not.toHaveTextContent('Con 1 casa');
+    expect(dialog).not.toHaveTextContent('Coste por casa');
+    expect(dialog).toHaveTextContent('4 → 200 €');
+    expect(dialog).toHaveTextContent('Las estaciones y transportes se combinan entre ambos tableros');
   });
 
   it('estado refleja al propietario', () => {

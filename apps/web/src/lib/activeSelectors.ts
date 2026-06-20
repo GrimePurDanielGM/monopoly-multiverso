@@ -274,14 +274,20 @@ export function isMine(p: ActiveProperty, snap: ActiveSnapshot): boolean {
   return p.owner_ref !== null && p.owner_ref === snap.me.public_ref;
 }
 const isStreet = (p: ActiveProperty) => p.kind === 'street';
-/** ¿Puedo construir una casa? (mía, calle, monopolio, no hipotecada, <4 casas, sin hotel, saldo). */
+/** ¿Es elegible para construir? Monopolio del grupo, o regla "sin monopolio" activada y la propiedad es mía.
+ *  (El backend valida igual: `_p6_build_eligible` = monopolio OR allow_build_without_monopoly.) */
+export function buildEligible(p: ActiveProperty, snap: ActiveSnapshot): boolean {
+  if (p.monopoly === true) return true;
+  return snap.game.config.allow_build_without_monopoly === true && isMine(p, snap);
+}
+/** ¿Puedo construir una casa? (mía, calle, elegible, no hipotecada, <4 casas, sin hotel, saldo). */
 export function canBuildHouse(p: ActiveProperty, snap: ActiveSnapshot): boolean {
-  return isMine(p, snap) && isStreet(p) && !p.mortgaged && p.monopoly === true && !p.has_hotel
+  return isMine(p, snap) && isStreet(p) && !p.mortgaged && buildEligible(p, snap) && !p.has_hotel
     && (p.houses ?? 0) < 4 && p.house_cost != null && snap.me.balance >= p.house_cost;
 }
-/** ¿Puedo construir un hotel? (mía, calle, monopolio, 4 casas, sin hotel, saldo). */
+/** ¿Puedo construir un hotel? (mía, calle, elegible, 4 casas, sin hotel, saldo). */
 export function canBuildHotel(p: ActiveProperty, snap: ActiveSnapshot): boolean {
-  return isMine(p, snap) && isStreet(p) && !p.mortgaged && p.monopoly === true && !p.has_hotel
+  return isMine(p, snap) && isStreet(p) && !p.mortgaged && buildEligible(p, snap) && !p.has_hotel
     && (p.houses ?? 0) === 4 && p.hotel_cost != null && snap.me.balance >= p.hotel_cost;
 }
 /** ¿Puedo vender una casa? (mía, calle, con casas y sin hotel). */
@@ -304,7 +310,8 @@ export function canUnmortgage(p: ActiveProperty, snap: ActiveSnapshot): boolean 
 export function buildBlockReason(p: ActiveProperty, snap: ActiveSnapshot): string | null {
   if (!isMine(p, snap) || !isStreet(p)) return null;
   if (p.mortgaged) return 'Propiedad hipotecada. Deshipoteca para volver a construir.';
-  if (p.monopoly !== true) return 'Necesitas tener el grupo de color completo para construir.';
+  // Con la regla "construir sin grupo completo" activada, no se exige monopolio.
+  if (!buildEligible(p, snap)) return 'Necesitas tener el grupo de color completo para construir.';
   return null;
 }
 

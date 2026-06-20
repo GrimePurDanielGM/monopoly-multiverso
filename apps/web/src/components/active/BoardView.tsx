@@ -230,7 +230,7 @@ export function BoardView({
         </footer>
       </div>
 
-      {card && <PropertyCardModal property={card} snap={snap} busy={busy} actions={buildingActions ?? {}} onClose={() => setCard(null)} />}
+      {card && <PropertyCardModal property={card} snap={snap} busy={busy} actions={buildingActions ?? {}} navScope={`board:${card.board_key}`} onClose={() => setCard(null)} />}
     </div>
   );
 }

@@ -16,6 +16,7 @@ import { ActiveGameScreen } from './ActiveGameScreen';
 import { ensureAnonSession } from '../lib/session';
 import { rememberGame, statusFromLobby } from '../lib/gameHistory';
 import type { LobbySnapshot } from '../lib/snapshot';
+import { tokenEmoji } from '../lib/tokenVisual';
 import { normalizeCode } from '../lib/codes';
 import { useLobbyStore } from '../store/lobby';
 import { useRealtimeStore } from '../store/realtime';
@@ -330,7 +331,7 @@ export function LobbyScreen() {
             >
               <PresenceDot status={presence} />
               <span aria-hidden className="text-2xl leading-none">
-                {tk ? tk.icon : '·'}
+                {tk ? tokenEmoji(tk.icon) : '·'}
               </span>
               <span className="flex-1 truncate text-sm">
                 {p.name}

@@ -100,7 +100,7 @@ export function PropertiesSummary({
         </div>
       )}
 
-      {card && <PropertyCardModal property={card} snap={snap} busy={busy} actions={buildingActions ?? {}} onClose={() => setCard(null)} />}
+      {card && <PropertyCardModal property={card} snap={snap} busy={busy} actions={buildingActions ?? {}} navScope="mine" onClose={() => setCard(null)} />}
     </section>
   );
 }

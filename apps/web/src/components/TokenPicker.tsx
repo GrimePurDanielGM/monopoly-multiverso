@@ -1,4 +1,5 @@
 import type { PublicToken } from '../lib/api';
+import { TokenVisual } from './TokenVisual';
 
 interface TokenPickerProps {
   tokens: readonly PublicToken[];
@@ -29,9 +30,7 @@ export function TokenPicker({ tokens, takenIds, selectedId, disabled = false, on
               selected ? 'border-indigo-400 bg-indigo-950' : 'border-slate-700 active:bg-slate-800'
             }`}
           >
-            <span aria-hidden className="text-2xl leading-none">
-              {t.icon}
-            </span>
+            <TokenVisual token={t} />
             <span className="truncate text-[10px] text-slate-400">{t.label}</span>
             {takenByOther && <span className="text-[9px] text-rose-400">ocupada</span>}
           </button>

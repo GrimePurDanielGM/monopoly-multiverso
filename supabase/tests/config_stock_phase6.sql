@@ -23,6 +23,8 @@ declare rref text; r jsonb; begin
   perform pg_temp._as_user(host_uid); r := resolve_building_request(rref, true, pg_temp._ver(gid));
   perform pg_temp._as_admin(); return r;
 end $f$;
+create or replace function pg_temp._houses(gid uuid, prop text) returns int language sql security definer as $f$
+  select coalesce((select houses from public.game_property_state where game_id=gid and property_ref=prop),0) $f$;
 
 -- _build(houses, hotels, allow_no_mono): crea una partida con stock y regla configurados antes de iniciar.
 create or replace function pg_temp._build(p_houses int, p_hotels int, p_nomono boolean) returns void language plpgsql as $f$
@@ -108,6 +110,26 @@ do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; href text:=pg_temp._ctx('host
   update public.game_runtime set houses_available=houses_available+1, landing_seq=landing_seq+1 where game_id=gid;
   perform pg_temp._as_user(p1u); res := pay_rent(gid,'cl-ronda-valencia',gen_random_uuid(),pg_temp._ver(gid)); perform pg_temp._as_admin();
   perform pg_temp._rec('C6) monopolio sin casas cobra doble (base 2 → 4)', (res->>'amount')='4');
+end $$;
+
+-- C7) uniformidad SOLO entre las propiedades del grupo que el jugador POSEE (regla on).
+-- celeste (classic) tiene 3 calles; el host posee 2 (cuatro-caminos, reina-victoria); la 3.ª (bravo-murillo) no.
+do $$ declare gid uuid; href text; host text; ok_uneven boolean:=false; begin
+  perform pg_temp._build(32, 12, true); gid:=pg_temp._ctx('gid')::uuid; href:=pg_temp._ctx('host_ref'); host:=pg_temp._ctx('host_uid');
+  perform pg_temp._as_admin();
+  perform pg_temp._own(gid,'cl-cuatro-caminos',href); perform pg_temp._own(gid,'cl-reina-victoria',href);
+  update public.player_balances set balance=100000 where game_id=gid;
+  -- 1) construir en cuatro-caminos 0→1 (uniforme: ambas poseídas a 0).
+  perform pg_temp._bldreq(gid, host, host, 'cl-cuatro-caminos');
+  -- 2) volver a construir en cuatro-caminos 1→2 debe fallar (reina-victoria sigue a 0); bravo-murillo (no poseída) se ignora.
+  begin perform pg_temp._bldreq(gid, host, host, 'cl-cuatro-caminos'); exception when others then ok_uneven:=(sqlerrm='UNEVEN_BUILDING'); end;
+  perform pg_temp._as_admin();
+  -- 3) nivelar reina-victoria 0→1 y 4) ahora sí cuatro-caminos 1→2.
+  perform pg_temp._bldreq(gid, host, host, 'cl-reina-victoria');
+  perform pg_temp._bldreq(gid, host, host, 'cl-cuatro-caminos');
+  perform pg_temp._rec('C7) uniformidad solo entre poseídas (2 de 3): bloquea desnivel e ignora la no poseída',
+    ok_uneven and pg_temp._houses(gid,'cl-cuatro-caminos')=2 and pg_temp._houses(gid,'cl-reina-victoria')=1
+    and pg_temp._houses(gid,'cl-bravo-murillo')=0);
 end $$;
 
 do $$ declare nfail int; begin select count(*) into nfail from _t where not ok;
