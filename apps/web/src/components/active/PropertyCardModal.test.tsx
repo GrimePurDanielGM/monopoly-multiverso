@@ -91,4 +91,17 @@ describe('PropertyCardModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('los apartados tienen scroll interno táctil (overflow-y-auto, sin overflow horizontal)', () => {
+    const { container } = render(<PropertyCardModal property={street} snap={snap()} onClose={vi.fn()} />);
+    const scrollables = container.querySelectorAll('.overscroll-contain'); // apartados internos (no el cuerpo del modal)
+    expect(scrollables.length).toBeGreaterThanOrEqual(2); // alquileres + construcción + hipoteca…
+    scrollables.forEach((el) => {
+      expect(el.className).toContain('overflow-y-auto');    // scroll vertical interno
+      expect(el.className).toContain('overflow-x-hidden');  // sin overflow horizontal
+      expect(el.className).toMatch(/max-h-\[/);             // altura máxima razonable
+    });
+    // El botón Cerrar y la lectura del nombre siguen accesibles.
+    expect(screen.getByRole('button', { name: 'Cerrar' })).toBeInTheDocument();
+  });
 });

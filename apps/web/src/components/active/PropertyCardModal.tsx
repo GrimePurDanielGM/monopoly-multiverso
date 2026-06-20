@@ -121,6 +121,10 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
     ['Con hotel', p.rent_hotel],
   ];
 
+  // Cada apartado se desliza con el dedo si su contenido no cabe (sin recortes ni overflow horizontal en iPhone).
+  const scrollSection = 'max-h-[40vh] overflow-y-auto overflow-x-hidden overscroll-contain';
+  const scrollStyle = { WebkitOverflowScrolling: 'touch' as const };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center sm:p-4" onClick={onClose}>
       <div
@@ -176,7 +180,7 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
           {isStreetKind(p.kind) && (
             <div className="overflow-hidden rounded-lg border border-slate-700">
               <p className="border-b border-slate-700 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-300">Alquileres</p>
-              <div className="divide-y divide-slate-800">
+              <div className={`divide-y divide-slate-800 ${scrollSection}`} style={scrollStyle}>
                 {rentRows.map(([label, value]) => <Row key={label} label={label} value={money(value)} />)}
               </div>
             </div>
@@ -184,21 +188,25 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
           {isStationKind(p.kind) && (
             <div className="overflow-hidden rounded-lg border border-slate-700">
               <p className="border-b border-slate-700 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-300">Escala de estaciones/transportes</p>
-              <ul className="grid grid-cols-2 gap-x-4 gap-y-1 px-3 py-2 text-sm tabular-nums text-slate-200">
-                <li>1 → 25 €</li><li>2 → 50 €</li><li>3 → 100 €</li><li>4 → 200 €</li>
-                <li>5 → 300 €</li><li>6 → 400 €</li><li>7 → 500 €</li><li>8 → 600 €</li>
-              </ul>
-              <p className="px-3 pb-2 text-[11px] text-slate-400">Las estaciones y transportes se combinan entre ambos tableros.</p>
+              <div className={scrollSection} style={scrollStyle}>
+                <ul className="grid grid-cols-2 gap-x-4 gap-y-1 px-3 py-2 text-sm tabular-nums text-slate-200">
+                  <li>1 → 25 €</li><li>2 → 50 €</li><li>3 → 100 €</li><li>4 → 200 €</li>
+                  <li>5 → 300 €</li><li>6 → 400 €</li><li>7 → 500 €</li><li>8 → 600 €</li>
+                </ul>
+                <p className="px-3 pb-2 text-[11px] text-slate-400">Las estaciones y transportes se combinan entre ambos tableros.</p>
+              </div>
             </div>
           )}
           {isUtilityKind(p.kind) && (
             <div className="overflow-hidden rounded-lg border border-slate-700">
               <p className="border-b border-slate-700 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-300">Escala de servicios</p>
-              <ul className="grid grid-cols-2 gap-x-4 gap-y-1 px-3 py-2 text-sm tabular-nums text-slate-200">
-                <li>1 servicio: tirada ×4</li><li>2 servicios: tirada ×10</li>
-                <li>3 servicios: tirada ×14</li><li>4 servicios: tirada ×20</li>
-              </ul>
-              <p className="px-3 pb-2 text-[11px] text-slate-400">Los servicios se combinan entre ambos tableros.</p>
+              <div className={scrollSection} style={scrollStyle}>
+                <ul className="grid grid-cols-2 gap-x-4 gap-y-1 px-3 py-2 text-sm tabular-nums text-slate-200">
+                  <li>1 servicio: tirada ×4</li><li>2 servicios: tirada ×10</li>
+                  <li>3 servicios: tirada ×14</li><li>4 servicios: tirada ×20</li>
+                </ul>
+                <p className="px-3 pb-2 text-[11px] text-slate-400">Los servicios se combinan entre ambos tableros.</p>
+              </div>
             </div>
           )}
 
@@ -206,7 +214,7 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
           {isStreetKind(p.kind) && (
             <div className="overflow-hidden rounded-lg border border-slate-700">
               <p className="border-b border-slate-700 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-300">Construcción</p>
-              <div className="divide-y divide-slate-800">
+              <div className={`divide-y divide-slate-800 ${scrollSection}`} style={scrollStyle}>
                 <Row label="Coste por casa" value={money(p.house_cost)} />
                 <Row label="Coste del hotel" value={money(p.hotel_cost)} />
               </div>
@@ -217,7 +225,7 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
           {showMortgage && (
             <div className="overflow-hidden rounded-lg border border-slate-700">
               <p className="border-b border-slate-700 bg-slate-800/60 px-3 py-2 text-xs font-semibold text-slate-300">Hipoteca</p>
-              <div className="divide-y divide-slate-800">
+              <div className={`divide-y divide-slate-800 ${scrollSection}`} style={scrollStyle}>
                 <Row label="Valor de hipoteca" value={money(p.mortgage_value)} />
                 <Row label="Deshipotecar (hipoteca + 10%)" value={money(p.unmortgage_cost)} />
               </div>
@@ -229,6 +237,7 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
             <div className="flex flex-col gap-2 border-t border-slate-700 pt-3">
               <p className="text-xs font-semibold text-slate-300">Acciones</p>
               {isStreetKind(p.kind) && reason && <p className="text-[11px] text-amber-300/90">{reason}</p>}
+              <div className={`flex flex-col gap-2 ${scrollSection}`} style={scrollStyle}>
               {isStreetKind(p.kind) && ([
                 ['build_house', 'Solicitar construir casa', canBuildHouse(p, snap), actions.onBuildHouse, 'bg-orange-600', money(p.house_cost)],
                 ['build_hotel', 'Solicitar construir hotel', canBuildHotel(p, snap), actions.onBuildHotel, 'bg-purple-600', money(p.hotel_cost)],
@@ -258,6 +267,7 @@ export function PropertyCardModal({ property, snap, onClose, busy = false, actio
                   Deshipotecar ({money(p.unmortgage_cost)})
                 </button>
               )}
+              </div>
             </div>
           )}
         </div>

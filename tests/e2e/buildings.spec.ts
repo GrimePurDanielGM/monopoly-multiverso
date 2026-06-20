@@ -175,3 +175,58 @@ test('fase 6: comprar grupo, construir, alquiler con casa, hipoteca/deshipoteca 
   await hostCtx.close();
   await bCtx.close();
 });
+
+// Fase 6 (pulido final) — "Construir sin grupo completo" activado: NO se aplica uniformidad ni con el grupo
+// completo. Se construyen 3 casas en Ronda y 0 en Plaza (desnivel), y el alquiler de Ronda pasa a rent_3 = 90.
+test('fase 6: regla sin-uniformidad — construir 3-0 con grupo completo y cobrar rent_3', async ({ browser }) => {
+  test.setTimeout(240_000);
+  const hostCtx = await browser.newContext();
+  const host = await hostCtx.newPage();
+  const code = await createGame(host);
+  await host.getByText('Configuración de la sala').click();
+  await host.getByLabel('Mínimo').fill('2');
+  await host.getByLabel('Configuración de dados').selectOption('physical_allowed');
+  await host.getByRole('checkbox', { name: /Permitir construir casas sin tener el grupo completo/ }).check();
+  await host.getByRole('button', { name: 'Guardar configuración' }).click();
+  await expect(host.getByRole('checkbox', { name: /Permitir construir casas sin tener el grupo completo/ })).toBeChecked();
+
+  const bCtx = await browser.newContext();
+  const B = await bCtx.newPage();
+  await joinGame(B, code, 'Marty');
+  await host.getByRole('button', { name: 'Marcar Preparado' }).click();
+  await pickAndReady(B, 1);
+  await host.reload();
+  await expect(host.getByRole('button', { name: 'Iniciar partida' })).toBeEnabled({ timeout: 20_000 });
+  await host.getByRole('button', { name: 'Iniciar partida' }).click();
+  await host.getByRole('button', { name: 'Iniciar', exact: true }).click();
+  await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
+
+  // Grupo marron COMPLETO.
+  await buyStreet(host, 'Ronda de Valencia', RONDA);
+  await buyStreet(host, 'Plaza Lavapiés', PLAZA);
+
+  // 3 casas en Ronda dejando Plaza a 0: la 2.ª y 3.ª NO deben bloquearse por uniformidad.
+  await cardRequestAction(host, 'Ronda de Valencia', /Solicitar construir casa/);
+  await cardRequestAction(host, 'Ronda de Valencia', /Solicitar construir casa/);
+  await cardRequestAction(host, 'Ronda de Valencia', /Solicitar construir casa/);
+
+  // La ficha de Ronda muestra "3 casas" y Plaza sigue "Sin construir".
+  await host.reload();
+  await openBoard(host);
+  await boardCard(host, 'Ronda de Valencia').getByRole('button', { name: 'Ver tarjeta' }).click();
+  const ronda = host.getByRole('dialog', { name: /Ficha de Ronda de Valencia/ });
+  await expect(ronda.getByText('3 casas', { exact: true })).toBeVisible(); // Construcción = 3 (no por uniformidad)
+  await ronda.getByRole('button', { name: 'Cerrar' }).click();
+  await host.getByRole('button', { name: 'Cerrar' }).click();
+
+  // Marty cae en Ronda (3 casas) y paga rent_3 = 90 (alquiler por casas, no base ni doble).
+  await landOn(host, B, RONDA);
+  await reloadUntil(B, () => movement(B).getByRole('button', { name: /Pagar alquiler/ }));
+  await expect(movement(B).getByRole('button', { name: /Pagar alquiler.*90/ })).toBeVisible();
+  await movement(B).getByRole('button', { name: /Pagar alquiler/ }).click();
+  await B.getByRole('dialog', { name: 'Pagar alquiler' }).getByRole('button', { name: 'Pagar alquiler' }).click();
+  await reloadUntil(B, () => movement(B).getByText(/Ya has pagado el alquiler de esta caída/));
+
+  await hostCtx.close();
+  await bCtx.close();
+});

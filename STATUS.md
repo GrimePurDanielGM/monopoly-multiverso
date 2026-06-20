@@ -1,6 +1,6 @@
 # Estado del proyecto — lista viva
 
-## Fase 6 — Casas, hoteles e hipotecas · **`Fase 6: COMPLETADA` (pendiente validación manual)** · migraciones `0052`–`0059`
+## Fase 6 — Casas, hoteles e hipotecas · **`Fase 6: COMPLETADA` (pendiente validación manual)** · migraciones `0052`–`0060`
 - **Alcance:** solo CALLES de color (no estaciones/servicios/especiales). Grupos de color por TABLERO (no se combinan
   entre tableros, a diferencia de servicios/estaciones).
 - **Modelo (`0052`):** `game_property_state(houses 0–4, has_hotel, mortgaged)` por propiedad (deny-all, solo vía RPC);
@@ -81,6 +81,24 @@
   - **Validación:** `pnpm typecheck/lint/test` (**349** unit) `build` verdes; SQL Fases 1–6 (**54 suites, 0 fallos**;
     `config_stock_phase6` amplía con uniformidad-solo-poseídas) tras `db reset`; E2E Chromium+WebKit (**45**); sin
     secretos ni ids internos en `dist`. Aplicado a dev (`0059`). **No se avanza a Fase 7.**
+
+- **Pulido Fase 6 (3.ª ronda, 2026-06-20) — 2 ajustes (migración `0060`):**
+  1. **Sin construcción uniforme cuando `allow_build_without_monopoly = true`** (corrección funcional de backend):
+     `0060` recrea `_p6_do_build_house/build_hotel/sell_house` para SALTARSE la uniformidad cuando la regla está
+     activada — **ni siquiera al completar el grupo de color**. Se mantienen las reglas por propiedad (≤4 casas,
+     hotel solo tras 4 casas, stock, saldo, no hipotecada, solo calles, grupo sin hipoteca, aprobación del anfitrión).
+     Con la regla **off** se conserva la uniformidad estándar. El alquiler sigue por estado real de cada propiedad
+     (base / casas-hotel / doble por monopolio sin casas). El frontend ya ofrecía construir/vender por propiedad.
+  2. **Scroll interno táctil por apartado en la ficha:** cada sección (alquileres, construcción, hipoteca, acciones,
+     escalas de estaciones/servicios) tiene `overflow-y-auto` + altura máxima + `overscroll-contain` +
+     `-webkit-overflow-scrolling: touch`, sin overflow horizontal y sin romper navegación/swipe ni el scroll del modal.
+  - **No roto:** peones en español + estructura de imágenes, construir-sin-grupo, aprobación del anfitrión, alquiler
+    avanzado, hipotecas/deshipotecas, estaciones/servicios, navegación entre tarjetas, inputs del lobby, privacidad
+    de saldos, rent-once.
+  - **Validación:** `pnpm typecheck/lint/test` (**350** unit) `build` verdes; SQL Fases 1–6 (**54 suites, 0 fallos**;
+    `config_stock_phase6` C7/C8 = construir/vender NO uniforme con grupo completo, C9 = off sigue uniforme) tras
+    `db reset`; E2E Chromium+WebKit (**46**, nuevo: regla on → 3-0 casas + cobra `rent_3`); guards `dist` limpios.
+    Aplicado a dev (`0060`). **No se avanza a Fase 7.**
 
 ## Fase 5 — Casillas especiales · **`Fase 5: COMPLETADA` (pendiente validación manual)**
 - **Corrección 4 (2026-06-20) — estaciones acumulativas + doble pago + selector de dados (`0049`/`0050`/`0051`):**

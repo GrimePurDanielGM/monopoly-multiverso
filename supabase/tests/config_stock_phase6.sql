@@ -112,24 +112,43 @@ do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; href text:=pg_temp._ctx('host
   perform pg_temp._rec('C6) monopolio sin casas cobra doble (base 2 → 4)', (res->>'amount')='4');
 end $$;
 
--- C7) uniformidad SOLO entre las propiedades del grupo que el jugador POSEE (regla on).
--- celeste (classic) tiene 3 calles; el host posee 2 (cuatro-caminos, reina-victoria); la 3.ª (bravo-murillo) no.
-do $$ declare gid uuid; href text; host text; ok_uneven boolean:=false; begin
+-- C7) regla ON: SIN construcción uniforme, ni siquiera con el grupo COMPLETO. celeste (classic) = 3 calles.
+do $$ declare gid uuid; href text; host text; begin
   perform pg_temp._build(32, 12, true); gid:=pg_temp._ctx('gid')::uuid; href:=pg_temp._ctx('host_ref'); host:=pg_temp._ctx('host_uid');
   perform pg_temp._as_admin();
-  perform pg_temp._own(gid,'cl-cuatro-caminos',href); perform pg_temp._own(gid,'cl-reina-victoria',href);
-  update public.player_balances set balance=100000 where game_id=gid;
-  -- 1) construir en cuatro-caminos 0→1 (uniforme: ambas poseídas a 0).
+  perform pg_temp._own(gid,'cl-cuatro-caminos',href); perform pg_temp._own(gid,'cl-reina-victoria',href); perform pg_temp._own(gid,'cl-bravo-murillo',href);
+  update public.player_balances set balance=100000 where game_id=gid;  -- grupo COMPLETO (monopolio) + saldo holgado
+  -- Construir 3 casas en cuatro-caminos dejando las otras a 0 (desnivel total): debe permitirse con la regla ON.
   perform pg_temp._bldreq(gid, host, host, 'cl-cuatro-caminos');
-  -- 2) volver a construir en cuatro-caminos 1→2 debe fallar (reina-victoria sigue a 0); bravo-murillo (no poseída) se ignora.
-  begin perform pg_temp._bldreq(gid, host, host, 'cl-cuatro-caminos'); exception when others then ok_uneven:=(sqlerrm='UNEVEN_BUILDING'); end;
+  perform pg_temp._bldreq(gid, host, host, 'cl-cuatro-caminos');
+  perform pg_temp._bldreq(gid, host, host, 'cl-cuatro-caminos');
+  perform pg_temp._rec('C7) regla on: construcción NO uniforme con grupo completo (3-0-0)',
+    pg_temp._houses(gid,'cl-cuatro-caminos')=3 and pg_temp._houses(gid,'cl-reina-victoria')=0 and pg_temp._houses(gid,'cl-bravo-murillo')=0);
+end $$;
+
+-- C8) regla ON: vender de forma NO uniforme (vender 1 casa de la que tiene 3, dejando 2-0-0) también se permite.
+do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host'); begin
+  perform pg_temp._bldreq(gid, host, host, 'cl-cuatro-caminos');  -- 3→4 primero (sigue sin uniformidad)
+  perform pg_temp._as_user(host);
+  declare rref text; begin rref := (request_sell_house(gid, 'cl-cuatro-caminos', gen_random_uuid()))->>'request_ref';
+    perform resolve_building_request(rref, true, pg_temp._ver(gid)); end;
   perform pg_temp._as_admin();
-  -- 3) nivelar reina-victoria 0→1 y 4) ahora sí cuatro-caminos 1→2.
-  perform pg_temp._bldreq(gid, host, host, 'cl-reina-victoria');
-  perform pg_temp._bldreq(gid, host, host, 'cl-cuatro-caminos');
-  perform pg_temp._rec('C7) uniformidad solo entre poseídas (2 de 3): bloquea desnivel e ignora la no poseída',
-    ok_uneven and pg_temp._houses(gid,'cl-cuatro-caminos')=2 and pg_temp._houses(gid,'cl-reina-victoria')=1
-    and pg_temp._houses(gid,'cl-bravo-murillo')=0);
+  perform pg_temp._rec('C8) regla on: venta NO uniforme permitida (4→3, resto a 0)',
+    pg_temp._houses(gid,'cl-cuatro-caminos')=3 and pg_temp._houses(gid,'cl-reina-victoria')=0);
+end $$;
+
+-- C9) regla OFF: la uniformidad SIGUE obligatoria (no se rompe el comportamiento estándar).
+do $$ declare gid uuid; href text; host text; ok_uneven boolean:=false; begin
+  perform pg_temp._build(32, 12, false); gid:=pg_temp._ctx('gid')::uuid; href:=pg_temp._ctx('host_ref'); host:=pg_temp._ctx('host_uid');
+  perform pg_temp._as_admin();
+  perform pg_temp._own(gid,'cl-cuatro-caminos',href); perform pg_temp._own(gid,'cl-reina-victoria',href); perform pg_temp._own(gid,'cl-bravo-murillo',href);
+  update public.player_balances set balance=100000 where game_id=gid;
+  perform pg_temp._bldreq(gid, host, host, 'cl-cuatro-caminos');  -- 0→1 (uniforme: todas a 0)
+  begin perform pg_temp._bldreq(gid, host, host, 'cl-cuatro-caminos');  -- 1→2 con el resto a 0 → UNEVEN
+    exception when others then ok_uneven:=(sqlerrm='UNEVEN_BUILDING'); end;
+  perform pg_temp._as_admin();
+  perform pg_temp._rec('C9) regla off: uniformidad sigue obligatoria (bloquea 2-0-0)',
+    ok_uneven and pg_temp._houses(gid,'cl-cuatro-caminos')=1);
 end $$;
 
 do $$ declare nfail int; begin select count(*) into nfail from _t where not ok;
