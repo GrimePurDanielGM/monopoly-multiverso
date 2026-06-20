@@ -30,7 +30,6 @@ async function pickAndReady(page: Page, tokenIndex: number) {
   await ready.click();
 }
 const movement = (p: Page) => p.getByRole('region', { name: 'Movimiento', exact: true });
-const board = (p: Page) => p.getByRole('dialog', { name: 'Tablero de propiedades' });
 async function openCorrections(host: Page) { await host.getByText('Correcciones del anfitrión').click(); }
 async function reloadUntil(page: Page, loc: () => Locator, timeout = 45_000) {
   await expect(async () => { await page.reload(); await expect(loc()).toBeVisible({ timeout: 5_000 }); }).toPass({ timeout });
