@@ -38,13 +38,20 @@ function PropertyPicker({ title, props, selected, onToggle }: {
   );
 }
 
-/** Modal para crear (o contraofertar) un trato: dinero, propiedades y cartas de cada lado + acuerdo personal. */
-export function CreateTradeModal({ snap, busy = false, mode = 'create', fixedToRef, initial, onClose, onSubmit }: {
+/** Términos iniciales en perspectiva del que mira (lo que YO doy / lo que pido). */
+export interface TradeDraftInitial { myMoney: number; theirMoney: number; myProps: string[]; theirProps: string[]; myCards: string[]; agreement?: string | null }
+
+/** Modal para crear (o contraofertar) un trato: dinero, propiedades y cartas de cada lado + acuerdo personal.
+ *  Siempre en perspectiva del que mira ("Tú ofreces" = mi lado). `meIsFrom` indica si soy el lado "from" del
+ *  modelo (creador) para mapear correctamente al enviar la propuesta/contraoferta. */
+export function CreateTradeModal({ snap, busy = false, mode = 'create', fixedToRef, meIsFrom = true, initial, otherCards, onClose, onSubmit }: {
   snap: ActiveSnapshot;
   busy?: boolean;
   mode?: 'create' | 'counter';
   fixedToRef: string | undefined;
-  initial: TradeTerms | undefined;
+  meIsFrom?: boolean;
+  initial: TradeDraftInitial | undefined;
+  otherCards?: string[] | undefined;
   onClose: () => void;
   onSubmit: (toRef: string, terms: TradeTerms) => void;
 }) {
@@ -55,11 +62,11 @@ export function CreateTradeModal({ snap, busy = false, mode = 'create', fixedToR
   const me = snap.me.public_ref;
   const others = snap.players.filter((p) => p.public_ref !== me && p.status === 'active');
   const [toRef, setToRef] = useState(fixedToRef ?? others[0]?.public_ref ?? '');
-  const [myMoney, setMyMoney] = useState(String(initial?.fromMoney ?? 0));
-  const [theirMoney, setTheirMoney] = useState(String(initial?.toMoney ?? 0));
-  const [myProps, setMyProps] = useState<Set<string>>(new Set(initial?.fromProps ?? []));
-  const [theirProps, setTheirProps] = useState<Set<string>>(new Set(initial?.toProps ?? []));
-  const [myCards, setMyCards] = useState<Set<string>>(new Set(initial?.fromCards ?? []));
+  const [myMoney, setMyMoney] = useState(String(initial?.myMoney ?? 0));
+  const [theirMoney, setTheirMoney] = useState(String(initial?.theirMoney ?? 0));
+  const [myProps, setMyProps] = useState<Set<string>>(new Set(initial?.myProps ?? []));
+  const [theirProps, setTheirProps] = useState<Set<string>>(new Set(initial?.theirProps ?? []));
+  const [myCards, setMyCards] = useState<Set<string>>(new Set(initial?.myCards ?? []));
   const [agreement, setAgreement] = useState(initial?.agreement ?? '');
 
   const myProperties = useMemo(() => propertiesOf(me, snap), [me, snap]);
@@ -69,14 +76,15 @@ export function CreateTradeModal({ snap, busy = false, mode = 'create', fixedToR
   const toggle = (set: React.Dispatch<React.SetStateAction<Set<string>>>, refStr: string) =>
     set((prev) => { const n = new Set(prev); if (n.has(refStr)) n.delete(refStr); else n.add(refStr); return n; });
 
-  const terms: TradeTerms = {
-    fromMoney: toInt(myMoney), toMoney: toInt(theirMoney),
-    fromProps: [...myProps], toProps: [...theirProps], fromCards: [...myCards], toCards: initial?.toCards ?? [],
-    agreement: agreement.trim() || null,
-  };
-  const isEmpty = terms.fromMoney === 0 && terms.toMoney === 0 && terms.fromProps.length === 0
-    && terms.toProps.length === 0 && terms.fromCards.length === 0 && (terms.toCards?.length ?? 0) === 0 && !terms.agreement;
-  const valid = toRef !== '' && !isEmpty && terms.fromMoney <= snap.me.balance;
+  // Lado del que mira → lados from/to del modelo, según meIsFrom. Las cartas de la OTRA parte (no editables) se conservan.
+  const myMoneyN = toInt(myMoney); const theirMoneyN = toInt(theirMoney);
+  const mp = [...myProps]; const tp = [...theirProps]; const mc = [...myCards]; const oc = otherCards ?? [];
+  const agree = agreement.trim() || null;
+  const terms: TradeTerms = meIsFrom
+    ? { fromMoney: myMoneyN, toMoney: theirMoneyN, fromProps: mp, toProps: tp, fromCards: mc, toCards: oc, agreement: agree }
+    : { fromMoney: theirMoneyN, toMoney: myMoneyN, fromProps: tp, toProps: mp, fromCards: oc, toCards: mc, agreement: agree };
+  const isEmpty = myMoneyN === 0 && theirMoneyN === 0 && mp.length === 0 && tp.length === 0 && mc.length === 0 && oc.length === 0 && !agree;
+  const valid = toRef !== '' && !isEmpty && myMoneyN <= snap.me.balance;
 
   return (
     <div className="fixed inset-0 z-50 touch-pan-y overflow-y-auto overscroll-contain bg-black/60" onClick={onClose} style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -136,7 +144,7 @@ export function CreateTradeModal({ snap, busy = false, mode = 'create', fixedToR
               {agreement.trim() && <span className="text-[11px] text-amber-300/90">Este acuerdo queda registrado, pero la app no lo hará cumplir automáticamente.</span>}
             </label>
 
-            {terms.fromMoney > snap.me.balance && <p className="text-[11px] text-amber-300">No puedes ofrecer más dinero del que tienes.</p>}
+            {myMoneyN > snap.me.balance && <p className="text-[11px] text-amber-300">No puedes ofrecer más dinero del que tienes.</p>}
 
             <button type="button" disabled={!valid || busy} onClick={() => onSubmit(toRef, terms)}
               className="min-h-[44px] w-full rounded-xl bg-indigo-600 px-4 text-sm font-semibold disabled:opacity-40 pb-[env(safe-area-inset-bottom)]">

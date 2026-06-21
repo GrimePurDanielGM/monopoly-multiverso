@@ -12,7 +12,7 @@ import {
   requestBuildHouse, requestBuildHotel, requestSellHouse, requestSellHotel, resolveBuildingRequest,
   mortgageProperty, unmortgageProperty,
   createTradeProposal, acceptTradeProposal, rejectTradeProposal, cancelTradeProposal, counterTradeProposal, resolveTradeProposal,
-  type ApiResult, type ExitResolution, type BankruptcyKind, type TradeTerms,
+  type ApiResult, type ExitResolution, type BankruptcyKind,
 } from '../lib/api';
 import { useCardDraw } from '../hooks/useCardDraw';
 import { CardModal } from '../components/active/CardModal';
@@ -46,7 +46,8 @@ import { BoardView } from '../components/active/BoardView';
 import type { BoardKey } from '../lib/activeSnapshot';
 import { PurchaseRequestsTray, LeaveRequestsTray, BankruptcyRequestsTray, BuildingRequestsTray, TradeReviewsTray } from '../components/active/HostRequestTrays';
 import { TradesPanel } from '../components/active/TradesPanel';
-import { CreateTradeModal } from '../components/active/CreateTradeModal';
+import { CreateTradeModal, type TradeDraftInitial } from '../components/active/CreateTradeModal';
+import { getTradePerspective } from '../lib/activeSelectors';
 import type { TradeProposal } from '../lib/activeSnapshot';
 import { BankruptcyDialog } from '../components/active/BankruptcyDialog';
 import { formatMoney, ownerName } from '../lib/activeSelectors';
@@ -86,7 +87,7 @@ export function ActiveGameScreen({
   const [reloadErr, setReloadErr] = useState<string | null>(null);
   const [reloadMsg, setReloadMsg] = useState('');
   const [leaveOpen, setLeaveOpen] = useState(false);
-  const [tradeModal, setTradeModal] = useState<{ mode: 'create' | 'counter'; toRef?: string; tradeRef?: string; initial?: TradeTerms } | null>(null);
+  const [tradeModal, setTradeModal] = useState<{ mode: 'create' | 'counter'; toRef?: string; tradeRef?: string; meIsFrom?: boolean; initial?: TradeDraftInitial; otherCards?: string[] } | null>(null);
   const [removeTarget, setRemoveTarget] = useState<{ ref: string; name: string } | null>(null);
   const [removeMode, setRemoveMode] = useState<ExitResolution>('to_bank');
   const [buyTarget, setBuyTarget] = useState<ActiveProperty | null>(null);
@@ -267,8 +268,15 @@ export function ActiveGameScreen({
     onAccept: (t: TradeProposal) => void run(() => acceptTradeProposal(t.trade_ref, snap?.runtime_version ?? 0, newRequestId())),
     onReject: (t: TradeProposal) => void run(() => rejectTradeProposal(t.trade_ref, newRequestId())),
     onCancel: (t: TradeProposal) => void run(() => cancelTradeProposal(t.trade_ref, newRequestId())),
-    onCounter: (t: TradeProposal) => setTradeModal({ mode: 'counter', toRef: t.from_ref === snap?.me.public_ref ? t.to_ref : t.from_ref, tradeRef: t.trade_ref,
-      initial: { fromMoney: t.from_money, toMoney: t.to_money, fromProps: t.from_properties.map((p) => p.property_ref), toProps: t.to_properties.map((p) => p.property_ref), fromCards: t.from_cards.map((c) => c.card_ref), toCards: t.to_cards.map((c) => c.card_ref), agreement: t.agreement_text } }),
+    onCounter: (t: TradeProposal) => {
+      const me = snap?.me.public_ref ?? '';
+      const persp = getTradePerspective(t, me);
+      setTradeModal({ mode: 'counter', toRef: persp.viewerIsFrom ? t.to_ref : t.from_ref, tradeRef: t.trade_ref, meIsFrom: persp.viewerIsFrom,
+        initial: { myMoney: persp.youGive.money, theirMoney: persp.youReceive.money,
+          myProps: persp.youGive.properties.map((p) => p.property_ref), theirProps: persp.youReceive.properties.map((p) => p.property_ref),
+          myCards: persp.youGive.cards.map((c) => c.card_ref), agreement: t.agreement_text },
+        otherCards: persp.youReceive.cards.map((c) => c.card_ref) });
+    },
   }), [snap?.runtime_version, snap?.me.public_ref, run]);
   const doResolveTrade = useCallback((t: TradeProposal, accept: boolean) => {
     void run(() => resolveTradeProposal(t.trade_ref, accept, snap?.runtime_version ?? 0));
@@ -599,7 +607,9 @@ export function ActiveGameScreen({
           busy={busy}
           mode={tradeModal.mode}
           fixedToRef={tradeModal.toRef}
+          meIsFrom={tradeModal.meIsFrom ?? true}
           initial={tradeModal.initial}
+          otherCards={tradeModal.otherCards}
           onClose={() => setTradeModal(null)}
           onSubmit={(toRef, terms) => {
             const m = tradeModal;

@@ -14,7 +14,7 @@ export function TradeReviewsTray({ snap, busy, onResolve }: {
       {snap.trade_reviews.map((t) => (
         <div key={t.trade_ref} className="flex flex-col gap-2 rounded-lg border border-slate-700 p-2 text-sm">
           <span className="text-xs text-slate-400"><span className="font-semibold">{t.from_name}</span> ↔ <span className="font-semibold">{t.to_name}</span></span>
-          <TradeSummary trade={t} />
+          <TradeSummary trade={t} viewerRef={snap.me.public_ref} />
           <div className="flex gap-2">
             <button type="button" onClick={() => onResolve(t, true)} disabled={busy} className="min-h-[36px] flex-1 rounded-lg bg-emerald-600 px-3 text-xs font-semibold disabled:opacity-40">Aprobar</button>
             <button type="button" onClick={() => onResolve(t, false)} disabled={busy} className="min-h-[36px] flex-1 rounded-lg border border-slate-600 px-3 text-xs font-semibold disabled:opacity-40">Rechazar</button>

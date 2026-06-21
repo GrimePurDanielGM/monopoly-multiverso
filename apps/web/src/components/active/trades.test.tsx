@@ -4,6 +4,8 @@ import type { ActiveSnapshot, ActiveProperty, TradeProposal } from '../../lib/ac
 import { CreateTradeModal } from './CreateTradeModal';
 import { TradesPanel } from './TradesPanel';
 import { TradeReviewsTray } from './HostRequestTrays';
+import { TradeSummary } from './TradeSummary';
+import { getTradePerspective } from '../../lib/activeSelectors';
 
 function prop(over: Partial<ActiveProperty>): ActiveProperty {
   return {
@@ -117,6 +119,47 @@ describe('TradesPanel (Fase 7)', () => {
     const done = trade({ trade_ref: 'TRH', status: 'executed', pending_party: null });
     render(<TradesPanel snap={snap({ recent_trades: [done] })} onCreate={vi.fn()} actions={actions()} />);
     expect(screen.getByText(/Historial reciente/)).toBeInTheDocument();
+  });
+});
+
+describe('Perspectiva del trato (A1) — Tú ofreces/recibes relativo al que mira', () => {
+  // Ana (P-1) ofrece la Propiedad A; pide 300 € a Beto (P-2).
+  const t = trade({ from_ref: 'P-1', from_name: 'Ana', to_ref: 'P-2', to_name: 'Beto',
+    from_money: 0, to_money: 300, from_properties: [{ property_ref: 'A', name: 'Propiedad A', mortgaged: false }], to_properties: [] });
+
+  it('getTradePerspective orienta correctamente a cada participante', () => {
+    const creator = getTradePerspective(t, 'P-1');
+    expect(creator.isParticipant && creator.viewerIsFrom).toBe(true);
+    expect(creator.youGive.properties[0]!.name).toBe('Propiedad A');
+    expect(creator.youReceive.money).toBe(300);
+    const receiver = getTradePerspective(t, 'P-2');
+    expect(receiver.isParticipant && !receiver.viewerIsFrom).toBe(true);
+    expect(receiver.youGive.money).toBe(300);
+    expect(receiver.youReceive.properties[0]!.name).toBe('Propiedad A');
+    expect(getTradePerspective(t, 'P-9').isParticipant).toBe(false);
+  });
+
+  it('el CREADOR ve "Tú entregas: Propiedad A" y "Tú recibes: 300"', () => {
+    const { container } = render(<TradeSummary trade={t} viewerRef="P-1" />);
+    const give = [...container.querySelectorAll('div')].find((d) => d.textContent?.startsWith('Tú entregas'))!;
+    expect(give.textContent).toContain('Propiedad A');
+    const receive = [...container.querySelectorAll('div')].find((d) => d.textContent?.startsWith('Tú recibes'))!;
+    expect(receive.textContent).toContain('300');
+  });
+
+  it('el RECEPTOR lo ve invertido: "Tú entregas: 300" y "Tú recibes: Propiedad A"', () => {
+    const { container } = render(<TradeSummary trade={t} viewerRef="P-2" />);
+    const give = [...container.querySelectorAll('div')].find((d) => d.textContent?.startsWith('Tú entregas'))!;
+    expect(give.textContent).toContain('300');
+    const receive = [...container.querySelectorAll('div')].find((d) => d.textContent?.startsWith('Tú recibes'))!;
+    expect(receive.textContent).toContain('Propiedad A');
+  });
+
+  it('el anfitrión NO participante lo ve neutral con nombres', () => {
+    render(<TradeSummary trade={t} viewerRef="P-9" />);
+    expect(screen.getByText('Ana entrega')).toBeInTheDocument();
+    expect(screen.getByText('Beto entrega')).toBeInTheDocument();
+    expect(screen.queryByText('Tú entregas')).toBeNull();
   });
 });
 

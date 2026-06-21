@@ -2,6 +2,7 @@
 import type {
   ActiveSnapshot, ActivePlayer, ActiveProperty, LedgerEntry, LedgerKind,
   BoardKey, BoardSpace, PlayerPosition, SpaceType,
+  TradeProposal, TradeProperty, TradeCard,
 } from './activeSnapshot';
 
 export const MAX_AMOUNT = 10_000_000; // tope por operación (espejo del backend)
@@ -336,6 +337,29 @@ export function propertyCountByPlayer(snap: ActiveSnapshot): Record<string, numb
 /** Propiedades de un jugador concreto. */
 export function propertiesOf(ref: string, snap: ActiveSnapshot): ActiveProperty[] {
   return snap.properties.filter((p) => p.owner_ref === ref);
+}
+
+// ── Fase 7: perspectiva de un trato relativa a quien lo mira ──────────────────────
+export interface TradeSide { money: number; properties: TradeProperty[]; cards: TradeCard[] }
+export interface TradePerspective {
+  /** ¿el espectador participa en el trato? (creador o contraparte) */
+  isParticipant: boolean;
+  /** ¿el espectador es el lado "from" (creador)? Relevante para mapear contraofertas. */
+  viewerIsFrom: boolean;
+  /** Lo que ENTREGA el espectador (o el lado "from" si no participa). */
+  youGive: TradeSide;
+  /** Lo que RECIBE el espectador (o el lado "to" si no participa). */
+  youReceive: TradeSide;
+}
+/** Presenta un trato desde el punto de vista de `viewerRef`: un participante ve "Tú entregas / Tú recibes"
+ *  correctamente orientado; un no participante (p. ej. el anfitrión) ve la vista neutral del lado "from". */
+export function getTradePerspective(t: TradeProposal, viewerRef: string): TradePerspective {
+  const fromSide: TradeSide = { money: t.from_money, properties: t.from_properties, cards: t.from_cards };
+  const toSide: TradeSide = { money: t.to_money, properties: t.to_properties, cards: t.to_cards };
+  const viewerIsTo = t.to_ref === viewerRef;
+  const isParticipant = t.from_ref === viewerRef || viewerIsTo;
+  if (viewerIsTo) return { isParticipant, viewerIsFrom: false, youGive: toSide, youReceive: fromSide };
+  return { isParticipant, viewerIsFrom: true, youGive: fromSide, youReceive: toSide };
 }
 
 export const BOARD_LABEL: Record<string, string> = {

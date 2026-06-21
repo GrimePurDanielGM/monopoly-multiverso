@@ -23,7 +23,7 @@ function TradeRow({ t, me, actions }: { t: TradeProposal; me: string; actions: T
         <span className="text-xs text-slate-400">{t.from_name} ↔ {t.to_name}</span>
         <span className="rounded bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300">{STATUS_LABEL[t.status]}</span>
       </div>
-      <TradeSummary trade={t} meRef={me} />
+      <TradeSummary trade={t} viewerRef={me} />
       {canAct ? (
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => actions.onAccept(t)} className="min-h-[36px] flex-1 rounded-lg bg-emerald-600 px-3 text-xs font-semibold">Aceptar</button>
@@ -83,7 +83,7 @@ export function TradesPanel({ snap, onCreate, actions }: {
                   <span className="text-slate-400">{t.from_name} ↔ {t.to_name}</span>
                   <span className="rounded bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300">{STATUS_LABEL[t.status]}</span>
                 </div>
-                <div className="mt-1"><TradeSummary trade={t} meRef={me} /></div>
+                <div className="mt-1"><TradeSummary trade={t} viewerRef={me} /></div>
               </div>
             ))}
           </div>
