@@ -1,5 +1,20 @@
 # Estado del proyecto — lista viva
 
+## Cartas reales + moneda € + ruleta de Parking · migraciones `0066`–`0068` (**pendiente `db push`**)
+- **C1 — Moneda € (desplegada, `0d7d36d`):** todo el juego en € (antes ₥ global + € en propiedades).
+- **C2 — 64 cartas reales con efectos (`0066`):** transcritas de las fotos. Efectos nuevos en `_p5_draw_card`:
+  `to_space` (mover el peón a una casilla; +200 si pasa Salida; `move_forward=false` retrocede sin sueldo),
+  `to_nearest` (transporte/Mr.Fusión más cercano; el pago especial lo resuelve el anfitrión), `repairs` (cuenta
+  casas/hoteles → **bote**), `choice` (pagar al bote / robar Suerte). **Todo pago de carta va al bote.**
+- **C3 — Cobros/pagos «a cada jugador» con autorización (`0068`):** `game_card_transfers` + `authorize_card_transfer`;
+  al robar se crean transferencias pendientes y el pagador las autoriza desde un banner (`my_card_transfers`).
+- **C4 — Ruleta de Parking (`0067`):** opción `parking_mode` (`pot`|`roulette`). Ruleta de 7 resultados (cobrar
+  bote ×2, robar carta, cárcel, perder propiedad más/menos valiosa, pagar 500 al bote); bote tope 2.500 €.
+  Selector en el lobby; resultado en banner global. Arregla además la exposición de config en el snapshot del lobby.
+- **Tests:** SQL `cards_effects`/`parking_roulette`/`card_transfers`/`cards_import` phase8 + `cards_phase5` adaptado;
+  batería 1–8 **64 suites, 0 fallos**; **373 unit**; E2E (en aislamiento) verde; guards limpios. typecheck/lint/build verdes.
+- **Pendiente del usuario:** `supabase db push` aplica **`0066`+`0067`+`0068`**; luego se hace `git push` del trabajo local.
+
 ## Trabajo nocturno (correcciones Fase 7 + Fase 8 + Fase 9) · migraciones `0064`–`0065`
 - **A1 (desplegada):** la vista del trato es **relativa al jugador** (`getTradePerspective`): participante ve
   «Tú entregas / Tú recibes» bien orientado; anfitrión no participante lo ve neutral. Contraoferta del receptor ya

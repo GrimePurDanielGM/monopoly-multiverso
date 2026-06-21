@@ -5,12 +5,17 @@ material físico/oficial que debes proporcionar tú. Todo lo demás está implem
 
 ---
 
-## 1. Textos reales de las cartas (Suerte, Caja de Comunidad, Pasado, Futuro)
+## 1. Textos reales de las cartas — ✅ APORTADOS E IMPORTADOS
 
-**Estado:** el sistema de cartas está **completo** (mazos, robo, descarte, efectos automáticos,
-cartas conservables, inventario, snapshot y UI). Lo que falta son los **textos reales**: ahora
-mismo hay **36 cartas placeholder** (9 por mazo) marcadas con `temporary=true` y el aviso
-«Carta temporal — pendiente de sustituir por carta real».
+**Estado:** ya no falta nada. Importadas las **64 cartas reales** (16 por mazo) desde tus fotos
+(migración `0066`), con sus efectos: movimientos a casilla concreta, transporte/Mr.Fusión más cercano,
+reparaciones al bote, carta de elección, cobros/pagos a cada jugador con autorización, y «sal de la cárcel»
+conservable/intercambiable. Toda la moneda del juego está en **€**. Esta sección queda como histórico.
+
+<details><summary>(histórico) cómo se importaron</summary>
+El sistema ya estaba completo con 36 placeholders `temporary=true`; se reemplazaron por las reales vía
+`_p8_load_deck`. Plantilla de importación por si se quieren editar en el futuro: `docs/cards_import_template.csv`.
+</details>
 
 **Qué tienes que aportar:** el texto (y, si quieres, foto) de cada carta real de los cuatro mazos.
 
