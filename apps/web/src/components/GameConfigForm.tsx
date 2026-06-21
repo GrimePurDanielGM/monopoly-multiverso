@@ -16,6 +16,7 @@ export interface ConfigPatch {
   initial_hotels_available: number;
   allow_build_without_monopoly: boolean;
   allow_trade_built_properties: boolean;
+  parking_mode: 'pot' | 'roulette';
 }
 
 interface Props {
@@ -29,13 +30,14 @@ interface Props {
   hotelsAvailable: number;
   allowBuildWithoutMonopoly: boolean;
   allowTradeBuiltProperties: boolean;
+  parkingMode: 'pot' | 'roulette';
   currentPlayers: number;
   busy: boolean;
   onSubmit: (patch: ConfigPatch) => void;
 }
 
 /** Edición de la configuración del lobby (solo whitelist de update_config). */
-export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, allowLateJoin, diceMode, housesAvailable, hotelsAvailable, allowBuildWithoutMonopoly, allowTradeBuiltProperties, currentPlayers, busy, onSubmit }: Props) {
+export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, allowLateJoin, diceMode, housesAvailable, hotelsAvailable, allowBuildWithoutMonopoly, allowTradeBuiltProperties, parkingMode, currentPlayers, busy, onSubmit }: Props) {
   const [n, setN] = useState(name);
   const [min, setMin] = useState(minPlayers);
   const [max, setMax] = useState(maxPlayers);
@@ -46,6 +48,7 @@ export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, all
   const [hotels, setHotels] = useState(hotelsAvailable);
   const [noMono, setNoMono] = useState(allowBuildWithoutMonopoly);
   const [tradeBuilt, setTradeBuilt] = useState(allowTradeBuiltProperties);
+  const [parking, setParking] = useState<'pot' | 'roulette'>(parkingMode);
 
   const stockErr = houses < 32 || hotels < 12 ? 'El mínimo son 32 casas y 12 hoteles.' : null;
   const errs = configErrors({ name: n, minPlayers: min, maxPlayers: max, initialMoney: money }, currentPlayers);
@@ -55,7 +58,7 @@ export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, all
     e.preventDefault();
     if (!valid || busy) return;
     onSubmit({ name: n.trim(), min_players: min, max_players: max, initial_money: money, allow_late_join: late, dice_mode: dice,
-      initial_houses_available: houses, initial_hotels_available: hotels, allow_build_without_monopoly: noMono, allow_trade_built_properties: tradeBuilt });
+      initial_houses_available: houses, initial_hotels_available: hotels, allow_build_without_monopoly: noMono, allow_trade_built_properties: tradeBuilt, parking_mode: parking });
   }
 
   return (
@@ -87,6 +90,19 @@ export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, all
           <option value="physical_allowed">Permitir dados físicos y virtuales</option>
           <option value="physical_only">Solo dados físicos</option>
         </select>
+      </label>
+
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="text-slate-300">Parking gratuito</span>
+        <select aria-label="Parking gratuito" value={parking} onChange={(e) => setParking(e.target.value as 'pot' | 'roulette')}
+          className="min-h-[44px] rounded-lg border border-slate-600 bg-slate-800 px-3 text-base">
+          <option value="pot">Cobrar el bote acumulado</option>
+          <option value="roulette">Ruleta de evento (incluye el bote)</option>
+        </select>
+        <span className="text-xs text-slate-500">
+          Con «ruleta», al caer en Parking se gira una ruleta de 7 resultados (cobrar el bote ×2, robar carta, ir a la
+          cárcel, perder tu propiedad más/menos valiosa, o pagar 500 € al bote). El bote tiene un tope de 2.500 €.
+        </span>
       </label>
 
       <div className="grid grid-cols-2 gap-2">

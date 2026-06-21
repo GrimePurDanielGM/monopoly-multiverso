@@ -17,7 +17,7 @@ function prop(over: Partial<ActiveProperty>): ActiveProperty {
 }
 function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
   return {
-    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false } },
+    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false, parking_mode: 'pot' } },
     me: { public_ref: 'P-1', is_host: false, balance: 3000, is_current: true, is_spectator: false },
     turn: { turn_number: 1, current_player_ref: 'P-1', order: ['P-1', 'P-2'] },
     players: [
@@ -66,7 +66,7 @@ describe('CreateTradeModal (Fase 7)', () => {
 
   it('A2: con la opción activada, una propiedad con construcciones SÍ es seleccionable y avisa', () => {
     const built = prop({ property_ref: 'cl-m1', name: 'Mediterráneo', owner_ref: 'P-1', houses: 2 });
-    const s = snap({ properties: [built], game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: true } } });
+    const s = snap({ properties: [built], game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: true, parking_mode: 'pot' } } });
     render(<CreateTradeModal snap={s} fixedToRef={undefined} initial={undefined} onClose={vi.fn()} onSubmit={vi.fn()} />);
     expect(screen.getByText('Esta propiedad se transferirá con sus casas u hotel.')).toBeInTheDocument();
     expect(screen.getAllByRole('checkbox')[0]).not.toBeDisabled();

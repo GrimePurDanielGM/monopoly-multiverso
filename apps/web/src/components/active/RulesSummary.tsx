@@ -27,6 +27,7 @@ export function RulesSummary({ config }: { config: ActiveConfig }) {
         <Row label="Dinero inicial" value={formatMoney(config.initial_money)} />
         <Row label="Sueldo al pasar por la Salida" value={formatMoney(config.start_bonus)} />
         <Row label="Dados" value={DICE_LABEL[config.dice_mode]} />
+        <Row label="Parking gratuito" value={config.parking_mode === 'roulette' ? 'Ruleta de evento' : 'Cobrar el bote'} />
         <Row label="Casas / hoteles disponibles" value={`${config.initial_houses_available} / ${config.initial_hotels_available}`} />
         <Row label="Construir sin el grupo completo" value={yesNo(config.allow_build_without_monopoly)} />
         <Row label="Tratos con propiedades construidas" value={yesNo(config.allow_trade_built_properties)} />

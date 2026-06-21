@@ -83,7 +83,7 @@ describe('parseActiveSnapshot', () => {
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.data.last_roll?.jail).toBe('doubles');
-      expect(r.data.last_global_event).toEqual({ kind: 'parking_pot_payout', player_ref: 'P-AAAA', amount: 450, event_id: 'ev-1' });
+      expect(r.data.last_global_event).toMatchObject({ kind: 'parking_pot_payout', player_ref: 'P-AAAA', amount: 450, event_id: 'ev-1' });
     }
   });
 

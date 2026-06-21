@@ -16,6 +16,7 @@ export interface SnapConfig {
   initial_hotels_available: number;
   allow_build_without_monopoly: boolean;
   allow_trade_built_properties?: boolean;
+  parking_mode?: 'pot' | 'roulette';
 }
 export interface SnapGame {
   id: string;
@@ -176,6 +177,8 @@ export function parseSnapshot(raw: unknown): ParseResult {
           initial_houses_available: typeof cfg.initial_houses_available === 'number' ? cfg.initial_houses_available : 32,
           initial_hotels_available: typeof cfg.initial_hotels_available === 'number' ? cfg.initial_hotels_available : 12,
           allow_build_without_monopoly: cfg.allow_build_without_monopoly === true,
+          allow_trade_built_properties: cfg.allow_trade_built_properties === true,
+          parking_mode: cfg.parking_mode === 'roulette' ? 'roulette' : 'pot',
         },
       },
       players,

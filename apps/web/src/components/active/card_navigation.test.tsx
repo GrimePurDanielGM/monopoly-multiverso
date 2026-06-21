@@ -13,7 +13,7 @@ function prop(over: Partial<ActiveProperty>): ActiveProperty {
 }
 function snap(properties: ActiveProperty[], over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
   return {
-    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false } },
+    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false, parking_mode: 'pot' } },
     me: { public_ref: 'P-1', is_host: false, balance: 3000, is_current: true, is_spectator: false },
     turn: { turn_number: 1, current_player_ref: 'P-1', order: ['P-1'] },
     players: [{ public_ref: 'P-1', display_name: 'Ana', token_id: 'cat', balance: 3000, is_current: true, status: 'active' }],
@@ -78,7 +78,7 @@ describe('PropertyCardModal — construir sin monopolio (item 2)', () => {
   });
 
   it('con la regla ACTIVADA, sin monopolio SÍ ofrece solicitar construir', () => {
-    const s = snap([mineNoMono], { game: { ...snap([mineNoMono]).game, config: { ...snap([mineNoMono]).game.config, allow_build_without_monopoly: true, allow_trade_built_properties: false } } });
+    const s = snap([mineNoMono], { game: { ...snap([mineNoMono]).game, config: { ...snap([mineNoMono]).game.config, allow_build_without_monopoly: true, allow_trade_built_properties: false, parking_mode: 'pot' } } });
     render(<PropertyCardModal property={mineNoMono} snap={s} actions={{ onBuildHouse: vi.fn() }} onClose={vi.fn()} />);
     expect(screen.queryByText(/Necesitas tener el grupo de color completo/)).toBeNull();
     expect(screen.getByRole('button', { name: /Solicitar construir casa/ })).toBeInTheDocument();

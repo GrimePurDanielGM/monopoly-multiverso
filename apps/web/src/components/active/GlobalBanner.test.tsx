@@ -9,11 +9,16 @@ describe('GlobalBanner', () => {
   });
 
   it('muestra quién cobró el bote y cuánto, en una región accesible (role=status), sin bloquear', () => {
-    render(<GlobalBanner banner={{ name: 'Daniel', amount: 450 }} />);
+    render(<GlobalBanner banner={{ name: 'Daniel', amount: 450, text: 'ha cobrado el bote de Parking: 450', icon: '🅿️💰' }} />);
     const status = screen.getByRole('status');
     expect(status).toHaveTextContent('Daniel');
     expect(status).toHaveTextContent('ha cobrado el bote de Parking');
-    expect(status).toHaveTextContent('450 €');
+    expect(status).toHaveTextContent('450');
     expect(status.className).toContain('pointer-events-none');
+  });
+
+  it('muestra el resultado de la ruleta de Parking', () => {
+    render(<GlobalBanner banner={{ name: 'Ana', amount: 0, text: 'gira la ruleta y va a la cárcel', icon: '🎡' }} />);
+    expect(screen.getByRole('status')).toHaveTextContent('gira la ruleta y va a la cárcel');
   });
 });

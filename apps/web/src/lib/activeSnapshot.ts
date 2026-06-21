@@ -135,6 +135,7 @@ export interface ActiveConfig {
   initial_hotels_available: number;
   allow_build_without_monopoly: boolean;
   allow_trade_built_properties: boolean;
+  parking_mode: 'pot' | 'roulette';
 }
 
 // ── Fase 4: tablero, casillas y posiciones ────────────────────────────────────────
@@ -209,10 +210,12 @@ export interface LastRoll {
 }
 /** Evento global de partida (Fase 5 corrección): p. ej. alguien cobra el bote del Parking → banner a todos. */
 export interface GlobalEvent {
-  kind: string;          // 'parking_pot_payout'
+  kind: string;          // 'parking_pot_payout' | 'parking_roulette'
   player_ref: string;
   amount: number;
   event_id: string;      // identificador único para no repetir el banner
+  outcome?: string | undefined;      // ruleta: collect_pot | draw_card | go_to_jail | lose_most_valuable | lose_least_valuable | pay_500
+  property_ref?: string | null | undefined; // ruleta: propiedad expropiada
 }
 /** Efecto de la casilla al caer (Fase 5): impuesto, parking (bote), ir a la cárcel o carta. */
 export interface LandingEffect {
@@ -736,8 +739,9 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
   let lastGlobalEvent: GlobalEvent | null = null;
   if (isObj(raw.last_global_event)) {
     const ge = raw.last_global_event;
-    if (isStr(ge.kind) && isStr(ge.player_ref) && isNum(ge.amount) && isStr(ge.event_id)) {
-      lastGlobalEvent = { kind: ge.kind, player_ref: ge.player_ref, amount: ge.amount, event_id: ge.event_id };
+    if (isStr(ge.kind) && isStr(ge.player_ref) && isStr(ge.event_id)) {
+      lastGlobalEvent = { kind: ge.kind, player_ref: ge.player_ref, amount: isNum(ge.amount) ? ge.amount : 0, event_id: ge.event_id,
+        outcome: isStr(ge.outcome) ? ge.outcome : undefined, property_ref: isStr(ge.property_ref) ? ge.property_ref : null };
     }
   }
 
@@ -752,7 +756,7 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
   return {
     ok: true,
     data: {
-      game: { code: g.code, status: 'active', config: { initial_money: cfg.initial_money, min_players: cfg.min_players, max_players: cfg.max_players, allow_late_join: cfg.allow_late_join, start_bonus: isNum(cfg.start_bonus) ? cfg.start_bonus : 200, dice_mode: parseDiceMode(cfg.dice_mode), initial_houses_available: isNum(cfg.initial_houses_available) ? cfg.initial_houses_available : 32, initial_hotels_available: isNum(cfg.initial_hotels_available) ? cfg.initial_hotels_available : 12, allow_build_without_monopoly: cfg.allow_build_without_monopoly === true, allow_trade_built_properties: cfg.allow_trade_built_properties === true } },
+      game: { code: g.code, status: 'active', config: { initial_money: cfg.initial_money, min_players: cfg.min_players, max_players: cfg.max_players, allow_late_join: cfg.allow_late_join, start_bonus: isNum(cfg.start_bonus) ? cfg.start_bonus : 200, dice_mode: parseDiceMode(cfg.dice_mode), initial_houses_available: isNum(cfg.initial_houses_available) ? cfg.initial_houses_available : 32, initial_hotels_available: isNum(cfg.initial_hotels_available) ? cfg.initial_hotels_available : 12, allow_build_without_monopoly: cfg.allow_build_without_monopoly === true, allow_trade_built_properties: cfg.allow_trade_built_properties === true, parking_mode: cfg.parking_mode === 'roulette' ? 'roulette' : 'pot' } },
       me: { public_ref: m.public_ref, is_host: m.is_host, balance: m.balance, is_current: m.is_current, is_spectator: m.is_spectator },
       turn: { turn_number: t.turn_number, current_player_ref: t.current_player_ref, order: t.order as string[] },
       players,

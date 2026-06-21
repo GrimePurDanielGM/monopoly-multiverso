@@ -6,7 +6,7 @@ import { RulesSummary } from './RulesSummary';
 const cfg = (over: Partial<ActiveConfig> = {}): ActiveConfig => ({
   initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200,
   dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12,
-  allow_build_without_monopoly: false, allow_trade_built_properties: false, ...over,
+  allow_build_without_monopoly: false, allow_trade_built_properties: false, parking_mode: 'pot', ...over,
 });
 
 describe('RulesSummary (Fase 9)', () => {

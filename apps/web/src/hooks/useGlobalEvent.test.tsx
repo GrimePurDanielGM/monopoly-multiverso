@@ -5,7 +5,7 @@ import { useGlobalEvent } from './useGlobalEvent';
 
 function snap(ev: GlobalEvent | null, version = 1): ActiveSnapshot {
   return {
-    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false } },
+    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false, parking_mode: 'pot' } },
     me: { public_ref: 'P-1', is_host: false, balance: 3000, is_current: true, is_spectator: false },
     turn: { turn_number: 1, current_player_ref: 'P-1', order: ['P-1', 'P-2'] },
     players: [
@@ -30,7 +30,7 @@ describe('useGlobalEvent', () => {
   it('muestra el banner cuando aparece un evento NUEVO (nombre + importe)', () => {
     const { result, rerender } = renderHook(({ s }) => useGlobalEvent(s), { initialProps: { s: snap(null) } });
     rerender({ s: snap(payout('e1', 'P-2', 450), 2) });
-    expect(result.current).toEqual({ name: 'Beto', amount: 450 });
+    expect(result.current).toMatchObject({ name: 'Beto', amount: 450 });
   });
 
   it('no se duplica por el mismo event_id (misma versión reprocesada)', () => {
@@ -39,6 +39,6 @@ describe('useGlobalEvent', () => {
     expect(result.current).not.toBeNull();
     rerender({ s: snap(payout('e1'), 2) }); // mismo evento
     // el banner sigue siendo el mismo objeto (no se re-dispara); basta con que no lance ni cambie de identidad.
-    expect(result.current).toEqual({ name: 'Beto', amount: 450 });
+    expect(result.current).toMatchObject({ name: 'Beto', amount: 450 });
   });
 });
