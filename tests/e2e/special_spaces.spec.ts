@@ -88,19 +88,19 @@ test('casillas especiales: impuesto, Parking, cárcel y carta', async ({ browser
 
   // ── Impuesto (idx 4 = 200): cae, paga y el bote sube a 200.
   await landOn(host, B, 4);
-  await reloadUntil(B, () => movement(B).getByText(/Has pagado 200 ₥ de impuesto/));
+  await reloadUntil(B, () => movement(B).getByText(/Has pagado 200 € de impuesto/));
   await expect(movement(B).getByText('Bote Parking')).toBeVisible();
-  await expect(movement(B).getByText('200 ₥').first()).toBeVisible();
+  await expect(movement(B).getByText('200 €').first()).toBeVisible();
 
   // ── Parking (idx 20): cobra el bote acumulado (200) y el bote vuelve a 0.
   await landOn(host, B, 20);
-  await reloadUntil(B, () => movement(B).getByText(/Has cobrado el bote de Parking: 200 ₥/));
+  await reloadUntil(B, () => movement(B).getByText(/Has cobrado el bote de Parking: 200 €/));
 
   // ── Ve a la cárcel (idx 30): encarcela; no se puede tirar; salir pagando 50.
   await landOn(host, B, 30);
   await reloadUntil(B, () => movement(B).getByText(/Estás en la cárcel/));
   await expect(movement(B).getByRole('button', { name: /Tirar dados/ })).toHaveCount(0);
-  await movement(B).getByRole('button', { name: /Pagar 50 ₥ para salir/ }).click();
+  await movement(B).getByRole('button', { name: /Pagar 50 € para salir/ }).click();
   await reloadUntil(B, () => movement(B).getByRole('button', { name: /Tirar dados/ }));
 
   // ── Carta (Suerte, idx 7): robar una carta abre el modal; "Aceptar" lo cierra.

@@ -107,14 +107,14 @@ test('opción activada: solicitar, rechazar, reintentar, aprobar y sala llena', 
   // El séptimo entra: saldo inicial y aparece en todos los clientes.
   await G.waitForURL(new RegExp(`/sala/${code}$`), { timeout: 30_000 });
   await expect(G.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
-  await expect(G.getByText('3.000 ₥').first()).toBeVisible();
+  await expect(G.getByText('3.000 €').first()).toBeVisible();
   await expect(host.getByText('Septimo').first()).toBeVisible({ timeout: 20_000 });
   await expect(ctxs[0] && (await ctxs[0].pages())[0]!.getByText('Septimo').first()).toBeVisible({ timeout: 20_000 });
 
   // Recarga conserva identidad/saldo.
   await G.reload();
   await expect(G.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
-  await expect(G.getByText('3.000 ₥').first()).toBeVisible();
+  await expect(G.getByText('3.000 €').first()).toBeVisible();
 
   // Sala llena (max 7, ya hay 7): un octavo solicitante es rechazado por el servidor.
   const hCtx = await browser.newContext();

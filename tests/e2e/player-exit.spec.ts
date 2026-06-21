@@ -89,12 +89,12 @@ test('salida y expulsión: abandonar a la banca, expulsar y repartir, persistenc
   await distDlg.getByLabel('Repartir entre jugadores restantes').check();
   await distDlg.getByRole('button', { name: 'Sí, sacar jugador' }).click();
   await expect(row(host, 'Jennifer')).toHaveCount(0, { timeout: 20_000 });
-  await expect(row(host, 'Anfitrión').getByText('6.000 ₥')).toBeVisible({ timeout: 20_000 });   // 3.000 + 3.000
+  await expect(row(host, 'Anfitrión').getByText('6.000 €')).toBeVisible({ timeout: 20_000 });   // 3.000 + 3.000
 
   // ── Persistencia: recargar conserva el estado final.
   await host.reload();
   await expect(host.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
-  await expect(row(host, 'Anfitrión').getByText('6.000 ₥')).toBeVisible({ timeout: 20_000 });
+  await expect(row(host, 'Anfitrión').getByText('6.000 €')).toBeVisible({ timeout: 20_000 });
   await expect(row(host, 'Doc')).toHaveCount(0);
   await expect(row(host, 'Marty')).toHaveCount(0);
   await expect(row(host, 'Jennifer')).toHaveCount(0);

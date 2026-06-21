@@ -100,13 +100,13 @@ test('cárcel: intento de dobles, salida pagando y banner global del bote', asyn
 
   // ── Salir pagando 50 (re-encarcelamos en limpio para tener la acción del turno disponible).
   await landOn(host, B, 30);   // vuelve a la cárcel (acción del turno reiniciada)
-  await reloadUntil(B, () => movement(B).getByRole('button', { name: /Pagar 50 ₥ para salir/ }));
-  await movement(B).getByRole('button', { name: /Pagar 50 ₥ para salir/ }).click();
+  await reloadUntil(B, () => movement(B).getByRole('button', { name: /Pagar 50 € para salir/ }));
+  await movement(B).getByRole('button', { name: /Pagar 50 € para salir/ }).click();
   await reloadUntil(B, () => movement(B).getByRole('button', { name: 'Movimiento manual' }));
 
   // ── Bote del Parking: Marty paga un impuesto (bote=200) y luego cae en Parking → cobra el bote.
   await landOn(host, B, 4);   // Impuesto sobre el capital (200) → alimenta el bote
-  await reloadUntil(B, () => movement(B).getByText(/Has pagado 200 ₥ de impuesto/));
+  await reloadUntil(B, () => movement(B).getByText(/Has pagado 200 € de impuesto/));
   await landOn(host, B, 20);  // Parking → cobra el bote (200); el cobrador ve el banner global sin recargar
 
   // Banner GLOBAL central (independiente del privado): "Marty ha cobrado el bote de Parking".

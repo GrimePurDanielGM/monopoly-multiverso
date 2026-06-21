@@ -60,7 +60,7 @@ test('reanudación de jugador: misma sesión, acceso visible y recuperación', a
   await marty2.goto(`/j/${code}`);
   await marty2.waitForURL(new RegExp(`/sala/${code}$`), { timeout: 30_000 });
   await expect(marty2.getByText(`Partida ${code}`)).toBeVisible({ timeout: 20_000 });
-  await expect(marty2.getByText('3.000 ₥').first()).toBeVisible(); // saldo conservado
+  await expect(marty2.getByText('3.000 €').first()).toBeVisible(); // saldo conservado
   await expect(marty2.getByRole('button', { name: 'Unirme' })).toHaveCount(0); // sin re-unirse ni elegir ficha
 
   // ── Acceso visible desde una sesión NUEVA: /j/{CODE} y Home ofrecen "Recuperar mi jugador".
