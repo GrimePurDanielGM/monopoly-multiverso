@@ -114,6 +114,7 @@ const KIND_LABEL: Record<LedgerKind, string> = {
   hotel_sale: 'Venta de hotel',
   mortgage_received: 'Hipoteca recibida',
   unmortgage_payment: 'Deshipoteca',
+  trade_money: 'Trato entre jugadores',
 };
 export function kindLabel(kind: LedgerKind): string {
   return KIND_LABEL[kind];

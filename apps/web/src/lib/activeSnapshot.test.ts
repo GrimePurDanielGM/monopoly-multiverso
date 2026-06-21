@@ -28,7 +28,7 @@ const valid = {
   ],
   late_join_requests: [],
   runtime_status: 'running',
-  current_landing_rent_resolved: false, building_stock: { houses_available: 32, hotels_available: 12 }, building_requests: [], my_building_requests: [], control: { paused_by_ref: null, finished_by_ref: null, reason: null },
+  current_landing_rent_resolved: false, building_stock: { houses_available: 32, hotels_available: 12 }, building_requests: [], my_building_requests: [], incoming_trades: [], outgoing_trades: [], trade_reviews: [], recent_trades: [], control: { paused_by_ref: null, finished_by_ref: null, reason: null },
   runtime_version: 3,
 };
 

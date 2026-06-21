@@ -13,7 +13,9 @@ export type LedgerKind =
   | 'tax_payment' | 'parking_pot_payout' | 'jail_release_payment'
   | 'card_bank_payment' | 'card_bank_charge' | 'card_player_payment' | 'card_player_charge'
   // Fase 6 — construcciones e hipotecas
-  | 'building_purchase' | 'building_sale' | 'hotel_purchase' | 'hotel_sale' | 'mortgage_received' | 'unmortgage_payment';
+  | 'building_purchase' | 'building_sale' | 'hotel_purchase' | 'hotel_sale' | 'mortgage_received' | 'unmortgage_payment'
+  // Fase 7 — tratos entre jugadores (dinero)
+  | 'trade_money';
 
 export type BoardKey = 'classic' | 'back_to_the_future';
 export type DeckKey = 'chance' | 'community_chest' | 'past' | 'future';
@@ -101,6 +103,24 @@ export interface BuildingRequest {
   action: BuildingAction;
   requester_ref: string;
   requester_name: string;
+}
+
+// ── Fase 7: tratos entre jugadores ────────────────────────────────────────────
+export type TradeStatus = 'pending' | 'countered' | 'host_review' | 'executed' | 'rejected' | 'cancelled' | 'invalidated';
+export interface TradeProperty { property_ref: string; name: string; mortgaged: boolean }
+export interface TradeCard { card_ref: string; title: string }
+export interface TradeProposal {
+  trade_ref: string;
+  from_ref: string; from_name: string;
+  to_ref: string; to_name: string;
+  from_money: number; to_money: number;
+  from_properties: TradeProperty[]; to_properties: TradeProperty[];
+  from_cards: TradeCard[]; to_cards: TradeCard[];
+  agreement_text: string | null;
+  status: TradeStatus;
+  requires_host: boolean;
+  pending_party: string | null;   // de quién se espera la próxima acción (public_ref) o null
+  created_at: string;
 }
 
 export interface ActiveConfig {
@@ -331,6 +351,11 @@ export interface ActiveSnapshot {
   building_requests: BuildingRequest[];
   /** Mis solicitudes de construcción pendientes (para mostrar "pendiente" en la ficha). */
   my_building_requests: Array<{ property_ref: string; action: BuildingAction }>;
+  /** Fase 7 — tratos: dirigidos a mí (activos), creados por mí (activos), a revisar por el anfitrión, e historial. */
+  incoming_trades: TradeProposal[];
+  outgoing_trades: TradeProposal[];
+  trade_reviews: TradeProposal[];
+  recent_trades: TradeProposal[];
   control: ActiveControl;
   runtime_version: number;
 }
@@ -353,7 +378,33 @@ const KINDS: ReadonlySet<string> = new Set([
   'tax_payment', 'parking_pot_payout', 'jail_release_payment',
   'card_bank_payment', 'card_bank_charge', 'card_player_payment', 'card_player_charge',
   'building_purchase', 'building_sale', 'hotel_purchase', 'hotel_sale', 'mortgage_received', 'unmortgage_payment',
+  'trade_money',
 ]);
+const TRADE_STATUSES: ReadonlySet<string> = new Set(['pending', 'countered', 'host_review', 'executed', 'rejected', 'cancelled', 'invalidated']);
+
+function parseTradeProps(v: unknown): TradeProperty[] {
+  return Array.isArray(v) ? v.filter(isObj).map((p) => ({
+    property_ref: String(p.property_ref), name: isStr(p.name) ? p.name : String(p.property_ref), mortgaged: p.mortgaged === true })) : [];
+}
+function parseTradeCards(v: unknown): TradeCard[] {
+  return Array.isArray(v) ? v.filter(isObj).map((c) => ({ card_ref: String(c.card_ref), title: isStr(c.title) ? c.title : '' })) : [];
+}
+/** Parsea una colección de tratos del snapshot (saneada, tolerante). */
+function parseTrades(v: unknown): TradeProposal[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter(isObj).filter((t) => isStr(t.trade_ref) && typeof t.status === 'string' && TRADE_STATUSES.has(t.status)).map((t) => ({
+    trade_ref: String(t.trade_ref),
+    from_ref: String(t.from_ref), from_name: isStr(t.from_name) ? t.from_name : String(t.from_ref),
+    to_ref: String(t.to_ref), to_name: isStr(t.to_name) ? t.to_name : String(t.to_ref),
+    from_money: isNum(t.from_money) ? t.from_money : 0, to_money: isNum(t.to_money) ? t.to_money : 0,
+    from_properties: parseTradeProps(t.from_properties), to_properties: parseTradeProps(t.to_properties),
+    from_cards: parseTradeCards(t.from_cards), to_cards: parseTradeCards(t.to_cards),
+    agreement_text: isStr(t.agreement_text) ? t.agreement_text : null,
+    status: t.status as TradeStatus, requires_host: t.requires_host === true,
+    pending_party: isStr(t.pending_party) ? t.pending_party : null,
+    created_at: isStr(t.created_at) ? t.created_at : '',
+  }));
+}
 const DECKS: ReadonlySet<string> = new Set(['chance', 'community_chest', 'past', 'future']);
 const CARD_EFFECTS: ReadonlySet<string> = new Set([
   'bank_credit', 'bank_debit', 'each_player_credit', 'each_player_debit', 'to_start', 'to_jail', 'back_steps', 'jail_free', 'manual',
@@ -738,6 +789,10 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
             requester_name: isStr(b.requester_name) ? b.requester_name : '' })) : [],
       my_building_requests: Array.isArray(raw.my_building_requests)
         ? raw.my_building_requests.filter(isObj).filter((m) => isBuildingAction(m.action)).map((m) => ({ property_ref: String(m.property_ref), action: m.action as BuildingAction })) : [],
+      incoming_trades: parseTrades(raw.incoming_trades),
+      outgoing_trades: parseTrades(raw.outgoing_trades),
+      trade_reviews: parseTrades(raw.trade_reviews),
+      recent_trades: parseTrades(raw.recent_trades),
       control: { paused_by_ref: ctl.paused_by_ref, finished_by_ref: ctl.finished_by_ref, reason: ctl.reason },
       runtime_version: raw.runtime_version,
     },

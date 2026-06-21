@@ -1,5 +1,29 @@
-import type { ActiveSnapshot, PurchaseRequest, LeaveRequest, BankruptcyRequest, BuildingRequest, BuildingAction } from '../../lib/activeSnapshot';
+import type { ActiveSnapshot, PurchaseRequest, LeaveRequest, BankruptcyRequest, BuildingRequest, BuildingAction, TradeProposal } from '../../lib/activeSnapshot';
 import type { ExitResolution } from '../../lib/api';
+import { TradeSummary } from './TradeSummary';
+
+/** Bandeja del anfitrión: tratos pendientes de aprobación (con propiedades, cartas o acuerdo). */
+export function TradeReviewsTray({ snap, busy, onResolve }: {
+  snap: ActiveSnapshot; busy: boolean;
+  onResolve: (t: TradeProposal, accept: boolean) => void;
+}) {
+  if (snap.trade_reviews.length === 0) return null;
+  return (
+    <section aria-label="Tratos a aprobar" className="flex flex-col gap-2 rounded-xl border border-indigo-700/50 p-4">
+      <h2 className="text-sm font-bold text-indigo-200">Tratos a aprobar</h2>
+      {snap.trade_reviews.map((t) => (
+        <div key={t.trade_ref} className="flex flex-col gap-2 rounded-lg border border-slate-700 p-2 text-sm">
+          <span className="text-xs text-slate-400"><span className="font-semibold">{t.from_name}</span> ↔ <span className="font-semibold">{t.to_name}</span></span>
+          <TradeSummary trade={t} />
+          <div className="flex gap-2">
+            <button type="button" onClick={() => onResolve(t, true)} disabled={busy} className="min-h-[36px] flex-1 rounded-lg bg-emerald-600 px-3 text-xs font-semibold disabled:opacity-40">Aprobar</button>
+            <button type="button" onClick={() => onResolve(t, false)} disabled={busy} className="min-h-[36px] flex-1 rounded-lg border border-slate-600 px-3 text-xs font-semibold disabled:opacity-40">Rechazar</button>
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
 
 const BUILD_LABEL: Record<BuildingAction, string> = {
   build_house: 'construir una casa', build_hotel: 'construir un hotel', sell_house: 'vender una casa', sell_hotel: 'vender un hotel',

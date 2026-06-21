@@ -635,6 +635,64 @@ export async function resolveBuildingRequest(requestRef: string, accept: boolean
   return { ok: true, data: true };
 }
 
+// ── Fase 7 — tratos entre jugadores ────────────────────────────────────────────
+export interface TradeTerms {
+  fromMoney: number; toMoney: number;
+  fromProps: string[]; toProps: string[];
+  fromCards: string[]; toCards: string[];
+  agreement: string | null;
+}
+/** Crear una propuesta de trato dirigida a otro jugador. Devuelve el trade_ref. */
+export async function createTradeProposal(gameId: string, toRef: string, terms: TradeTerms, requestId: string): Promise<ApiResult<{ trade_ref: string; status: string; requires_host: boolean }>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { data, error } = await supabase.rpc('create_trade_proposal', {
+    p_game: gameId, p_to_ref: toRef, p_from_money: terms.fromMoney, p_to_money: terms.toMoney,
+    p_from_props: terms.fromProps, p_to_props: terms.toProps, p_from_cards: terms.fromCards, p_to_cards: terms.toCards,
+    p_agreement: terms.agreement, p_request_id: requestId,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: data as { trade_ref: string; status: string; requires_host: boolean } };
+}
+/** Aceptar un trato (la contraparte / el creador tras contraoferta). Money-only ejecuta; con propiedades pasa a revisión del host. */
+export async function acceptTradeProposal(tradeRef: string, expectedVersion: number, requestId: string): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('accept_trade_proposal', { p_request_ref: tradeRef, p_expected_version: expectedVersion, p_request_id: requestId });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+/** Rechazar un trato (cualquier participante). */
+export async function rejectTradeProposal(tradeRef: string, requestId: string): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('reject_trade_proposal', { p_request_ref: tradeRef, p_request_id: requestId });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+/** Cancelar un trato (solo el creador, antes de ejecutar). */
+export async function cancelTradeProposal(tradeRef: string, requestId: string): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('cancel_trade_proposal', { p_request_ref: tradeRef, p_request_id: requestId });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+/** Contraoferta: la parte esperada modifica los términos; el trato vuelve a la otra parte. */
+export async function counterTradeProposal(tradeRef: string, terms: TradeTerms, requestId: string): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('counter_trade_proposal', {
+    p_request_ref: tradeRef, p_from_money: terms.fromMoney, p_to_money: terms.toMoney,
+    p_from_props: terms.fromProps, p_to_props: terms.toProps, p_from_cards: terms.fromCards, p_to_cards: terms.toCards,
+    p_agreement: terms.agreement, p_request_id: requestId,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+/** El anfitrión aprueba (ejecuta) o rechaza un trato en revisión. */
+export async function resolveTradeProposal(tradeRef: string, accept: boolean, expectedVersion: number): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('resolve_trade_proposal', { p_request_ref: tradeRef, p_accept: accept, p_expected_version: expectedVersion });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
 /** Resuelve la bifurcación de la cárcel-guardián: 'own' (seguir en tu tablero) o 'cross' (cruzar al otro). */
 export async function resolveJunction(gameId: string, direction: 'own' | 'cross', requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
   if (!supabase) return fail('UNCONFIGURED');

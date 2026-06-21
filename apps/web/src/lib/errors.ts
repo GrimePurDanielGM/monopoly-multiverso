@@ -133,6 +133,22 @@ const MESSAGES: Record<string, string> = {
   NOT_MORTGAGED: 'Esta propiedad no está hipotecada.',
   PLAYER_NOT_ACTIVE: 'No participas activamente en la partida.',
   INVALID_BUILDING_STOCK: 'El stock mínimo es 32 casas y 12 hoteles.',
+  // Fase 7 — tratos entre jugadores
+  TRADE_NOT_FOUND: 'No se encontró el trato.',
+  TRADE_NOT_PENDING: 'El trato ya no está pendiente.',
+  TRADE_ALREADY_RESOLVED: 'El trato ya se resolvió.',
+  NOT_TRADE_PARTICIPANT: 'No participas en este trato.',
+  NOT_TRADE_COUNTERPARTY: 'No te toca responder a este trato.',
+  NOT_TRADE_CREATOR: 'Solo quien creó el trato puede cancelarlo.',
+  HOST_APPROVAL_REQUIRED: 'Este trato necesita la aprobación del anfitrión.',
+  INVALID_TRADE_AMOUNT: 'La cantidad de dinero del trato no es válida.',
+  PROPERTY_HAS_BUILDINGS: 'No puedes intercambiar una propiedad con construcciones. Vende primero las casas u hotel.',
+  PROPERTY_ALREADY_IN_PENDING_TRADE: 'Esa propiedad ya está en otro trato pendiente.',
+  CARD_NOT_OWNED: 'No tienes esa carta.',
+  CARD_ALREADY_IN_PENDING_TRADE: 'Esa carta ya está en otro trato pendiente.',
+  TRADE_INVALIDATED: 'El trato dejó de ser válido porque cambió el estado de la partida.',
+  SELF_TRADE_NOT_ALLOWED: 'No puedes hacer un trato contigo mismo.',
+  EMPTY_TRADE: 'El trato debe incluir algo (dinero, propiedades, cartas o un acuerdo).',
 };
 
 /** Mensaje legible para un código de error conocido (o genérico si no lo es). */

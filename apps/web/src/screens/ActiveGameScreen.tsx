@@ -11,7 +11,8 @@ import {
   payJailRelease, redeemJailCard, resolveCard, payPending, payUtilityRent, setDiceMode,
   requestBuildHouse, requestBuildHotel, requestSellHouse, requestSellHotel, resolveBuildingRequest,
   mortgageProperty, unmortgageProperty,
-  type ApiResult, type ExitResolution, type BankruptcyKind,
+  createTradeProposal, acceptTradeProposal, rejectTradeProposal, cancelTradeProposal, counterTradeProposal, resolveTradeProposal,
+  type ApiResult, type ExitResolution, type BankruptcyKind, type TradeTerms,
 } from '../lib/api';
 import { useCardDraw } from '../hooks/useCardDraw';
 import { CardModal } from '../components/active/CardModal';
@@ -43,7 +44,10 @@ import { PropertyBoardModal } from '../components/active/PropertyBoardModal';
 import { MovementPanel } from '../components/active/MovementPanel';
 import { BoardView } from '../components/active/BoardView';
 import type { BoardKey } from '../lib/activeSnapshot';
-import { PurchaseRequestsTray, LeaveRequestsTray, BankruptcyRequestsTray, BuildingRequestsTray } from '../components/active/HostRequestTrays';
+import { PurchaseRequestsTray, LeaveRequestsTray, BankruptcyRequestsTray, BuildingRequestsTray, TradeReviewsTray } from '../components/active/HostRequestTrays';
+import { TradesPanel } from '../components/active/TradesPanel';
+import { CreateTradeModal } from '../components/active/CreateTradeModal';
+import type { TradeProposal } from '../lib/activeSnapshot';
 import { BankruptcyDialog } from '../components/active/BankruptcyDialog';
 import { formatMoney, ownerName } from '../lib/activeSelectors';
 import { tokenEmoji } from '../lib/tokenVisual';
@@ -82,6 +86,7 @@ export function ActiveGameScreen({
   const [reloadErr, setReloadErr] = useState<string | null>(null);
   const [reloadMsg, setReloadMsg] = useState('');
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [tradeModal, setTradeModal] = useState<{ mode: 'create' | 'counter'; toRef?: string; tradeRef?: string; initial?: TradeTerms } | null>(null);
   const [removeTarget, setRemoveTarget] = useState<{ ref: string; name: string } | null>(null);
   const [removeMode, setRemoveMode] = useState<ExitResolution>('to_bank');
   const [buyTarget, setBuyTarget] = useState<ActiveProperty | null>(null);
@@ -256,6 +261,18 @@ export function ActiveGameScreen({
   const doResolveBuilding = useCallback((requestRef: string, accept: boolean) => {
     void run(() => resolveBuildingRequest(requestRef, accept, snap?.runtime_version ?? 0));
   }, [snap?.runtime_version, run]);
+
+  // ── Fase 7: tratos ──
+  const tradeActions = useMemo(() => ({
+    onAccept: (t: TradeProposal) => void run(() => acceptTradeProposal(t.trade_ref, snap?.runtime_version ?? 0, newRequestId())),
+    onReject: (t: TradeProposal) => void run(() => rejectTradeProposal(t.trade_ref, newRequestId())),
+    onCancel: (t: TradeProposal) => void run(() => cancelTradeProposal(t.trade_ref, newRequestId())),
+    onCounter: (t: TradeProposal) => setTradeModal({ mode: 'counter', toRef: t.from_ref === snap?.me.public_ref ? t.to_ref : t.from_ref, tradeRef: t.trade_ref,
+      initial: { fromMoney: t.from_money, toMoney: t.to_money, fromProps: t.from_properties.map((p) => p.property_ref), toProps: t.to_properties.map((p) => p.property_ref), fromCards: t.from_cards.map((c) => c.card_ref), toCards: t.to_cards.map((c) => c.card_ref), agreement: t.agreement_text } }),
+  }), [snap?.runtime_version, snap?.me.public_ref, run]);
+  const doResolveTrade = useCallback((t: TradeProposal, accept: boolean) => {
+    void run(() => resolveTradeProposal(t.trade_ref, accept, snap?.runtime_version ?? 0));
+  }, [snap?.runtime_version, run]);
   const doResolveJunction = useCallback((dir: 'own' | 'cross') => {
     void run(() => resolveJunction(gameId, dir, newRequestId(), snap?.runtime_version ?? 0));
   }, [gameId, snap?.runtime_version, run]);
@@ -362,6 +379,7 @@ export function ActiveGameScreen({
             buildingActions={buildingActions}
           />
           <PropertiesSummary snap={snap} onOpenBoard={() => setBoardOpen(true)} buildingActions={buildingActions} busy={busy} />
+          <TradesPanel snap={snap} onCreate={() => setTradeModal({ mode: 'create' })} actions={tradeActions} />
         </div>
 
         <div className="mt-3 flex flex-col gap-3 lg:mt-0">
@@ -378,6 +396,7 @@ export function ActiveGameScreen({
             onResolve={(r, accept) => void run(() => resolvePropertyPurchase(r.request_ref, accept, ver))}
             onAuction={(r) => void run(() => startPropertyAuction(gameId, r.property_ref, newRequestId(), ver))} />}
           {host && <BuildingRequestsTray snap={snap} busy={busy} onResolve={(r, accept) => doResolveBuilding(r.request_ref, accept)} />}
+          {host && <TradeReviewsTray snap={snap} busy={busy} onResolve={doResolveTrade} />}
           {host && <LeaveRequestsTray snap={snap} busy={busy}
             onResolve={(r, accept, resolution) => void run(() => resolveLeaveActive(r.request_ref, accept, resolution, ver))} />}
           {host && <BankruptcyRequestsTray snap={snap} busy={busy}
@@ -572,6 +591,22 @@ export function ActiveGameScreen({
           onRequestPurchase={(p) => { setBoardViewOpen(false); setBuyTarget(p); }}
           buildingActions={buildingActions}
           busy={busy}
+        />
+      )}
+      {tradeModal && (
+        <CreateTradeModal
+          snap={snap}
+          busy={busy}
+          mode={tradeModal.mode}
+          fixedToRef={tradeModal.toRef}
+          initial={tradeModal.initial}
+          onClose={() => setTradeModal(null)}
+          onSubmit={(toRef, terms) => {
+            const m = tradeModal;
+            setTradeModal(null);
+            if (m.mode === 'counter' && m.tradeRef) void run(() => counterTradeProposal(m.tradeRef!, terms, newRequestId()));
+            else void run(() => createTradeProposal(gameId, toRef, terms, newRequestId()));
+          }}
         />
       )}
     </section>

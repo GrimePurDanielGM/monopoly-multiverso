@@ -1,5 +1,33 @@
 # Estado del proyecto — lista viva
 
+## Fase 7 — Tratos avanzados entre jugadores · **`Fase 7: COMPLETADA` (pendiente validación manual)** · migraciones `0061`–`0063`
+- **Alcance:** tratos entre DOS jugadores con dinero, propiedades, cartas conservables y un acuerdo personal (texto,
+  sin ejecución automática). Confirmación bilateral + aprobación del anfitrión cuando procede; ejecución ATÓMICA.
+- **Modelo (`0061`):** `game_trade_proposals` (from/to, from_money/to_money, agreement_text, requires_host,
+  pending_party, status `trade_status`) + `game_trade_items` (propiedades/cartas por lado). Ambas deny-all (solo RPC).
+  Ledger kind nuevo `trade_money` (dinero reconciliable; from≠to, request_id). Helpers `_p7_check` (validación
+  completa: jugadores activos, no self, dinero ≤ saldo y ≤ 10M, propiedades poseídas/sin construcciones/no en otro
+  trato pendiente, hipotecadas permitidas, cartas en posesión/no comprometidas) y `_p7_transfer` (mueve dinero +
+  propiedades [release+insert] + cartas [delete+insert], con auditoría).
+- **RPCs (`0062`):** `create_trade_proposal`, `accept_trade_proposal`, `reject_trade_proposal`,
+  `counter_trade_proposal`, `cancel_trade_proposal`, `resolve_trade_proposal` (anfitrión). Estados pending → (acepta
+  contraparte) → host_review (si hay propiedades/cartas/acuerdo) → executed; con countered (contraoferta vuelve a la
+  otra parte), rejected, cancelled, invalidated (revalida al ejecutar; si cambió el estado no ejecuta nada).
+  Solo dinero ⇒ se ejecuta sin anfitrión. Idempotencia (`_p2_idem`/`_p2_save`), `runtime_version`, `FOR UPDATE`,
+  broadcast único. Errores saneados (`TRADE_NOT_FOUND`, `NOT_TRADE_COUNTERPARTY`, `NOT_TRADE_CREATOR`, `NOT_HOST`,
+  `INVALID_TRADE_AMOUNT`, `INSUFFICIENT_FUNDS`, `PROPERTY_NOT_OWNED`, `PROPERTY_HAS_BUILDINGS`,
+  `PROPERTY_ALREADY_IN_PENDING_TRADE`, `CARD_NOT_OWNED`, `SELF_TRADE_NOT_ALLOWED`, `EMPTY_TRADE`, …).
+- **Snapshot (`0063`):** `incoming_trades`, `outgoing_trades` (activos), `trade_reviews` (host) y `recent_trades`
+  (historial), cada trato con ambos lados expandidos (propiedades con nombre+hipoteca, cartas con título). Saneado
+  (sin ids internos ni `auth_uid`), saldos privados intactos.
+- **UI:** panel «Tratos» (crear, recibidos, enviados, historial); `CreateTradeModal` (elegir jugador, dinero,
+  propiedades [las que tienen construcciones no son seleccionables; hipotecada marcada], mis cartas, acuerdo con aviso
+  de cumplimiento manual); bandeja «Tratos a aprobar» del anfitrión con resumen; Aceptar/Rechazar/Contraofertar/
+  Cancelar/Aprobar. Ledger con el kind `trade_money`.
+- **Tests:** SQL `trades`/`trade_validation`/`trade_execution`/`trade_security`/`trade_snapshot` phase7 (**5 suites**;
+  batería 1–7 **59 suites, 0 fallos** tras `db reset`); unit **362** (componentes de tratos + parser); E2E `trades`
+  (propiedad↔dinero con aprobación del anfitrión + dinero↔dinero sin anfitrión) Chromium+WebKit. **No se avanza a Fase 8.**
+
 ## Fase 6 — Casas, hoteles e hipotecas · **`Fase 6: COMPLETADA` (pendiente validación manual)** · migraciones `0052`–`0060`
 - **Alcance:** solo CALLES de color (no estaciones/servicios/especiales). Grupos de color por TABLERO (no se combinan
   entre tableros, a diferencia de servicios/estaciones).

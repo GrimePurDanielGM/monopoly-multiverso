@@ -69,6 +69,12 @@ vi.mock('../lib/api', () => ({
   resolveBuildingRequest: () => Promise.resolve({ ok: true, data: true }),
   mortgageProperty: () => Promise.resolve({ ok: true, data: true }),
   unmortgageProperty: () => Promise.resolve({ ok: true, data: true }),
+  createTradeProposal: () => Promise.resolve({ ok: true, data: { trade_ref: 'T1', status: 'pending', requires_host: false } }),
+  acceptTradeProposal: () => Promise.resolve({ ok: true, data: true }),
+  rejectTradeProposal: () => Promise.resolve({ ok: true, data: true }),
+  cancelTradeProposal: () => Promise.resolve({ ok: true, data: true }),
+  counterTradeProposal: () => Promise.resolve({ ok: true, data: true }),
+  resolveTradeProposal: () => Promise.resolve({ ok: true, data: true }),
 }));
 vi.mock('../lib/session', () => ({ ensureAnonSession: () => Promise.resolve('ready') }));
 vi.mock('../hooks/useLobbyRealtime', () => ({ useLobbyRealtime: () => ({ reconnect: () => {} }) }));
@@ -194,7 +200,7 @@ describe('LobbyScreen', () => {
         boards: [], spaces: [], board_links: [], guardians: [], pending_junction: null, parking_pot: 0, jail: [], my_jail: null, card_decks: [], last_card_draw: null, held_cards: [], my_held_cards: [], pending_card: null, pending_payment: null, last_global_event: null,
         positions: [], my_position: null, current_space: null, last_roll: null, last_move: null,
         runtime_status: 'running',
-        current_landing_rent_resolved: false, building_stock: { houses_available: 32, hotels_available: 12 }, building_requests: [], my_building_requests: [], control: { paused_by_ref: null, finished_by_ref: null, reason: null },
+        current_landing_rent_resolved: false, building_stock: { houses_available: 32, hotels_available: 12 }, building_requests: [], my_building_requests: [], incoming_trades: [], outgoing_trades: [], trade_reviews: [], recent_trades: [], control: { paused_by_ref: null, finished_by_ref: null, reason: null },
         runtime_version: 0,
       },
     });
