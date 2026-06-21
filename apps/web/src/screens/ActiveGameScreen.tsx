@@ -46,6 +46,7 @@ import { BoardView } from '../components/active/BoardView';
 import type { BoardKey } from '../lib/activeSnapshot';
 import { PurchaseRequestsTray, LeaveRequestsTray, BankruptcyRequestsTray, BuildingRequestsTray, TradeReviewsTray } from '../components/active/HostRequestTrays';
 import { TradesPanel } from '../components/active/TradesPanel';
+import { RulesSummary } from '../components/active/RulesSummary';
 import { CreateTradeModal, type TradeDraftInitial } from '../components/active/CreateTradeModal';
 import { getTradePerspective } from '../lib/activeSelectors';
 import type { TradeProposal } from '../lib/activeSnapshot';
@@ -388,6 +389,7 @@ export function ActiveGameScreen({
           />
           <PropertiesSummary snap={snap} onOpenBoard={() => setBoardOpen(true)} buildingActions={buildingActions} busy={busy} />
           <TradesPanel snap={snap} onCreate={() => setTradeModal({ mode: 'create' })} actions={tradeActions} />
+          <RulesSummary config={snap.game.config} />
         </div>
 
         <div className="mt-3 flex flex-col gap-3 lg:mt-0">

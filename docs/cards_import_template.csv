@@ -1,0 +1,23 @@
+deck_key,card_ref,title,body,effect_type,amount,target_space,target_board,keepable,manual_instruction,sort_order
+# Plantilla de importación de cartas reales — Monopoly: El Multiverso (Fase 8)
+# Rellena una fila por carta. Las líneas que empiezan por # son comentarios y se ignoran.
+# ─ Columnas ─
+#   deck_key            chance | community_chest | past | future   (Suerte | Caja de Comunidad | Pasado | Futuro)
+#   card_ref            id único y estable, p. ej. chance-advance-go  (minúsculas, sin espacios)
+#   title               título visible de la carta
+#   body                texto visible completo (se guarda en la columna `description`)
+#   effect_type         uno de: bank_credit | bank_debit | each_player_credit | each_player_debit |
+#                       to_start | to_jail | back_steps | jail_free | manual
+#                       (para "muévete a una casilla concreta", "reparaciones por casas/hoteles" u otros efectos
+#                        aún no automatizados: usa `manual` y rellena `manual_instruction`)
+#   amount              importe en € (bank_*/each_player_*) o nº de casillas (back_steps). Vacío si no aplica.
+#   target_space        casilla destino (referencia o nombre) — sólo informativo hasta automatizar `to_space`
+#   target_board        tablero destino para cartas que cruzan de tablero — informativo
+#   keepable            true para cartas que se conservan en la mano (p. ej. "Sal de la cárcel"); si no, false
+#   manual_instruction  instrucción para el anfitrión cuando effect_type=manual
+#   sort_order          orden dentro del mazo (1, 2, 3, …)
+# ─ Ejemplos (BORRA estas filas y pon las cartas reales) ─
+chance,chance-ejemplo-cobro,Ejemplo: cobras de la banca,Has ganado un premio. Cobra 100 € de la banca.,bank_credit,100,,,false,,1
+chance,chance-ejemplo-jail-free,Ejemplo: sal de la cárcel,Conserva esta carta hasta que la necesites.,jail_free,,,,true,,2
+community_chest,cc-ejemplo-reparacion,Ejemplo: reparaciones,Paga por cada casa y hotel que tengas (resuélvelo a mano).,manual,,,,false,Cobra 40 € por casa y 115 € por hotel,1
+past,past-ejemplo-mover,Ejemplo: muévete a una casilla,Avanza hasta la casilla indicada (resuélvelo a mano si cruza de tablero).,manual,,Salida,classic,false,Mueve la ficha a la Salida y cobra el sueldo,1

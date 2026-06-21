@@ -1,5 +1,27 @@
 # Estado del proyecto — lista viva
 
+## Trabajo nocturno (correcciones Fase 7 + Fase 8 + Fase 9) · migraciones `0064`–`0065`
+- **A1 (desplegada):** la vista del trato es **relativa al jugador** (`getTradePerspective`): participante ve
+  «Tú entregas / Tú recibes» bien orientado; anfitrión no participante lo ve neutral. Contraoferta del receptor ya
+  no se invierte. Solo presentación (sin cambiar el modelo). **Pusheada a `main` (CI+Vercel verdes).**
+- **A2 + A3 (migración `0064`, pendiente `db push`):** causa raíz común = el trigger `_p6_on_release` (0052)
+  borraba `game_property_state` y devolvía construcciones al stock en CADA liberación, también por trato. Ahora
+  IGNORA las liberaciones con `released_reason='trade'` ⇒ **hipoteca y construcciones se conservan** y siguen a la
+  propiedad (estado por `game_id, property_ref`). Nueva opción `allow_trade_built_properties` (def. false): con
+  false se mantiene `PROPERTY_HAS_BUILDINGS`; con true, propiedad con casas/hotel entra en el trato y se transfiere
+  con ellas (no vuelven al banco, stock intacto). `update_config` + snapshot la exponen. Frontend: toggle en lobby,
+  picker con aviso «se transferirá con sus casas u hotel», hipotecadas marcadas.
+- **Fase 8 — Cartas (migración `0065`, pendiente `db push`):** el sistema de cartas ya estaba completo (mazos,
+  robo, descarte, conservables, snapshot, UI, inventario) con **36 placeholders** `temporary=true`. NO se inventan
+  cartas reales. Se añade infraestructura de importación turnkey: columnas `target_space`/`target_board`/
+  `manual_instruction`, cargador `_p8_load_deck(deck, jsonb)` (idempotente, respeta FK de cartas repartidas) y
+  plantilla [`docs/cards_import_template.csv`](docs/cards_import_template.csv). Test `cards_import_phase8` (5).
+- **Fase 9 — Pulido/docs:** panel plegable «Reglas de la partida» en juego (recordatorio de opciones activas).
+  Docs nuevos: [`docs/manual-de-uso.md`](docs/manual-de-uso.md), [`docs/reglas-implementadas.md`](docs/reglas-implementadas.md),
+  [`docs/datos-pendientes.md`](docs/datos-pendientes.md).
+- **Pendiente del usuario:** `supabase db push` (aplica `0064` + `0065`) antes del `git push` del trabajo local;
+  aportar textos reales de cartas (ver datos-pendientes) e imágenes de peones (opcional).
+
 ## Fase 7 — Tratos avanzados entre jugadores · **`Fase 7: COMPLETADA` (pendiente validación manual)** · migraciones `0061`–`0063`
 - **Alcance:** tratos entre DOS jugadores con dinero, propiedades, cartas conservables y un acuerdo personal (texto,
   sin ejecución automática). Confirmación bilateral + aprobación del anfitrión cuando procede; ejecución ATÓMICA.
