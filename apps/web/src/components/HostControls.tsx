@@ -69,6 +69,7 @@ export function HostControls({ game, counts, players, requests, reload }: Props)
             housesAvailable={game.config.initial_houses_available ?? 32}
             hotelsAvailable={game.config.initial_hotels_available ?? 12}
             allowBuildWithoutMonopoly={game.config.allow_build_without_monopoly ?? false}
+            allowTradeBuiltProperties={game.config.allow_trade_built_properties ?? false}
             currentPlayers={counts.player_count}
             busy={busy}
             onSubmit={runConfig}

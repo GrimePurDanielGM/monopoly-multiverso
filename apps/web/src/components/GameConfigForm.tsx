@@ -15,6 +15,7 @@ export interface ConfigPatch {
   initial_houses_available: number;
   initial_hotels_available: number;
   allow_build_without_monopoly: boolean;
+  allow_trade_built_properties: boolean;
 }
 
 interface Props {
@@ -27,13 +28,14 @@ interface Props {
   housesAvailable: number;
   hotelsAvailable: number;
   allowBuildWithoutMonopoly: boolean;
+  allowTradeBuiltProperties: boolean;
   currentPlayers: number;
   busy: boolean;
   onSubmit: (patch: ConfigPatch) => void;
 }
 
 /** Edición de la configuración del lobby (solo whitelist de update_config). */
-export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, allowLateJoin, diceMode, housesAvailable, hotelsAvailable, allowBuildWithoutMonopoly, currentPlayers, busy, onSubmit }: Props) {
+export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, allowLateJoin, diceMode, housesAvailable, hotelsAvailable, allowBuildWithoutMonopoly, allowTradeBuiltProperties, currentPlayers, busy, onSubmit }: Props) {
   const [n, setN] = useState(name);
   const [min, setMin] = useState(minPlayers);
   const [max, setMax] = useState(maxPlayers);
@@ -43,6 +45,7 @@ export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, all
   const [houses, setHouses] = useState(housesAvailable);
   const [hotels, setHotels] = useState(hotelsAvailable);
   const [noMono, setNoMono] = useState(allowBuildWithoutMonopoly);
+  const [tradeBuilt, setTradeBuilt] = useState(allowTradeBuiltProperties);
 
   const stockErr = houses < 32 || hotels < 12 ? 'El mínimo son 32 casas y 12 hoteles.' : null;
   const errs = configErrors({ name: n, minPlayers: min, maxPlayers: max, initialMoney: money }, currentPlayers);
@@ -52,7 +55,7 @@ export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, all
     e.preventDefault();
     if (!valid || busy) return;
     onSubmit({ name: n.trim(), min_players: min, max_players: max, initial_money: money, allow_late_join: late, dice_mode: dice,
-      initial_houses_available: houses, initial_hotels_available: hotels, allow_build_without_monopoly: noMono });
+      initial_houses_available: houses, initial_hotels_available: hotels, allow_build_without_monopoly: noMono, allow_trade_built_properties: tradeBuilt });
   }
 
   return (
@@ -105,6 +108,16 @@ export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, all
           <span className="text-slate-200">Permitir construir casas sin tener el grupo completo</span>
           <span className="text-xs text-slate-500">
             Si está activado, cada jugador puede construir en propiedades suyas aunque no tenga todo el grupo de color. El grupo completo sigue dando alquiler doble si no hay construcciones.
+          </span>
+        </span>
+      </label>
+
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" checked={tradeBuilt} onChange={(e) => setTradeBuilt(e.target.checked)} className="mt-1 h-4 w-4" />
+        <span className="flex flex-col">
+          <span className="text-slate-200">Permitir tratos con propiedades construidas</span>
+          <span className="text-xs text-slate-500">
+            Si se activa, una propiedad con casas u hotel puede venderse o intercambiarse. El nuevo propietario recibe también esas construcciones.
           </span>
         </span>
       </label>

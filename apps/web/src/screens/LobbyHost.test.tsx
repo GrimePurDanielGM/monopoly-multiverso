@@ -31,7 +31,7 @@ function snapshot(meIsHost: boolean): LobbySnapshot {
     game: {
       id: 'g1', code: 'ABC234', name: 'Demo', status: 'lobby', version: 3,
       started_at: null, cancelled_at: null, host_public_ref: 'P-1',
-      config: { min_players: 6, max_players: 16, initial_money: 3000, token_catalog_version: 0, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false },
+      config: { min_players: 6, max_players: 16, initial_money: 3000, token_catalog_version: 0, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false },
     },
     players: [
       { public_ref: 'P-1', name: 'Ana', token_id: 'a', status: 'ready', last_seen_at: 'x' },

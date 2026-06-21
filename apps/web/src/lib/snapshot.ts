@@ -15,6 +15,7 @@ export interface SnapConfig {
   initial_houses_available: number;
   initial_hotels_available: number;
   allow_build_without_monopoly: boolean;
+  allow_trade_built_properties?: boolean;
 }
 export interface SnapGame {
   id: string;

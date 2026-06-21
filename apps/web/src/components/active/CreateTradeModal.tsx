@@ -12,10 +12,11 @@ function toInt(v: string): number {
   return Number.isNaN(n) || n < 0 ? 0 : Math.min(n, MAX_MONEY);
 }
 
-/** Lista de propiedades de un jugador con casillas para incluirlas en el trato. Las que tienen construcciones
- *  no se pueden seleccionar; las hipotecadas se marcan. */
-function PropertyPicker({ title, props, selected, onToggle }: {
-  title: string; props: ActiveProperty[]; selected: Set<string>; onToggle: (ref: string) => void;
+/** Lista de propiedades de un jugador para incluirlas en el trato. Si la partida NO permite tratar propiedades
+ *  construidas, las que tienen casas/hotel no se pueden seleccionar; si las permite, se marcan con un aviso. Las
+ *  hipotecadas siempre se marcan (se transfieren hipotecadas). */
+function PropertyPicker({ title, props, selected, allowBuilt, onToggle }: {
+  title: string; props: ActiveProperty[]; selected: Set<string>; allowBuilt: boolean; onToggle: (ref: string) => void;
 }) {
   if (props.length === 0) return <p className="text-[11px] text-slate-500">{title}: sin propiedades.</p>;
   return (
@@ -23,13 +24,15 @@ function PropertyPicker({ title, props, selected, onToggle }: {
       <p className="text-[11px] font-semibold text-slate-400">{title}</p>
       <div className="flex max-h-40 flex-col gap-1 overflow-y-auto overscroll-contain pr-1">
         {props.map((p) => {
-          const blocked = hasBuildings(p);
+          const built = hasBuildings(p);
+          const blocked = built && !allowBuilt;
           return (
-            <label key={p.property_ref} className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-sm ${blocked ? 'border-slate-800 opacity-50' : 'border-slate-700'}`}>
+            <label key={p.property_ref} className={`flex flex-wrap items-center gap-2 rounded-lg border px-2 py-1.5 text-sm ${blocked ? 'border-slate-800 opacity-50' : 'border-slate-700'}`}>
               <input type="checkbox" disabled={blocked} checked={selected.has(p.property_ref)} onChange={() => onToggle(p.property_ref)} className="h-4 w-4" />
               <span className="flex-1 break-words">{p.name}</span>
               {p.mortgaged && <span className="rounded bg-amber-900/60 px-1 text-[10px] text-amber-200">Hipotecada</span>}
               {blocked && <span className="text-[10px] text-slate-500">No disponible: tiene construcciones</span>}
+              {built && allowBuilt && <span className="w-full text-[10px] text-amber-300/90">Esta propiedad se transferirá con sus casas u hotel.</span>}
             </label>
           );
         })}
@@ -60,6 +63,7 @@ export function CreateTradeModal({ snap, busy = false, mode = 'create', fixedToR
   useDialogA11y(true, ref, { onEscape: onClose, initialFocusRef: closeRef });
 
   const me = snap.me.public_ref;
+  const allowBuilt = snap.game.config.allow_trade_built_properties === true;
   const others = snap.players.filter((p) => p.public_ref !== me && p.status === 'active');
   const [toRef, setToRef] = useState(fixedToRef ?? others[0]?.public_ref ?? '');
   const [myMoney, setMyMoney] = useState(String(initial?.myMoney ?? 0));
@@ -112,7 +116,7 @@ export function CreateTradeModal({ snap, busy = false, mode = 'create', fixedToR
                 <input aria-label="Dinero que ofrezco" type="text" inputMode="numeric" value={myMoney} onChange={(e) => setMyMoney(e.target.value)}
                   className="min-h-[40px] w-28 rounded-lg border border-slate-600 bg-slate-800 px-2 text-right text-base tabular-nums" />
               </label>
-              <div className="mt-2"><PropertyPicker title="Mis propiedades" props={myProperties} selected={myProps} onToggle={(r) => toggle(setMyProps, r)} /></div>
+              <div className="mt-2"><PropertyPicker title="Mis propiedades" props={myProperties} selected={myProps} allowBuilt={allowBuilt} onToggle={(r) => toggle(setMyProps, r)} /></div>
               {snap.my_held_cards.length > 0 && (
                 <div className="mt-2 flex flex-col gap-1">
                   <p className="text-[11px] font-semibold text-slate-400">Mis cartas conservables</p>
@@ -133,7 +137,7 @@ export function CreateTradeModal({ snap, busy = false, mode = 'create', fixedToR
                 <input aria-label="Dinero que pido" type="text" inputMode="numeric" value={theirMoney} onChange={(e) => setTheirMoney(e.target.value)}
                   className="min-h-[40px] w-28 rounded-lg border border-slate-600 bg-slate-800 px-2 text-right text-base tabular-nums" />
               </label>
-              <div className="mt-2"><PropertyPicker title={`Propiedades de ${toName || '—'}`} props={theirProperties} selected={theirProps} onToggle={(r) => toggle(setTheirProps, r)} /></div>
+              <div className="mt-2"><PropertyPicker title={`Propiedades de ${toName || '—'}`} props={theirProperties} selected={theirProps} allowBuilt={allowBuilt} onToggle={(r) => toggle(setTheirProps, r)} /></div>
             </div>
 
             <label className="flex flex-col gap-1 text-sm">
