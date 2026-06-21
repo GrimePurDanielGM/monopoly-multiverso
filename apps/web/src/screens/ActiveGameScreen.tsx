@@ -8,7 +8,7 @@ import {
   startPropertyAuction, placePropertyBid, closePropertyAuction, cancelPropertyAuction,
   requestBankruptcy, resolveBankruptcy,
   movePlayer, rollAndMove, moveWithPhysicalRoll, hostSetPlayerPosition, resolveJunction,
-  payJailRelease, redeemJailCard, resolveCard, payPending, payUtilityRent, setDiceMode,
+  payJailRelease, redeemJailCard, resolveCard, authorizeCardTransfer, payPending, payUtilityRent, setDiceMode,
   requestBuildHouse, requestBuildHotel, requestSellHouse, requestSellHotel, resolveBuildingRequest,
   mortgageProperty, unmortgageProperty,
   createTradeProposal, acceptTradeProposal, rejectTradeProposal, cancelTradeProposal, counterTradeProposal, resolveTradeProposal,
@@ -47,6 +47,7 @@ import type { BoardKey } from '../lib/activeSnapshot';
 import { PurchaseRequestsTray, LeaveRequestsTray, BankruptcyRequestsTray, BuildingRequestsTray, TradeReviewsTray } from '../components/active/HostRequestTrays';
 import { TradesPanel } from '../components/active/TradesPanel';
 import { RulesSummary } from '../components/active/RulesSummary';
+import { CardTransfersPanel } from '../components/active/CardTransfersPanel';
 import { CreateTradeModal, type TradeDraftInitial } from '../components/active/CreateTradeModal';
 import { getTradePerspective } from '../lib/activeSelectors';
 import type { TradeProposal } from '../lib/activeSnapshot';
@@ -298,6 +299,9 @@ export function ActiveGameScreen({
   const doCardChoice = useCallback((choice: 'pay' | 'draw') => {
     void run(() => resolveCard(gameId, newRequestId(), snap?.runtime_version ?? 0, choice));
   }, [gameId, snap?.runtime_version, run]);
+  const doAuthorizeTransfer = useCallback((transferRef: string) => {
+    void run(() => authorizeCardTransfer(gameId, transferRef, newRequestId(), snap?.runtime_version ?? 0));
+  }, [gameId, snap?.runtime_version, run]);
   const doPayPending = useCallback(() => {
     void run(() => payPending(gameId, newRequestId(), snap?.runtime_version ?? 0));
   }, [gameId, snap?.runtime_version, run]);
@@ -391,6 +395,7 @@ export function ActiveGameScreen({
             buildingActions={buildingActions}
           />
           <PropertiesSummary snap={snap} onOpenBoard={() => setBoardOpen(true)} buildingActions={buildingActions} busy={busy} />
+          <CardTransfersPanel transfers={snap.my_card_transfers} busy={busy} onAuthorize={(t) => doAuthorizeTransfer(t.transfer_ref)} />
           <TradesPanel snap={snap} onCreate={() => setTradeModal({ mode: 'create' })} actions={tradeActions} />
           <RulesSummary config={snap.game.config} />
         </div>

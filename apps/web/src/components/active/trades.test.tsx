@@ -30,7 +30,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     last_global_event: null, positions: [], my_position: null, current_space: null, last_roll: null, last_move: null,
     runtime_status: 'running', current_landing_rent_resolved: false,
     building_stock: { houses_available: 32, hotels_available: 12 }, building_requests: [], my_building_requests: [],
-    incoming_trades: [], outgoing_trades: [], trade_reviews: [], recent_trades: [],
+    incoming_trades: [], outgoing_trades: [], trade_reviews: [], recent_trades: [], my_card_transfers: [],
     control: { paused_by_ref: null, finished_by_ref: null, reason: null }, runtime_version: 1, ...over,
   };
 }

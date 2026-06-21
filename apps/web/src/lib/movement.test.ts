@@ -42,7 +42,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     current_space: { space_ref: 'cl-1', board_key: 'classic', space_index: 1, name: 'Mediterráneo', space_type: 'property', property_ref: 'cl-1', is_start: false },
     last_roll: null, last_move: null,
     runtime_status: 'running',
-    current_landing_rent_resolved: false, building_stock: { houses_available: 32, hotels_available: 12 }, building_requests: [], my_building_requests: [], incoming_trades: [], outgoing_trades: [], trade_reviews: [], recent_trades: [], control: { paused_by_ref: null, finished_by_ref: null, reason: null },
+    current_landing_rent_resolved: false, building_stock: { houses_available: 32, hotels_available: 12 }, building_requests: [], my_building_requests: [], incoming_trades: [], outgoing_trades: [], trade_reviews: [], recent_trades: [], my_card_transfers: [], control: { paused_by_ref: null, finished_by_ref: null, reason: null },
     runtime_version: 1,
     ...over,
   };

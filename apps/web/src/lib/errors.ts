@@ -133,6 +133,10 @@ const MESSAGES: Record<string, string> = {
   NOT_MORTGAGED: 'Esta propiedad no está hipotecada.',
   PLAYER_NOT_ACTIVE: 'No participas activamente en la partida.',
   INVALID_BUILDING_STOCK: 'El stock mínimo es 32 casas y 12 hoteles.',
+  // Fase 8 — cartas (elección / autorización de pagos)
+  TRANSFER_NOT_FOUND: 'No se encontró el pago pendiente (puede que ya esté autorizado).',
+  NOT_TRANSFER_AUTHORIZER: 'Solo quien debe pagar puede autorizar este pago.',
+  INVALID_CHOICE: 'Elige una opción válida.',
   // Fase 7 — tratos entre jugadores
   TRADE_NOT_FOUND: 'No se encontró el trato.',
   TRADE_NOT_PENDING: 'El trato ya no está pendiente.',

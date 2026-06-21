@@ -31,7 +31,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     last_roll: { d1: 2, d2: 3, total: 5, player_ref: 'P-1' },
     last_move: { player_ref: 'P-1', board: 'classic', from: 0, to: 1, steps: 1, method: 'roll', passed_start: false, bonus: 0, space_ref: 'cl-1', space_name: 'Mediterráneo', space_type: 'property', property_ref: 'cl-1' },
     runtime_status: 'running',
-    current_landing_rent_resolved: false, building_stock: { houses_available: 32, hotels_available: 12 }, building_requests: [], my_building_requests: [], incoming_trades: [], outgoing_trades: [], trade_reviews: [], recent_trades: [], control: { paused_by_ref: null, finished_by_ref: null, reason: null },
+    current_landing_rent_resolved: false, building_stock: { houses_available: 32, hotels_available: 12 }, building_requests: [], my_building_requests: [], incoming_trades: [], outgoing_trades: [], trade_reviews: [], recent_trades: [], my_card_transfers: [], control: { paused_by_ref: null, finished_by_ref: null, reason: null },
     runtime_version: 1,
     ...over,
   };

@@ -128,15 +128,21 @@ do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host
     okpend and okblock and okresolved);
 end $$;
 
--- C8) cobrar de cada jugador (each_player_credit): los demás me pagan lo que puedan.
-do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host'); p1 text:=pg_temp._ctx('p1'); p1u text:=pg_temp._ctx('p1_uid'); b0 bigint; begin
+-- C8) cobrar de cada jugador (each_player_credit): C3 — crea transferencias pendientes; cada pagador autoriza.
+do $$ declare gid uuid:=pg_temp._ctx('gid')::uuid; host text:=pg_temp._ctx('host'); p1 text:=pg_temp._ctx('p1'); p1u text:=pg_temp._ctx('p1_uid'); b0 bigint; t1 uuid; t2 uuid; npend int; begin
   perform pg_temp._as_user(host); perform host_set_turn(gid,p1,'turno P1 cada jugador',gen_random_uuid(),pg_temp._ver(gid));
   perform pg_temp._as_admin(); perform pg_temp._stack(gid,'chance-each-credit'); b0:=pg_temp._bal(gid,p1);
   perform pg_temp._as_user(host); perform host_set_player_position(gid,p1,'classic',6,'antes de suerte',gen_random_uuid(),pg_temp._ver(gid));
   perform pg_temp._as_user(p1u); perform move_player(gid,1,gen_random_uuid(),pg_temp._ver(gid));
   perform pg_temp._as_admin();
-  -- 2 oponentes (host + P2) pagan 20 cada uno = +40.
-  perform pg_temp._rec('C8) cobrar de cada jugador (+40 de 2 oponentes)', pg_temp._bal(gid,p1)=b0+40);
+  select count(*) into npend from public.game_card_transfers where game_id=gid and status='pending';
+  -- al robar: 2 pendientes (host + P2) y P1 aún sin cobrar; tras autorizar, cada uno paga 20 ⇒ +40.
+  select public_ref into t1 from public.game_card_transfers where game_id=gid and authorizer_ref=pg_temp._ctx('host_ref') and status='pending' limit 1;
+  perform pg_temp._as_user(host); perform authorize_card_transfer(gid,t1,gen_random_uuid(),pg_temp._ver(gid));
+  perform pg_temp._as_admin(); select public_ref into t2 from public.game_card_transfers where game_id=gid and authorizer_ref=pg_temp._ctx('p2') and status='pending' limit 1;
+  perform pg_temp._as_user(pg_temp._ctx('p2_uid')); perform authorize_card_transfer(gid,t2,gen_random_uuid(),pg_temp._ver(gid));
+  perform pg_temp._as_admin();
+  perform pg_temp._rec('C8) cobrar de cada jugador: 2 pendientes y, tras autorizar, +40', npend=2 and pg_temp._bal(gid,p1)=b0+40);
 end $$;
 
 do $$ declare n_ok int; n_all int; begin

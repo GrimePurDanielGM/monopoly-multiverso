@@ -16,7 +16,7 @@ function snap(ev: GlobalEvent | null, version = 1): ActiveSnapshot {
     boards: [], spaces: [], board_links: [], guardians: [], pending_junction: null, parking_pot: 0, jail: [], my_jail: null,
     card_decks: [], last_card_draw: null, held_cards: [], my_held_cards: [], pending_card: null, pending_payment: null,
     last_global_event: ev, positions: [], my_position: null, current_space: null, last_roll: null, last_move: null,
-    runtime_status: 'running', current_landing_rent_resolved: false, building_stock: { houses_available: 32, hotels_available: 12 }, building_requests: [], my_building_requests: [], incoming_trades: [], outgoing_trades: [], trade_reviews: [], recent_trades: [], control: { paused_by_ref: null, finished_by_ref: null, reason: null }, runtime_version: version,
+    runtime_status: 'running', current_landing_rent_resolved: false, building_stock: { houses_available: 32, hotels_available: 12 }, building_requests: [], my_building_requests: [], incoming_trades: [], outgoing_trades: [], trade_reviews: [], recent_trades: [], my_card_transfers: [], control: { paused_by_ref: null, finished_by_ref: null, reason: null }, runtime_version: version,
   };
 }
 const payout = (id: string, ref = 'P-2', amount = 450): GlobalEvent => ({ kind: 'parking_pot_payout', player_ref: ref, amount, event_id: id });

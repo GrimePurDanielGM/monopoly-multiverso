@@ -259,6 +259,8 @@ export interface LastCardDraw {
   keepable: boolean; temporary: boolean; manual: boolean; manual_instruction: string | null;
 }
 export interface HeldCardCount { player_ref: string; count: number; }
+/** Transferencia de carta «a cada jugador» que YO (el pagador) debo autorizar. */
+export interface CardTransfer { transfer_ref: string; amount: number; payer_ref: string; payee_ref: string; payer_name: string; payee_name: string; }
 export interface MyHeldCard { card_ref: string; title: string; description: string; deck_key: DeckKey; effect_type: CardEffectType; }
 export interface PendingCard { player_ref: string; card_ref: string; deck_key: DeckKey; title: string; description: string; kind: 'manual' | 'choice'; manual_instruction: string | null; amount: number | null; }
 export interface PendingPayment { kind: string; player_ref: string; amount: number; board: BoardKey; space_index: number; space_name: string; }
@@ -361,6 +363,7 @@ export interface ActiveSnapshot {
   outgoing_trades: TradeProposal[];
   trade_reviews: TradeProposal[];
   recent_trades: TradeProposal[];
+  my_card_transfers: CardTransfer[];
   control: ActiveControl;
   runtime_version: number;
 }
@@ -803,6 +806,11 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
       outgoing_trades: parseTrades(raw.outgoing_trades),
       trade_reviews: parseTrades(raw.trade_reviews),
       recent_trades: parseTrades(raw.recent_trades),
+      my_card_transfers: Array.isArray(raw.my_card_transfers)
+        ? raw.my_card_transfers.filter(isObj).filter((c) => isStr(c.transfer_ref)).map((c) => ({
+            transfer_ref: String(c.transfer_ref), amount: isNum(c.amount) ? c.amount : 0,
+            payer_ref: isStr(c.payer_ref) ? c.payer_ref : '', payee_ref: isStr(c.payee_ref) ? c.payee_ref : '',
+            payer_name: isStr(c.payer_name) ? c.payer_name : '', payee_name: isStr(c.payee_name) ? c.payee_name : '' })) : [],
       control: { paused_by_ref: ctl.paused_by_ref, finished_by_ref: ctl.finished_by_ref, reason: ctl.reason },
       runtime_version: raw.runtime_version,
     },
