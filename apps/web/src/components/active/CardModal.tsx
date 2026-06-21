@@ -5,15 +5,16 @@ import { useDialogA11y } from '../../hooks/useDialogA11y';
 
 /** Modal de carta robada (Fase 5): título, mazo, texto y efecto aplicado. Las cartas con efecto
  *  soportado se cierran con "Aceptar"; las de resolución manual exigen "Marcar como resuelta" (RPC). */
-export function CardModal({ show, busy, onAccept, onResolve }: {
+export function CardModal({ show, busy, onAccept, onResolve, onChoice }: {
   show: CardToShow;
   busy: boolean;
   onAccept: () => void;       // descarta el modal de una carta ya aplicada (cliente)
   onResolve: () => void;      // marca como resuelta una carta manual (RPC)
+  onChoice: (choice: 'pay' | 'draw') => void; // resuelve una carta de elección
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
-  const { card, mustResolve } = show;
+  const { card, mustResolve, choice, instruction } = show;
   // Las cartas manuales no se cierran con Escape (hay que resolverlas).
   useDialogA11y(true, ref, { onEscape: onAccept, escapeEnabled: !mustResolve, initialFocusRef: btnRef });
 
@@ -41,11 +42,27 @@ export function CardModal({ show, busy, onAccept, onResolve }: {
             Carta temporal — pendiente de sustituir por la carta real.
           </p>
         )}
-        {mustResolve ? (
+        {instruction && (
+          <p role="note" className="rounded-lg bg-slate-800 px-3 py-2 text-xs text-slate-300">{instruction}</p>
+        )}
+        {choice ? (
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button ref={btnRef} type="button" onClick={() => onChoice('pay')} disabled={busy}
+              className="min-h-[44px] flex-1 rounded-xl bg-amber-600 px-4 text-sm font-semibold disabled:opacity-40">
+              Pagar 10 € al bote
+            </button>
+            <button type="button" onClick={() => onChoice('draw')} disabled={busy}
+              className="min-h-[44px] flex-1 rounded-xl bg-indigo-600 px-4 text-sm font-semibold disabled:opacity-40">
+              Robar carta de Suerte
+            </button>
+          </div>
+        ) : mustResolve ? (
           <>
-            <p role="note" className="rounded-lg bg-slate-800 px-3 py-2 text-xs text-slate-300">
-              Su efecto aún no está automatizado: aplícalo entre vosotros y márcala como resuelta.
-            </p>
+            {!instruction && (
+              <p role="note" className="rounded-lg bg-slate-800 px-3 py-2 text-xs text-slate-300">
+                Su efecto aún no está automatizado: aplícalo entre vosotros y márcala como resuelta.
+              </p>
+            )}
             <button
               ref={btnRef}
               type="button"

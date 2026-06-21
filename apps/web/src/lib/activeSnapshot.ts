@@ -21,7 +21,8 @@ export type BoardKey = 'classic' | 'back_to_the_future';
 export type DeckKey = 'chance' | 'community_chest' | 'past' | 'future';
 export type CardEffectType =
   | 'bank_credit' | 'bank_debit' | 'each_player_credit' | 'each_player_debit'
-  | 'to_start' | 'to_jail' | 'back_steps' | 'jail_free' | 'manual';
+  | 'to_start' | 'to_jail' | 'back_steps' | 'jail_free' | 'manual'
+  | 'to_space' | 'to_nearest' | 'repairs' | 'choice';
 export type SpaceType = 'start' | 'property' | 'tax' | 'card' | 'jail' | 'go_to_jail' | 'parking' | 'special';
 export type PropertyKind = 'street' | 'station' | 'transport' | 'utility' | 'special';
 export interface ActiveProperty {
@@ -252,11 +253,11 @@ export interface CardDeckSummary { deck_key: DeckKey; board_key: BoardKey; draw_
 export interface LastCardDraw {
   draw_id: string; player_ref: string; deck_key: DeckKey; board_key: BoardKey; card_ref: string;
   title: string; description: string; effect_type: CardEffectType; amount: number | null;
-  keepable: boolean; temporary: boolean; manual: boolean;
+  keepable: boolean; temporary: boolean; manual: boolean; manual_instruction: string | null;
 }
 export interface HeldCardCount { player_ref: string; count: number; }
 export interface MyHeldCard { card_ref: string; title: string; description: string; deck_key: DeckKey; effect_type: CardEffectType; }
-export interface PendingCard { player_ref: string; card_ref: string; deck_key: DeckKey; title: string; description: string; }
+export interface PendingCard { player_ref: string; card_ref: string; deck_key: DeckKey; title: string; description: string; kind: 'manual' | 'choice'; manual_instruction: string | null; amount: number | null; }
 export interface PendingPayment { kind: string; player_ref: string; amount: number; board: BoardKey; space_index: number; space_name: string; }
 export interface LateJoinRequest {
   request_ref: string;
@@ -409,6 +410,7 @@ function parseTrades(v: unknown): TradeProposal[] {
 const DECKS: ReadonlySet<string> = new Set(['chance', 'community_chest', 'past', 'future']);
 const CARD_EFFECTS: ReadonlySet<string> = new Set([
   'bank_credit', 'bank_debit', 'each_player_credit', 'each_player_debit', 'to_start', 'to_jail', 'back_steps', 'jail_free', 'manual',
+  'to_space', 'to_nearest', 'repairs', 'choice',
 ]);
 const isDeck = (v: unknown): v is DeckKey => typeof v === 'string' && DECKS.has(v);
 const isCardEffect = (v: unknown): v is CardEffectType => typeof v === 'string' && CARD_EFFECTS.has(v);
@@ -697,7 +699,7 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
         title: isStr(cd.title) ? cd.title : '', description: isStr(cd.description) ? cd.description : '',
         effect_type: isCardEffect(cd.effect_type) ? cd.effect_type : 'manual', amount: isNumOrNull(cd.amount) ? cd.amount : null,
         keepable: isBool(cd.keepable) ? cd.keepable : false, temporary: isBool(cd.temporary) ? cd.temporary : false,
-        manual: isBool(cd.manual) ? cd.manual : false,
+        manual: isBool(cd.manual) ? cd.manual : false, manual_instruction: isStr(cd.manual_instruction) ? cd.manual_instruction : null,
       };
     }
   }
@@ -717,7 +719,10 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
     const pc = raw.pending_card;
     if (isStr(pc.card_ref) && isDeck(pc.deck_key) && isStr(pc.player_ref)) {
       pendingCard = { player_ref: pc.player_ref, card_ref: pc.card_ref, deck_key: pc.deck_key,
-        title: isStr(pc.title) ? pc.title : '', description: isStr(pc.description) ? pc.description : '' };
+        title: isStr(pc.title) ? pc.title : '', description: isStr(pc.description) ? pc.description : '',
+        kind: pc.kind === 'choice' ? 'choice' : 'manual',
+        manual_instruction: isStr(pc.manual_instruction) ? pc.manual_instruction : null,
+        amount: isNumOrNull(pc.amount) ? pc.amount : null };
     }
   }
   let pendingPayment: PendingPayment | null = null;

@@ -22,10 +22,10 @@ do $$ declare n int; nact int; ntmp int; begin
   perform pg_temp._rec('L1) carga 3 cartas: devuelve 3, 3 activas, 0 placeholders activos', n=3 and nact=3 and ntmp=0);
 end $$;
 
--- L2) las demás barajas (community_chest) siguen con sus placeholders intactos (no se tocan).
+-- L2) las demás barajas (community_chest) no se tocan al cargar 'chance': mantienen sus 16 cartas activas.
 do $$ declare c int; begin
-  select count(*) into c from public.card_catalog where deck_key='community_chest' and active and temporary;
-  perform pg_temp._rec('L2) otros mazos sin tocar (community_chest conserva placeholders)', c=9);
+  select count(*) into c from public.card_catalog where deck_key='community_chest' and active;
+  perform pg_temp._rec('L2) otros mazos sin tocar (community_chest mantiene sus 16 cartas activas)', c=16);
 end $$;
 
 -- L3) re-cargar el mismo mazo (idempotente): upsert por card_ref, sigue habiendo 3 activas.

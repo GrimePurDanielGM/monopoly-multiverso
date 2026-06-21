@@ -722,9 +722,9 @@ export async function redeemJailCard(gameId: string, requestId: string, expected
 }
 
 /** Marcar como resuelta una carta de resolución manual. */
-export async function resolveCard(gameId: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
+export async function resolveCard(gameId: string, requestId: string, expectedVersion: number, choice?: 'pay' | 'draw'): Promise<ApiResult<true>> {
   if (!supabase) return fail('UNCONFIGURED');
-  const { error } = await supabase.rpc('resolve_card', { p_game: gameId, p_request_id: requestId, p_expected_version: expectedVersion });
+  const { error } = await supabase.rpc('resolve_card', { p_game: gameId, p_request_id: requestId, p_expected_version: expectedVersion, p_choice: choice ?? null });
   if (error) return fail(error.message);
   return { ok: true, data: true };
 }

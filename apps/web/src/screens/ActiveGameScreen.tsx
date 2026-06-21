@@ -295,6 +295,9 @@ export function ActiveGameScreen({
   const doResolveCard = useCallback(() => {
     void run(() => resolveCard(gameId, newRequestId(), snap?.runtime_version ?? 0));
   }, [gameId, snap?.runtime_version, run]);
+  const doCardChoice = useCallback((choice: 'pay' | 'draw') => {
+    void run(() => resolveCard(gameId, newRequestId(), snap?.runtime_version ?? 0, choice));
+  }, [gameId, snap?.runtime_version, run]);
   const doPayPending = useCallback(() => {
     void run(() => payPending(gameId, newRequestId(), snap?.runtime_version ?? 0));
   }, [gameId, snap?.runtime_version, run]);
@@ -323,7 +326,7 @@ export function ActiveGameScreen({
     <section className="flex flex-col gap-3">
       <MoneyBanner flash={receivedFlash} />
       <GlobalBanner banner={globalBanner} />
-      {cardShow && <CardModal show={cardShow} busy={busy} onAccept={dismissCard} onResolve={doResolveCard} />}
+      {cardShow && <CardModal show={cardShow} busy={busy} onAccept={dismissCard} onResolve={doResolveCard} onChoice={doCardChoice} />}
       <ConnectionBar status={channelStatus} onRetry={onReconnect} />
 
       <header className="rounded-xl border border-slate-700 p-4">
