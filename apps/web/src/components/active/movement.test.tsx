@@ -145,7 +145,7 @@ describe('MovementPanel', () => {
     expect(screen.queryByRole('button', { name: '1 casilla' })).toBeNull();        // no se mueve manualmente
     fireEvent.click(screen.getByRole('button', { name: /Intentar sacar dobles/ }));
     expect(c.onRoll).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole('button', { name: /Pagar 50 ₥ para salir/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Pagar 50 € para salir/ }));
     expect(c.onPayJailRelease).toHaveBeenCalledTimes(1);
   });
 
@@ -156,7 +156,7 @@ describe('MovementPanel', () => {
     render(<MovementPanel snap={s} busy={false} {...c} />);
     expect(screen.getByText(/Ya has intentado salir de la cárcel en este turno\. Debes finalizar turno/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Intentar sacar dobles/ })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Pagar 50 ₥ para salir/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Pagar 50 € para salir/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /Usar carta/ })).toBeNull();
   });
 
@@ -177,7 +177,7 @@ describe('MovementPanel', () => {
     expect(screen.getByText(/Has sacado dobles y sales de la cárcel/)).toBeInTheDocument();
     const forced = snap({ my_jail: null, last_roll: { ...base, d1: 2, d2: 3, jail: 'forced_paid' } });
     rerender(<MovementPanel snap={forced} busy={false} {...c} />);
-    expect(screen.getByText(/Tercer intento fallido\. Pagas 50 ₥ y sales/)).toBeInTheDocument();
+    expect(screen.getByText(/Tercer intento fallido\. Pagas 50 € y sales/)).toBeInTheDocument();
   });
 
   it('en la cárcel con carta: ofrece usar la carta «Sal de la cárcel gratis»', () => {
@@ -197,7 +197,7 @@ describe('MovementPanel', () => {
     render(<MovementPanel snap={s} busy={false} {...c} />);
     expect(screen.getByText(/Debes pagar/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Tirar dados/ })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: /Pagar 100 ₥/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Pagar 100 €/ }));
     expect(c.onPayPending).toHaveBeenCalledTimes(1);
   });
 
@@ -209,7 +209,7 @@ describe('MovementPanel', () => {
     });
     render(<MovementPanel snap={s} busy={false} {...c} />);
     expect(screen.getByText('Bote Parking')).toBeInTheDocument();
-    expect(screen.getByText('250 ₥')).toBeInTheDocument();
+    expect(screen.getByText('250 €')).toBeInTheDocument();
     expect(screen.getByText(/Sal de la cárcel gratis/)).toBeInTheDocument();
   });
 
@@ -218,10 +218,10 @@ describe('MovementPanel', () => {
     const base = snap().last_move!;
     const taxS = snap({ last_move: { ...base, effect: { type: 'tax', name: 'Impuesto de lujo', amount: 100, paid: true } } });
     const { rerender } = render(<MovementPanel snap={taxS} busy={false} {...c} />);
-    expect(screen.getByText(/Has pagado 100 ₥ de impuesto/)).toBeInTheDocument();
+    expect(screen.getByText(/Has pagado 100 € de impuesto/)).toBeInTheDocument();
     const parkS = snap({ last_move: { ...base, effect: { type: 'parking', payout: 300 } } });
     rerender(<MovementPanel snap={parkS} busy={false} {...c} />);
-    expect(screen.getByText(/Has cobrado el bote de Parking: 300 ₥/)).toBeInTheDocument();
+    expect(screen.getByText(/Has cobrado el bote de Parking: 300 €/)).toBeInTheDocument();
   });
 });
 
@@ -326,7 +326,7 @@ describe('MovementPanel — dados físicos y servicios', () => {
     const c = cbs();
     render(<MovementPanel snap={utilSnap()} busy={false} {...c} />);
     expect(screen.getByText(/Servicios poseídos por Beto:/)).toHaveTextContent('Servicios poseídos por Beto: 1/4 · Multiplicador ×4');
-    expect(screen.getByText(/· Alquiler/)).toHaveTextContent('Tirada: 8 · Alquiler 32 ₥');
+    expect(screen.getByText(/· Alquiler/)).toHaveTextContent('Tirada: 8 · Alquiler 32 €');
     fireEvent.click(screen.getByRole('button', { name: /Pagar alquiler \(32/ }));
     expect(c.onPayUtilityRent).toHaveBeenCalledWith(expect.objectContaining({ property_ref: 'cl-elec' }), null, null);
   });
@@ -385,7 +385,7 @@ describe('MovementPanel — dados físicos y servicios', () => {
       current_space: { space_ref: 'cl-goya', board_key: 'classic', space_index: 5, name: 'Estación de Goya', space_type: 'property', property_ref: 'cl-goya', is_start: false },
     });
     render(<MovementPanel snap={s} busy={false} {...c} />);
-    expect(screen.getByText(/Estaciones\/transportes de Beto:/)).toHaveTextContent('Estaciones/transportes de Beto: 2/8 · Alquiler 50 ₥');
+    expect(screen.getByText(/Estaciones\/transportes de Beto:/)).toHaveTextContent('Estaciones/transportes de Beto: 2/8 · Alquiler 50 €');
     fireEvent.click(screen.getByRole('button', { name: /Pagar alquiler \(50/ }));
     expect(c.onPayRent).toHaveBeenCalledWith(expect.objectContaining({ property_ref: 'cl-goya' }));
   });

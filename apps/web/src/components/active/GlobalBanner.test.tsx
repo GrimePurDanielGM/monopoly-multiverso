@@ -13,7 +13,7 @@ describe('GlobalBanner', () => {
     const status = screen.getByRole('status');
     expect(status).toHaveTextContent('Daniel');
     expect(status).toHaveTextContent('ha cobrado el bote de Parking');
-    expect(status).toHaveTextContent('450 ₥');
+    expect(status).toHaveTextContent('450 €');
     expect(status.className).toContain('pointer-events-none');
   });
 });

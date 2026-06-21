@@ -37,7 +37,7 @@ describe('PropertyCardModal — flujo de solicitud (Fase 6 pulido)', () => {
   it('el botón de construir es una SOLICITUD ("Solicitar construir casa")', () => {
     const p = baseProp(); const onBuildHouse = vi.fn();
     render(<PropertyCardModal property={p} snap={snap([p])} onClose={vi.fn()} actions={{ onBuildHouse }} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Solicitar construir casa (50 ₥)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Solicitar construir casa (50 €)' }));
     expect(onBuildHouse).toHaveBeenCalledTimes(1);
   });
 

@@ -134,7 +134,7 @@ export function deckLabel(deck: string): string {
  *  Agrupación manual y determinista (no depende de ICU/locale del entorno). */
 export function formatMoney(n: number): string {
   const grouped = Math.trunc(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return `${n < 0 ? '-' : ''}${grouped} ₥`;
+  return `${n < 0 ? '-' : ''}${grouped} €`;
 }
 
 /** Etiqueta de un extremo de movimiento ('Banco' si es null). */

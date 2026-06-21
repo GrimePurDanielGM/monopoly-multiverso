@@ -34,7 +34,7 @@ describe('PropertyCardModal', () => {
     expect(dialog).toHaveTextContent('Ronda de Valencia');
     expect(dialog).toHaveTextContent('Con 1 casa');
     expect(dialog).toHaveTextContent('Con hotel');
-    expect(dialog).toHaveTextContent('250 ₥');   // alquiler con hotel
+    expect(dialog).toHaveTextContent('250 €');   // alquiler con hotel
     expect(dialog).toHaveTextContent('Coste por casa');
     expect(dialog).toHaveTextContent('Valor de hipoteca');
     expect(dialog).toHaveTextContent('Deshipotecar');

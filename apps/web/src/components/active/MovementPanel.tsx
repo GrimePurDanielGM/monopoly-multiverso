@@ -216,8 +216,8 @@ export function MovementPanel({
             <p className={`text-xs font-medium ${roll.jail === 'doubles' ? 'text-emerald-300' : 'text-amber-300'}`}>
               {roll.jail === 'doubles' && 'Has sacado dobles y sales de la cárcel.'}
               {roll.jail === 'failed' && 'No has sacado dobles. Sigues en la cárcel.'}
-              {roll.jail === 'forced_paid' && 'Tercer intento fallido. Pagas 50 ₥ y sales de la cárcel.'}
-              {roll.jail === 'forced_pending' && 'Tercer intento fallido. Debes pagar 50 ₥ para salir.'}
+              {roll.jail === 'forced_paid' && 'Tercer intento fallido. Pagas 50 € y sales de la cárcel.'}
+              {roll.jail === 'forced_pending' && 'Tercer intento fallido. Debes pagar 50 € para salir.'}
             </p>
           )}
           {move && (
@@ -337,7 +337,7 @@ export function MovementPanel({
                   Usar carta «Sal de la cárcel gratis»
                 </button>
               )}
-              <p className="text-[11px] text-amber-200/80">Solo una acción por turno. Si no sales antes, al tercer intento pagas 50 ₥ y sales. No puedes mover manualmente.</p>
+              <p className="text-[11px] text-amber-200/80">Solo una acción por turno. Si no sales antes, al tercer intento pagas 50 € y sales. No puedes mover manualmente.</p>
             </>
           )}
         </div>

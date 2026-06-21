@@ -282,7 +282,7 @@ describe('PropertyBoardModal (tablero de propiedades)', () => {
     expect(screen.getByText('Clásico')).toBeInTheDocument();
     expect(screen.getByText('Marrón')).toBeInTheDocument();
     expect(screen.getByText('Mediterráneo')).toBeInTheDocument();
-    expect(screen.getByText('60 ₥')).toBeInTheDocument();
+    expect(screen.getByText('60 €')).toBeInTheDocument();
   });
 
   it('la cabecera respeta el safe area superior (iPhone)', () => {
