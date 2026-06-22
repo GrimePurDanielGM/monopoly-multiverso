@@ -9,7 +9,7 @@ import { ensureAnonSession } from '../lib/session';
 import { roomTopic } from '../lib/codes';
 import { createDebouncer } from '../lib/debounce';
 import { filterPresentRefs, presenceRefsFromState } from '../lib/presence';
-import { reduceConn, DISCONNECT_MS, HEARTBEAT_MS, EVENT_DEBOUNCE_MS, type ConnEvent } from '../lib/connState';
+import { reduceConn, DISCONNECT_MS, HEARTBEAT_MS, RESYNC_MS, EVENT_DEBOUNCE_MS, type ConnEvent } from '../lib/connState';
 import { useRealtimeStore } from '../store/realtime';
 
 const OFFICIAL_EVENTS = ['lobby_changed', 'game_started', 'game_cancelled', 'recovery_requested', 'active_state_changed'] as const;
@@ -138,6 +138,15 @@ export function useLobbyRealtime({ code, gameId, myPublicRef, knownRefs, resync 
       void heartbeat(gameId); // fallos transitorios NO borran el snapshot
     }, HEARTBEAT_MS);
 
+    // Red de seguridad: re-sincroniza el snapshot periódicamente cuando la pestaña está visible, por si
+    // se pierde algún broadcast (anfitrión pasivo / pestaña en segundo plano que vuelve, navegador que
+    // suspende el websocket). El snapshot es la única fuente autoritativa; un fetch de más no hace daño.
+    const rs = setInterval(() => {
+      if (!isCurrent()) return;
+      if (!navigator.onLine || document.hidden) return;
+      void doResync();
+    }, RESYNC_MS);
+
     rt().setVisible(document.visibilityState === 'visible');
     if (!navigator.onLine) rt().setChannelStatus('offline');
     else connect();
@@ -146,6 +155,7 @@ export function useLobbyRealtime({ code, gameId, myPublicRef, knownRefs, resync 
       cancelled = true; // invalida callbacks de esta suscripción
       clearDisconnect();
       clearInterval(hb);
+      clearInterval(rs);
       debouncer.cancel();
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);

@@ -6,6 +6,9 @@ export type ConnEvent = 'subscribed' | 'lost' | 'timeout' | 'online' | 'offline'
 export const DISCONNECT_MS = 12_000;
 /** Heartbeat aproximado. */
 export const HEARTBEAT_MS = 25_000;
+/** Re-sincronización periódica del snapshot (red de seguridad por si se pierde un broadcast: el
+ *  anfitrión pasivo o una pestaña en segundo plano que vuelve al foco se autorreparan a tiempo). */
+export const RESYNC_MS = 8_000;
 /** Agrupación de señales consecutivas antes de recargar el snapshot. */
 export const EVENT_DEBOUNCE_MS = 250;
 
