@@ -6,7 +6,7 @@ import type { ActiveSnapshot, LedgerEntry, ActivePlayer } from './activeSnapshot
 // Snapshot mínimo: solo importan me.balance, me.is_spectator y runtime_version.
 function snap(balance: number, version: number, spectator = false): ActiveSnapshot {
   return {
-    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false, parking_mode: 'pot' } },
+    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false, parking_mode: 'pot', start_invest_pct: 0 } },
     me: { public_ref: 'P-1', is_host: false, balance, is_current: false, is_spectator: spectator },
     turn: { turn_number: 1, current_player_ref: 'P-2', order: ['P-1', 'P-2'] },
     players: [], ledger_recent: [], properties: [], auctions: [], purchase_requests: [],

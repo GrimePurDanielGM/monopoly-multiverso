@@ -17,6 +17,7 @@ export interface SnapConfig {
   allow_build_without_monopoly: boolean;
   allow_trade_built_properties?: boolean;
   parking_mode?: 'pot' | 'roulette';
+  start_invest_pct?: number;
 }
 export interface SnapGame {
   id: string;
@@ -179,6 +180,7 @@ export function parseSnapshot(raw: unknown): ParseResult {
           allow_build_without_monopoly: cfg.allow_build_without_monopoly === true,
           allow_trade_built_properties: cfg.allow_trade_built_properties === true,
           parking_mode: cfg.parking_mode === 'roulette' ? 'roulette' : 'pot',
+          start_invest_pct: typeof cfg.start_invest_pct === 'number' ? cfg.start_invest_pct : 0,
         },
       },
       players,

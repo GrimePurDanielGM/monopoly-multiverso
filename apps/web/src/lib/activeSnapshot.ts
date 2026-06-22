@@ -136,6 +136,7 @@ export interface ActiveConfig {
   allow_build_without_monopoly: boolean;
   allow_trade_built_properties: boolean;
   parking_mode: 'pot' | 'roulette';
+  start_invest_pct: number;
 }
 
 // ── Fase 4: tablero, casillas y posiciones ────────────────────────────────────────
@@ -759,7 +760,7 @@ export function parseActiveSnapshot(raw: unknown): ParseActiveResult {
   return {
     ok: true,
     data: {
-      game: { code: g.code, status: 'active', config: { initial_money: cfg.initial_money, min_players: cfg.min_players, max_players: cfg.max_players, allow_late_join: cfg.allow_late_join, start_bonus: isNum(cfg.start_bonus) ? cfg.start_bonus : 200, dice_mode: parseDiceMode(cfg.dice_mode), initial_houses_available: isNum(cfg.initial_houses_available) ? cfg.initial_houses_available : 32, initial_hotels_available: isNum(cfg.initial_hotels_available) ? cfg.initial_hotels_available : 12, allow_build_without_monopoly: cfg.allow_build_without_monopoly === true, allow_trade_built_properties: cfg.allow_trade_built_properties === true, parking_mode: cfg.parking_mode === 'roulette' ? 'roulette' : 'pot' } },
+      game: { code: g.code, status: 'active', config: { initial_money: cfg.initial_money, min_players: cfg.min_players, max_players: cfg.max_players, allow_late_join: cfg.allow_late_join, start_bonus: isNum(cfg.start_bonus) ? cfg.start_bonus : 200, dice_mode: parseDiceMode(cfg.dice_mode), initial_houses_available: isNum(cfg.initial_houses_available) ? cfg.initial_houses_available : 32, initial_hotels_available: isNum(cfg.initial_hotels_available) ? cfg.initial_hotels_available : 12, allow_build_without_monopoly: cfg.allow_build_without_monopoly === true, allow_trade_built_properties: cfg.allow_trade_built_properties === true, parking_mode: cfg.parking_mode === 'roulette' ? 'roulette' : 'pot', start_invest_pct: isNum(cfg.start_invest_pct) ? cfg.start_invest_pct : 0 } },
       me: { public_ref: m.public_ref, is_host: m.is_host, balance: m.balance, is_current: m.is_current, is_spectator: m.is_spectator },
       turn: { turn_number: t.turn_number, current_player_ref: t.current_player_ref, order: t.order as string[] },
       players,

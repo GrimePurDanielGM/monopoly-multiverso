@@ -12,7 +12,7 @@ function snap(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
   ];
   const positions: PlayerPosition[] = [{ player_ref: 'P-1', board_key: 'classic', space_index: 1 }];
   return {
-    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false, parking_mode: 'pot' } },
+    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false, parking_mode: 'pot', start_invest_pct: 0 } },
     me: { public_ref: 'P-1', is_host: false, balance: 3000, is_current: true, is_spectator: false },
     turn: { turn_number: 1, current_player_ref: 'P-1', order: ['P-1', 'P-2'] },
     players: [
@@ -51,7 +51,7 @@ describe('MovementPanel', () => {
 
   // El movimiento manual solo está disponible cuando el modo permite físicos (con físicos, elegir "Movimiento manual").
   const physSnap = (over: Partial<ActiveSnapshot> = {}) =>
-    snap({ game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'physical_allowed', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false, parking_mode: 'pot' } }, ...over });
+    snap({ game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'physical_allowed', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false, parking_mode: 'pot', start_invest_pct: 0 } }, ...over });
 
   it('mover manualmente (con físicos permitidos): elegir 1–12 con botones y Mover llama onMoveManual', () => {
     const c = cbs();
@@ -280,7 +280,7 @@ describe('MovementPanel — dados físicos y servicios', () => {
   beforeEach(() => { try { localStorage.clear(); } catch { /* noop */ } });
   const cbs = () => ({ onRoll: vi.fn(), onMovePhysical: vi.fn(), onMoveManual: vi.fn(), onOpenBoard: vi.fn(), onRequestPurchase: vi.fn(), onPayRent: vi.fn(), onPayUtilityRent: vi.fn(), onResolveJunction: vi.fn(), onPayJailRelease: vi.fn(), onUseJailCard: vi.fn(), onPayPending: vi.fn() });
   const withDice = (dice_mode: 'virtual_only' | 'physical_allowed' | 'physical_only', over: Partial<ActiveSnapshot> = {}) =>
-    snap({ game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode, initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false, parking_mode: 'pot' } }, ...over });
+    snap({ game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode, initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false, parking_mode: 'pot', start_invest_pct: 0 } }, ...over });
   // Snapshot donde el jugador local cae en un SERVICIO propiedad de Beto (P-2).
   const utilSnap = (dice_mode: 'virtual_only' | 'physical_allowed' | 'physical_only' = 'virtual_only', over: Partial<ActiveSnapshot> = {}) =>
     withDice(dice_mode, {

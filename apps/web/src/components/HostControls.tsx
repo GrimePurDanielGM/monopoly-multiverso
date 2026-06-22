@@ -71,6 +71,7 @@ export function HostControls({ game, counts, players, requests, reload }: Props)
             allowBuildWithoutMonopoly={game.config.allow_build_without_monopoly ?? false}
             allowTradeBuiltProperties={game.config.allow_trade_built_properties ?? false}
             parkingMode={game.config.parking_mode ?? 'pot'}
+            startInvestPct={game.config.start_invest_pct ?? 0}
             currentPlayers={counts.player_count}
             busy={busy}
             onSubmit={runConfig}

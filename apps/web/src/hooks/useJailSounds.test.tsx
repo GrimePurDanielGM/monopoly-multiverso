@@ -9,7 +9,7 @@ import { useJailSounds } from './useJailSounds';
 
 function snap(myJail: MyJail | null, version: number): ActiveSnapshot {
   return {
-    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false, parking_mode: 'pot' } },
+    game: { code: 'ABC234', status: 'active', config: { initial_money: 3000, min_players: 2, max_players: 16, allow_late_join: false, start_bonus: 200, dice_mode: 'virtual_only', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false, parking_mode: 'pot', start_invest_pct: 0 } },
     me: { public_ref: 'P-1', is_host: false, balance: 3000, is_current: true, is_spectator: false },
     turn: { turn_number: 1, current_player_ref: 'P-1', order: ['P-1'] },
     players: [], ledger_recent: [], properties: [], auctions: [], purchase_requests: [], leave_requests: [], bankruptcy_requests: [], late_join_requests: [],

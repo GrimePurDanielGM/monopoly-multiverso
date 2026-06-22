@@ -17,6 +17,7 @@ export interface ConfigPatch {
   allow_build_without_monopoly: boolean;
   allow_trade_built_properties: boolean;
   parking_mode: 'pot' | 'roulette';
+  start_invest_pct: number;
 }
 
 interface Props {
@@ -31,13 +32,14 @@ interface Props {
   allowBuildWithoutMonopoly: boolean;
   allowTradeBuiltProperties: boolean;
   parkingMode: 'pot' | 'roulette';
+  startInvestPct: number;
   currentPlayers: number;
   busy: boolean;
   onSubmit: (patch: ConfigPatch) => void;
 }
 
 /** Edición de la configuración del lobby (solo whitelist de update_config). */
-export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, allowLateJoin, diceMode, housesAvailable, hotelsAvailable, allowBuildWithoutMonopoly, allowTradeBuiltProperties, parkingMode, currentPlayers, busy, onSubmit }: Props) {
+export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, allowLateJoin, diceMode, housesAvailable, hotelsAvailable, allowBuildWithoutMonopoly, allowTradeBuiltProperties, parkingMode, startInvestPct, currentPlayers, busy, onSubmit }: Props) {
   const [n, setN] = useState(name);
   const [min, setMin] = useState(minPlayers);
   const [max, setMax] = useState(maxPlayers);
@@ -49,6 +51,7 @@ export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, all
   const [noMono, setNoMono] = useState(allowBuildWithoutMonopoly);
   const [tradeBuilt, setTradeBuilt] = useState(allowTradeBuiltProperties);
   const [parking, setParking] = useState<'pot' | 'roulette'>(parkingMode);
+  const [investPct, setInvestPct] = useState(startInvestPct);
 
   const stockErr = houses < 32 || hotels < 12 ? 'El mínimo son 32 casas y 12 hoteles.' : null;
   const errs = configErrors({ name: n, minPlayers: min, maxPlayers: max, initialMoney: money }, currentPlayers);
@@ -58,7 +61,7 @@ export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, all
     e.preventDefault();
     if (!valid || busy) return;
     onSubmit({ name: n.trim(), min_players: min, max_players: max, initial_money: money, allow_late_join: late, dice_mode: dice,
-      initial_houses_available: houses, initial_hotels_available: hotels, allow_build_without_monopoly: noMono, allow_trade_built_properties: tradeBuilt, parking_mode: parking });
+      initial_houses_available: houses, initial_hotels_available: hotels, allow_build_without_monopoly: noMono, allow_trade_built_properties: tradeBuilt, parking_mode: parking, start_invest_pct: investPct });
   }
 
   return (
@@ -104,6 +107,15 @@ export function GameConfigForm({ name, minPlayers, maxPlayers, initialMoney, all
           cárcel, perder tu propiedad más/menos valiosa, o pagar 500 € al bote). El bote tiene un tope de 2.500 €.
         </span>
       </label>
+
+      <div className="flex flex-col gap-1 text-sm">
+        <span className="text-slate-300">Retorno de inversión al pasar por Salida (%)</span>
+        <NumberStepper ariaLabel="Retorno de inversión (%)" value={investPct} onChange={setInvestPct} min={0} max={100} />
+        <span className="text-xs text-slate-500">
+          Además de los 200 € de la Salida, cada jugador cobra este % del valor de sus propiedades, casas y
+          hoteles cada vez que pasa por ella (0 = desactivado).
+        </span>
+      </div>
 
       <div className="grid grid-cols-2 gap-2">
         <div className="flex flex-col gap-1 text-sm">

@@ -17,6 +17,7 @@ function renderForm(over: Partial<React.ComponentProps<typeof GameConfigForm>> =
       allowBuildWithoutMonopoly={false}
       allowTradeBuiltProperties={false}
       parkingMode="pot"
+      startInvestPct={0}
       currentPlayers={1}
       busy={false}
       onSubmit={onSubmit}
@@ -31,7 +32,7 @@ describe('GameConfigForm — configuración de dados', () => {
     const { onSubmit } = renderForm();
     fireEvent.change(screen.getByLabelText('Configuración de dados'), { target: { value: 'physical_allowed' } });
     fireEvent.click(screen.getByRole('button', { name: 'Guardar configuración' }));
-    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ dice_mode: 'physical_allowed', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false, parking_mode: 'pot' }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ dice_mode: 'physical_allowed', initial_houses_available: 32, initial_hotels_available: 12, allow_build_without_monopoly: false, allow_trade_built_properties: false, parking_mode: 'pot', start_invest_pct: 0 }));
   });
 });
 
@@ -42,7 +43,7 @@ describe('GameConfigForm — stock de construcción (Fase 6 pulido)', () => {
     fireEvent.change(screen.getByLabelText('Hoteles disponibles'), { target: { value: '24' } });
     fireEvent.click(screen.getByLabelText(/Permitir construir casas sin tener el grupo completo/));
     fireEvent.click(screen.getByRole('button', { name: 'Guardar configuración' }));
-    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ initial_houses_available: 64, initial_hotels_available: 24, allow_build_without_monopoly: true, allow_trade_built_properties: false, parking_mode: 'pot' }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ initial_houses_available: 64, initial_hotels_available: 24, allow_build_without_monopoly: true, allow_trade_built_properties: false, parking_mode: 'pot', start_invest_pct: 0 }));
   });
 
   it('rechaza bajar de 32 casas / 12 hoteles (Guardar deshabilitado)', () => {
