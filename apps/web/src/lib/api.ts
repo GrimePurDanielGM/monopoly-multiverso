@@ -395,6 +395,18 @@ export async function hostRevertMovement(
   return { ok: true, data: true };
 }
 
+/** Deshacer la última acción (solo anfitrión): revierte dinero Y estado (compra, construcción, hipoteca…). */
+export async function hostUndoLast(
+  gameId: string, reason: string, requestId: string, expectedVersion: number,
+): Promise<ApiResult<true>> {
+  if (!supabase) return fail('UNCONFIGURED');
+  const { error } = await supabase.rpc('host_undo_last', {
+    p_game: gameId, p_reason: reason, p_request_id: requestId, p_expected_version: expectedVersion,
+  });
+  if (error) return fail(error.message);
+  return { ok: true, data: true };
+}
+
 /** Control de la partida (solo anfitrión): pausar. */
 export async function pauseGame(gameId: string, reason: string, requestId: string, expectedVersion: number): Promise<ApiResult<true>> {
   if (!supabase) return fail('UNCONFIGURED');

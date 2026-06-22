@@ -59,6 +59,8 @@ const MESSAGES: Record<string, string> = {
   CANNOT_REVERT_SEED: 'No se puede revertir este movimiento.',
   ALREADY_REVERTED: 'Ese movimiento ya fue revertido.',
   WOULD_GO_NEGATIVE: 'La reversión dejaría a un jugador con saldo negativo.',
+  NOTHING_TO_UNDO: 'No hay ninguna acción que deshacer.',
+  CANNOT_UNDO_KIND: 'Esa acción no se puede deshacer automáticamente (quiebra o salida).',
   LEDGER_REF_EXHAUSTED: 'No se pudo registrar el movimiento. Inténtalo de nuevo.',
   REQUEST_ID_REQUIRED: 'Falta el identificador de la operación.',
   SNAPSHOT_INVALID: 'No se pudo leer el estado de la partida. Vuelve a intentarlo.',

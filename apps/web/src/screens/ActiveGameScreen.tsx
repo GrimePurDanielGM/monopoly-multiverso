@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   getActiveSnapshotByCode, listActiveTokens, endTurn, bankTransfer, playerTransfer,
-  hostPlayerTransfer, hostAdjustBalance, hostSetTurn, hostRevertMovement,
+  hostPlayerTransfer, hostAdjustBalance, hostSetTurn, hostRevertMovement, hostUndoLast,
   pauseGame, resumeGame, finishGame, resolveLateJoin,
   requestLeaveActive, resolveLeaveActive, removeActivePlayer,
   requestPropertyPurchase, resolvePropertyPurchase, payRent,
@@ -82,6 +82,7 @@ export function ActiveGameScreen({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [revertRef, setRevertRef] = useState<string | null>(null);
+  const [undoOpen, setUndoOpen] = useState(false);
   const [controlBusy, setControlBusy] = useState(false);
   const [pauseOpen, setPauseOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
@@ -438,7 +439,19 @@ export function ActiveGameScreen({
             )}
           </fieldset>
           <section aria-label="Movimientos" className="flex flex-col gap-2 rounded-xl border border-slate-700 p-4">
-            <h2 className="text-sm font-bold text-slate-200">Movimientos recientes</h2>
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-bold text-slate-200">Movimientos recientes</h2>
+              {host && !paused && (
+                <button
+                  type="button"
+                  onClick={() => setUndoOpen(true)}
+                  disabled={busy}
+                  className="min-h-[36px] rounded-lg border border-amber-500/50 px-2 text-xs font-semibold text-amber-300 disabled:opacity-40"
+                >
+                  Deshacer última acción
+                </button>
+              )}
+            </div>
             <LedgerList snap={snap} isHost={host && !paused} busy={busy} onRevert={(ref) => setRevertRef(ref)} />
           </section>
 
@@ -467,6 +480,19 @@ export function ActiveGameScreen({
       </div>
 
       <LiveRegion message={busy ? 'Procesando operación…' : ''} tone="info" />
+
+      <ConfirmDialog
+        open={undoOpen}
+        title="Deshacer última acción"
+        busy={busy}
+        message="Se revertirá la última acción registrada: el dinero y también el estado (una compra libera la propiedad, una construcción retira la casa/hotel, una hipoteca se anula). Puedes pulsarlo varias veces para retroceder más. ¿Deshacer?"
+        confirmLabel="Deshacer"
+        onConfirm={() => {
+          setUndoOpen(false);
+          void run(() => hostUndoLast(gameId, 'Deshacer última acción', newRequestId(), ver));
+        }}
+        onCancel={() => setUndoOpen(false)}
+      />
 
       <RevertDialog
         open={revertRef !== null}
