@@ -1,6 +1,6 @@
 /* Service worker · GrimePur Oficinas
    Al publicar cambios, sube el número de CACHE para que la app avise de la actualización. */
-const CACHE = 'gp-oficinas-v1';
+const CACHE = 'gp-oficinas-v2';
 const ASSETS = [
   './',
   './index.html',
