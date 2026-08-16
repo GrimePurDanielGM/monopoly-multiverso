@@ -5,7 +5,8 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import globals from 'globals';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', 'supabase/functions/**'] },
+  // apps/oficinas es una PWA estática independiente (JS vanilla de navegador, sin toolchain TS)
+  { ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', 'supabase/functions/**', 'apps/oficinas/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
