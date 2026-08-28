@@ -81,20 +81,6 @@
     color:var(--muted);
     line-height:1.6;
   }
-  .sep{
-    max-width:1160px;
-    margin:34px auto 6px;
-    padding:0 24px;
-    display:flex;
-    align-items:center;
-    gap:14px;
-    font-family:"IBM Plex Mono",ui-monospace,monospace;
-    font-size:12px;
-    letter-spacing:.2em;
-    text-transform:uppercase;
-    color:var(--muted);
-  }
-  .sep::after{content:"";flex:1;height:1px;background:var(--line)}
 
   /* ---------- hoja A4 apaisada ---------- */
   main{max-width:1160px;margin:0 auto;padding:8px 24px 64px;display:flex;flex-direction:column;gap:26px}
@@ -260,6 +246,7 @@
   }
   .slot b{font:700 15pt/1 "IBM Plex Mono",ui-monospace,monospace}
   .slot span{font-size:11pt;line-height:1.2;font-weight:500}
+  .slot.doc{flex:.55}
   .slot.res{background:#fff;color:#7C868D;border:1mm dashed #C6CDD1}
   .slot.res span{color:#5B6670}
 
@@ -286,13 +273,11 @@
   .note{font-size:10.5pt;line-height:1.35;color:#4C565E;margin:0}
   .note b{font-weight:600;color:#191E22}
 
-  .chrome-only{display:block}
-
   /* ---------- impresión ---------- */
   @page{size:A4 landscape;margin:0}
   @media print{
     body{background:#fff}
-    .chrome,.sep{display:none !important}
+    .chrome{display:none !important}
     main{max-width:none;margin:0;padding:0;gap:0;display:block}
     .sheet{overflow:visible;height:auto !important}
     .sign{
@@ -309,9 +294,9 @@
   <div class="kicker">Grimepur · Almacén</div>
   <h1>Carteles de la estantería central</h1>
   <p>
-    Diez hojas A4 apaisadas, una por zona, para imprimir, plastificar y pegar en la balda que le toca.
-    Las seis primeras son las zonas acordadas; las tres últimas son propuestas opcionales, y la primera hoja
-    es el mapa general para pegar en el lateral de la estantería.
+    Diez hojas A4 apaisadas para imprimir, plastificar y pegar en la balda que le toca: el mapa
+    general para el lateral de la estantería y una hoja por zona, en el mismo orden en que se
+    mueve el material — entra, se decide y sale.
   </p>
   <div class="actions">
     <button class="btn" onclick="window.print()">Imprimir todo</button>
@@ -324,7 +309,22 @@
 <script>
   const ZONAS = [
     {
-      code:"G1", z:"#C25A00", extra:false,
+      code:"E0", z:"#4F5D66",
+      eyebrow:"Entrada · antes de clasificar",
+      title:"Sin abrir · sin registrar",
+      lead:"Todo paquete que llega aterriza aquí hasta que lo abres, lo compruebas y le das destino.",
+      yes:[
+        "Paquetes recién recibidos, de cualquier proveedor",
+        "Entregas que ha dejado el transporte cuando no estabas"
+      ],
+      no:[
+        "Nada que ya esté abierto y clasificado",
+        "Material que lleve aquí más de un día"
+      ],
+      next:"Abrir, comprobar el albarán y mover a su zona (G1, stock, C1…) en menos de 24 horas."
+    },
+    {
+      code:"G1", z:"#C25A00",
       eyebrow:"Garantías Kinetico · paso 1",
       title:"Recepción de garantías",
       lead:"Material que llega de Kinetico por una incidencia en garantía. Esto no es material de stock.",
@@ -341,7 +341,7 @@
       next:"Abrir, comprobar contra el albarán, anotar cliente e incidencia en la caja y pasarla a G2."
     },
     {
-      code:"G2", z:"#96690A", extra:false,
+      code:"G2", z:"#96690A",
       eyebrow:"Garantías Kinetico · paso 2",
       title:"En espera de decisión",
       lead:"Garantías ya revisadas, pendientes de decidir: ¿vuelven a Kinetico o se quedan en casa?",
@@ -357,7 +357,7 @@
       next:"Al decidir, mover a G3 si se devuelve o a G4 si se queda, y anotar la fecha en la caja."
     },
     {
-      code:"G3", z:"#B3241C", extra:false,
+      code:"G3", z:"#B3241C",
       eyebrow:"Garantías Kinetico · paso 3a",
       title:"Devolver a Kinetico",
       lead:"Zona de salida: material de garantía que hay que enviar de vuelta. Casi siempre debe estar vacía.",
@@ -372,7 +372,7 @@
       next:"Preparar la etiqueta, avisar al transporte y vaciar la zona. Si algo lleva aquí más de una semana, reclamar la recogida."
     },
     {
-      code:"G4", z:"#14705A", extra:false,
+      code:"G4", z:"#14705A",
       eyebrow:"Garantías Kinetico · paso 3b",
       title:"Pasa a stock",
       lead:"Garantía cerrada y el material se queda. Pendiente de darlo de alta y llevarlo a su ubicación.",
@@ -387,7 +387,7 @@
       next:"Dar de alta en inventario y llevar a su ubicación de stock. Máximo una semana en esta zona."
     },
     {
-      code:"C1", z:"#1B5AA6", extra:false,
+      code:"C1", z:"#1B5AA6",
       eyebrow:"Clientes · entrega en mano",
       title:"Entrega a clientes",
       lead:"Material ya asignado a un cliente para entregarlo en persona o en la próxima visita.",
@@ -402,7 +402,7 @@
       next:"Entregar, anotar la salida y retirar la caja de la zona el mismo día."
     },
     {
-      code:"C2", z:"#6A3D9B", extra:false,
+      code:"C2", z:"#6A3D9B",
       eyebrow:"Clientes · balda inferior",
       title:"Envíos pendientes",
       lead:"Cajas ya preparadas que esperan a que llegue el material que falta para poder salir.",
@@ -418,23 +418,8 @@
       next:"En cuanto llegue lo que falta, completar la caja, cerrarla y enviarla el mismo día."
     },
     {
-      code:"E0", z:"#4F5D66", extra:true,
-      eyebrow:"Propuesta · entrada",
-      title:"Sin abrir · sin registrar",
-      lead:"Todo paquete que llega aterriza aquí hasta que lo abres, lo compruebas y le das destino.",
-      yes:[
-        "Paquetes recién recibidos, de cualquier proveedor",
-        "Entregas que ha dejado el transporte cuando no estabas"
-      ],
-      no:[
-        "Nada que ya esté abierto y clasificado",
-        "Material que lleve aquí más de un día"
-      ],
-      next:"Abrir, comprobar el albarán y mover a su zona (G1, stock, C1…) en menos de 24 horas."
-    },
-    {
-      code:"C3", z:"#8A1C55", extra:true,
-      eyebrow:"Propuesta · trabajos",
+      code:"C3", z:"#8A1C55",
+      eyebrow:"Clientes · trabajos programados",
       title:"Salidas de la semana",
       lead:"Material apartado para instalaciones y visitas ya programadas, con fecha y cliente.",
       yes:[
@@ -448,8 +433,8 @@
       next:"Cargar en la furgoneta el día del trabajo y devolver lo sobrante a su sitio al volver."
     },
     {
-      code:"DOC", z:"#2E3A44", extra:true,
-      eyebrow:"Propuesta · papeles",
+      code:"DOC", z:"#2E3A44",
+      eyebrow:"Almacén · papeles",
       title:"Albaranes y etiquetas",
       lead:"Un único punto para el papel del almacén: albaranes, etiquetas de envío y notas de incidencia.",
       yes:[
@@ -509,11 +494,13 @@
             <div class="lvl-n">Balda 1<br>arriba</div>
             <div class="slots">
               <div class="slot res"><b>—</b><span>Recambios de descalcificadores · reservado</span></div>
+              <div class="slot doc" style="--z:#2E3A44"><b>DOC</b><span>Albaranes y etiquetas</span></div>
             </div>
           </div>
           <div class="lvl">
             <div class="lvl-n">Balda 2</div>
             <div class="slots">
+              <div class="slot" style="--z:#4F5D66"><b>E0</b><span>Sin abrir · sin registrar</span></div>
               <div class="slot" style="--z:#C25A00"><b>G1</b><span>Recepción de garantías</span></div>
               <div class="slot" style="--z:#96690A"><b>G2</b><span>En espera de decisión</span></div>
             </div>
@@ -530,10 +517,17 @@
             <div class="lvl-n">Balda 4<br>abajo</div>
             <div class="slots">
               <div class="slot" style="--z:#6A3D9B"><b>C2</b><span>Envíos pendientes de completar</span></div>
+              <div class="slot" style="--z:#8A1C55"><b>C3</b><span>Salidas de la semana</span></div>
             </div>
           </div>
         </div>
         <aside class="aside">
+          <div>
+            <h3>Entra por aquí</h3>
+            <ul class="flow">
+              <li><span class="chip" style="--z:#4F5D66">E0</span><span>Todo paquete aterriza aquí. Se abre y se clasifica en 24 h.</span></li>
+            </ul>
+          </div>
           <div>
             <h3>Circuito de una garantía</h3>
             <ul class="flow">
@@ -548,11 +542,12 @@
             <ul class="flow">
               <li><span class="chip" style="--z:#1B5AA6">C1</span><span>Entrega en mano o recogida del cliente.</span></li>
               <li><span class="chip" style="--z:#6A3D9B">C2</span><span>Preparado, a la espera del material que falta.</span></li>
+              <li><span class="chip" style="--z:#8A1C55">C3</span><span>Apartado para un trabajo con fecha.</span></li>
             </ul>
           </div>
           <p class="note">
             <b>Reglas de la casa:</b> ninguna caja sin nota con cliente, incidencia y fecha.
-            G3 debe estar vacía casi siempre. Nada se queda en G4 más de una semana.
+            Nada duerme en E0. G3 debe estar vacía casi siempre. Nada se queda en G4 más de una semana.
           </p>
         </aside>
       </div>
@@ -563,13 +558,7 @@
     </article>`;
 
   const main = document.getElementById("hojas");
-  const html = [];
-  html.push(MAPA);
-  html.push('<div class="sep chrome-only">Zonas acordadas</div>');
-  ZONAS.filter(z => !z.extra).forEach(z => html.push(cartel(z)));
-  html.push('<div class="sep chrome-only">Propuestas opcionales</div>');
-  ZONAS.filter(z => z.extra).forEach(z => html.push(cartel(z)));
-  main.innerHTML = html.join("");
+  main.innerHTML = [MAPA].concat(ZONAS.map(cartel)).join("");
 
   // Cada hoja va a tamaño real (297 mm) y se escala solo para verla en pantalla.
   document.querySelectorAll(".sign").forEach(sign => {
