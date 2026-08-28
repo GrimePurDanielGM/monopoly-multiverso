@@ -4,15 +4,31 @@ Carteles A4 apaisados para imprimir, plastificar y pegar en las estanterías del
 
 ## Ficheros
 
-- `estanteria-central.html` — 10 hojas A4 apaisadas: mapa general + 9 zonas.
-- `ficha-caja.html` — ficha A5 apaisada para rellenar a mano y pegar en cada caja
-  (A4 vertical con dos fichas por hoja, se corta por la línea de puntos).
+**Para imprimir directamente (recomendado):**
+
+- `carteles-estanteria-central.pdf` — 10 páginas A4 apaisadas: mapa general + 9 zonas.
+- `ficha-caja.pdf` — 1 página A4 vertical con dos fichas A5, línea de corte en medio.
+
+**Fuente editable:**
+
+- `estanteria-central.html`
+- `ficha-caja.html`
+
+Los HTML llevan la codificación declarada (`<meta charset="utf-8">`) y las tipografías
+incrustadas en base64, así que se ven igual sin conexión y las tildes no se rompen.
+Los PDF se regeneran desde ellos con Chromium:
+
+```bash
+chrome --headless=new --no-pdf-header-footer \
+  --print-to-pdf=carteles/carteles-estanteria-central.pdf \
+  file://$PWD/carteles/estanteria-central.html
+```
 
 ## Cómo imprimir
 
-1. Abre el fichero en el navegador (doble clic) y pulsa el botón de imprimir.
-   Desde una vista incrustada (panel lateral, previsualización) el navegador bloquea el
-   diálogo de impresión: hay que abrir el fichero en su propia pestaña.
+1. Abre el PDF y mándalo a la impresora. Si prefieres imprimir desde el HTML, ábrelo en el
+   navegador (doble clic) y pulsa el botón de imprimir; desde una vista incrustada
+   (panel lateral, previsualización) el navegador bloquea el diálogo de impresión.
 2. En el diálogo de impresión:
    - Tamaño: **A4**
    - Orientación: **horizontal** para los carteles, **vertical** para las fichas de caja
