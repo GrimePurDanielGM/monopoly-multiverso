@@ -1,0 +1,306 @@
+<title>Ficha de Caja del Almacén</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --ground:#E9ECE8;
+    --text:#191E22;
+    --muted:#5B6670;
+    --line:#D2D8D3;
+    --mark:#B3241C;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#14181B;
+      --text:#E7EBE9;
+      --muted:#98A3AA;
+      --line:#2C3439;
+      --mark:#E0674F;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#14181B;
+    --text:#E7EBE9;
+    --muted:#98A3AA;
+    --line:#2C3439;
+    --mark:#E0674F;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:var(--ground);
+    color:var(--text);
+    font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- pantalla ---------- */
+  .chrome{max-width:1000px;margin:0 auto;padding:40px 24px 8px;display:flex;flex-direction:column;gap:18px}
+  .chrome .kicker{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--mark);
+  }
+  .chrome h1{
+    font-family:"Barlow Condensed","Arial Narrow",sans-serif;
+    font-weight:700;text-transform:uppercase;letter-spacing:.01em;
+    font-size:clamp(38px,6vw,60px);line-height:.95;margin:0;text-wrap:balance;
+  }
+  .chrome p{margin:0;max-width:62ch;line-height:1.55;color:var(--muted);font-size:15px}
+  .chrome .actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .btn{
+    font:600 14px/1 "IBM Plex Sans",sans-serif;padding:12px 18px;
+    border:1.5px solid var(--text);background:var(--text);color:var(--ground);cursor:pointer;
+  }
+  .btn:hover{background:transparent;color:var(--text)}
+  .btn:focus-visible{outline:3px solid var(--mark);outline-offset:2px}
+  .hint{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;color:var(--muted);line-height:1.6}
+
+  /* ---------- hoja A4 vertical con dos fichas A5 ---------- */
+  main{max-width:1000px;margin:0 auto;padding:8px 24px 64px}
+  .sheet{width:100%;overflow:hidden}
+  .page{
+    width:210mm;height:297mm;
+    transform-origin:top left;transform:scale(var(--scale,1));
+    background:#fff;color:#191E22;
+    display:flex;flex-direction:column;
+    box-shadow:0 2px 26px rgba(0,0,0,.16);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .label{
+    width:210mm;height:148.5mm;
+    padding:6mm;
+    display:flex;flex-direction:column;gap:3.5mm;
+  }
+  .label + .label{border-top:.3mm dashed #AEB7BC}
+
+  /* cabecera */
+  .head{
+    display:flex;align-items:flex-end;justify-content:space-between;gap:6mm;
+    border-bottom:1mm solid #191E22;padding-bottom:2.5mm;
+  }
+  .head .brand{
+    font:600 7.5pt/1 "IBM Plex Mono",ui-monospace,monospace;
+    letter-spacing:.26em;text-transform:uppercase;color:#7C868D;margin-bottom:1.5mm;
+  }
+  .head h2{
+    margin:0;font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-weight:700;
+    font-size:24pt;line-height:.9;text-transform:uppercase;letter-spacing:.01em;
+  }
+  .ref{display:flex;align-items:flex-end;gap:2.5mm;flex:none}
+  .ref .lbl{font:700 8pt/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:#5B6670;margin-bottom:1.2mm}
+  .ref .rule{width:34mm;height:7mm;border-bottom:.4mm solid #98A3AA}
+
+  /* fila de zonas */
+  .zonas{display:flex;align-items:center;gap:3mm;flex-wrap:wrap}
+  .zonas .lbl{
+    font:700 7.5pt/1 "IBM Plex Mono",ui-monospace,monospace;
+    letter-spacing:.16em;text-transform:uppercase;color:#5B6670;
+  }
+  .zbox{display:flex;align-items:center;gap:1.5mm}
+  .zbox i{width:4.6mm;height:4.6mm;border:.4mm solid #7C868D;display:block;flex:none}
+  .zbox b{
+    font:700 9.5pt/1 "IBM Plex Mono",ui-monospace,monospace;
+    color:#fff;background:var(--z);padding:1.3mm 1.8mm;
+  }
+
+  /* cuerpo */
+  .body{display:grid;grid-template-columns:1.05fr 1fr;gap:7mm}
+
+  .mov{display:flex;flex-direction:column;flex:1;min-height:0}
+  .mov .lbl{
+    font:600 7.5pt/1 "IBM Plex Mono",ui-monospace,monospace;
+    letter-spacing:.14em;text-transform:uppercase;color:#5B6670;margin-bottom:1.2mm;
+  }
+  .mv{display:grid;grid-template-columns:26mm 20mm 1fr;flex:1;min-height:0}
+  .mv > span{
+    border-bottom:.4mm solid #98A3AA;
+    border-right:.4mm solid #DCE1E3;
+    padding:1mm 1.5mm .5mm;
+    display:flex;align-items:flex-start;
+  }
+  .mv > span:nth-child(3n){border-right:0}
+  .mv .th{
+    border-bottom:.4mm solid #191E22;
+    font:600 7pt/1 "IBM Plex Mono",ui-monospace,monospace;
+    letter-spacing:.12em;text-transform:uppercase;color:#5B6670;
+    align-items:center;padding-bottom:1.2mm;
+  }
+  .col{display:flex;flex-direction:column;gap:2.5mm}
+  .field{display:flex;flex-direction:column}
+  .field .lbl{
+    font:600 7.5pt/1 "IBM Plex Mono",ui-monospace,monospace;
+    letter-spacing:.14em;text-transform:uppercase;color:#5B6670;
+  }
+  .field .rule{height:8mm;border-bottom:.4mm solid #98A3AA}
+  .field .rule + .rule{height:7.5mm}
+  .fecha{display:flex;gap:2mm;align-items:flex-end}
+  .fecha .d{height:8mm;border-bottom:.4mm solid #98A3AA;flex:1}
+  .fecha .d.y{flex:1.6}
+  .fecha .sep{
+    font:600 11pt/1 "IBM Plex Mono",ui-monospace,monospace;color:#98A3AA;margin-bottom:1.5mm;
+  }
+
+  /* pie de decisiones */
+  .foot{display:flex;flex-direction:column;gap:2.5mm;background:#F1F3F0;padding:3mm 4mm;border-left:4mm solid #191E22}
+  .row{display:flex;align-items:flex-end;gap:4mm;flex-wrap:wrap}
+  .row .tag{
+    font:700 7.5pt/1 "IBM Plex Mono",ui-monospace,monospace;
+    letter-spacing:.16em;text-transform:uppercase;color:#191E22;width:20mm;flex:none;margin-bottom:.8mm;
+  }
+  .opt{display:flex;align-items:center;gap:1.8mm;font-size:9.5pt;font-weight:500}
+  .opt i{width:4.6mm;height:4.6mm;border:.4mm solid #7C868D;background:#fff;display:block;flex:none}
+  .opt .z{
+    font:700 8pt/1 "IBM Plex Mono",ui-monospace,monospace;color:#fff;background:var(--z);padding:1mm 1.4mm;
+  }
+  .mini{display:flex;align-items:flex-end;gap:1.8mm;flex:1;min-width:34mm}
+  .mini .lbl{font:600 7.5pt/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:#5B6670;margin-bottom:1.2mm}
+  .mini .rule{flex:1;height:7mm;border-bottom:.4mm solid #98A3AA}
+
+  @page{size:A4 portrait;margin:0}
+  @media print{
+    body{background:#fff}
+    .chrome{display:none !important}
+    main{max-width:none;margin:0;padding:0}
+    .sheet{overflow:visible;height:auto !important}
+    .page{transform:none !important;box-shadow:none}
+  }
+</style>
+
+<div class="chrome">
+  <div class="kicker">Grimepur · Almacén</div>
+  <h1>Ficha de caja</h1>
+  <p>
+    Media hoja A4 apaisada para pegar en cada caja que entra o sale. Se imprime en A4 vertical
+    con dos fichas por hoja y se corta por la línea de puntos. Rellénala a bolígrafo en el
+    momento de recibir la caja: sin ficha, la caja no se queda en la estantería.
+  </p>
+  <div class="actions">
+    <button class="btn" id="imprimir">Imprimir fichas</button>
+    <span class="hint">Tamaño real 100 % · A4 vertical · márgenes «ninguno» · imprime las copias que necesites</span>
+  </div>
+</div>
+
+<main id="hoja"></main>
+
+<script>
+  const ZONAS = [
+    ["E0","#4F5D66"],["G1","#C25A00"],["G2","#96690A"],["G3","#B3241C"],["G4","#14705A"],
+    ["C1","#1B5AA6"],["C2","#6A3D9B"],["C3","#8A1C55"],["DOC","#2E3A44"]
+  ];
+
+  const chips = ZONAS.map(([c,z]) =>
+    `<span class="zbox"><i></i><b style="--z:${z}">${c}</b></span>`).join("");
+
+  const ficha = () => `
+    <section class="label">
+      <div class="head">
+        <div>
+          <div class="brand">Grimepur · Almacén</div>
+          <h2>Ficha de caja</h2>
+        </div>
+        <div class="ref">
+          <span class="lbl">Fecha de entrada</span>
+          <span class="rule"></span>
+        </div>
+      </div>
+
+      <div class="zonas">
+        <span class="lbl">Zona</span>
+        ${chips}
+      </div>
+
+      <div class="body">
+        <div class="col">
+          <div class="field">
+            <span class="lbl">Cliente</span>
+            <span class="rule"></span>
+          </div>
+          <div class="field">
+            <span class="lbl">Origen · proveedor</span>
+            <span class="rule"></span>
+          </div>
+          <div class="field">
+            <span class="lbl">Nº de incidencia o garantía</span>
+            <span class="rule"></span>
+          </div>
+          <div class="field">
+            <span class="lbl">Albarán · pedido</span>
+            <span class="rule"></span>
+          </div>
+        </div>
+        <div class="col">
+          <div class="field">
+            <span class="lbl">Contenido</span>
+            <span class="rule"></span>
+            <span class="rule"></span>
+            <span class="rule"></span>
+          </div>
+          <div class="field">
+            <span class="lbl">Falta por llegar · pendiente de</span>
+            <span class="rule"></span>
+            <span class="rule"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mov">
+        <span class="lbl">Movimientos</span>
+        <div class="mv">
+          <span class="th">Fecha</span><span class="th">Zona</span><span class="th">Qué se ha hecho</span>
+          <span></span><span></span><span></span>
+          <span></span><span></span><span></span>
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+
+      <div class="foot">
+        <div class="row">
+          <span class="tag">Decisión</span>
+          <span class="opt"><i></i><span class="z" style="--z:#B3241C">G3</span>Devolver a Kinetico</span>
+          <span class="opt"><i></i><span class="z" style="--z:#14705A">G4</span>Pasa a stock</span>
+          <span class="mini"><span class="lbl">Fecha</span><span class="rule"></span></span>
+        </div>
+        <div class="row">
+          <span class="tag">Salida</span>
+          <span class="opt"><i></i><span class="z" style="--z:#1B5AA6">C1</span>En mano</span>
+          <span class="opt"><i></i><span class="z" style="--z:#6A3D9B">C2</span>Transporte</span>
+          <span class="mini"><span class="lbl">Fecha</span><span class="rule"></span></span>
+          <span class="mini"><span class="lbl">Seguimiento</span><span class="rule"></span></span>
+        </div>
+      </div>
+    </section>`;
+
+  document.getElementById("hoja").innerHTML =
+    '<div class="sheet"><div class="page">' + ficha() + ficha() + '</div></div>';
+
+  const boton = document.getElementById("imprimir");
+  const pista = document.querySelector(".hint");
+  const incrustado = window.self !== window.top;
+  if (incrustado) {
+    boton.textContent = "Abrir para imprimir";
+    pista.textContent = "Esta vista va incrustada y el navegador bloquea aquí el diálogo de impresión: ábrela en una pestaña propia, o descarga el fichero y ábrelo desde tu ordenador.";
+  }
+  boton.addEventListener("click", () => {
+    if (incrustado) {
+      const w = window.open(location.href, "_blank");
+      if (w) return;
+      pista.textContent = "El navegador ha bloqueado la ventana: descarga el fichero, ábrelo con doble clic e imprime desde ahí (A4 vertical, márgenes «ninguno», escala 100 %).";
+      return;
+    }
+    window.print();
+  });
+
+  const A4_W = 210 / 25.4 * 96;
+  const A4_H = 297 / 25.4 * 96;
+
+  function escalar(){
+    document.querySelectorAll(".sheet").forEach(sheet => {
+      const s = Math.min(1, sheet.clientWidth / A4_W);
+      sheet.firstElementChild.style.setProperty("--scale", s);
+      sheet.style.height = (A4_H * s) + "px";
+    });
+  }
+  escalar();
+  window.addEventListener("resize", escalar);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(escalar);
+</script>

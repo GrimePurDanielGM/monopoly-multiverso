@@ -299,7 +299,7 @@
     mueve el material — entra, se decide y sale.
   </p>
   <div class="actions">
-    <button class="btn" onclick="window.print()">Imprimir todo</button>
+    <button class="btn" id="imprimir">Imprimir todo</button>
     <span class="hint">Tamaño real 100 % · A4 horizontal · márgenes «ninguno» · activa «gráficos de fondo»</span>
   </div>
 </div>
@@ -566,6 +566,23 @@
     wrap.className = "sheet";
     sign.parentNode.insertBefore(wrap, sign);
     wrap.appendChild(sign);
+  });
+
+  const boton = document.getElementById("imprimir");
+  const pista = document.querySelector(".hint");
+  const incrustado = window.self !== window.top;
+  if (incrustado) {
+    boton.textContent = "Abrir para imprimir";
+    pista.textContent = "Esta vista va incrustada y el navegador bloquea aquí el diálogo de impresión: ábrela en una pestaña propia, o descarga el fichero y ábrelo desde tu ordenador.";
+  }
+  boton.addEventListener("click", () => {
+    if (incrustado) {
+      const w = window.open(location.href, "_blank");
+      if (w) return;
+      pista.textContent = "El navegador ha bloqueado la ventana: descarga el fichero, ábrelo con doble clic e imprime desde ahí (A4 horizontal, márgenes «ninguno», escala 100 %).";
+      return;
+    }
+    window.print();
   });
 
   const A4_W = 297 / 25.4 * 96;
