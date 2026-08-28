@@ -1,0 +1,595 @@
+<title>Zonas de la Estantería Central</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --ground:#E9ECE8;
+    --panel:#FFFFFF;
+    --text:#191E22;
+    --muted:#5B6670;
+    --line:#D2D8D3;
+    --mark:#B3241C;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#14181B;
+      --panel:#1C2226;
+      --text:#E7EBE9;
+      --muted:#98A3AA;
+      --line:#2C3439;
+      --mark:#E0674F;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#14181B;
+    --panel:#1C2226;
+    --text:#E7EBE9;
+    --muted:#98A3AA;
+    --line:#2C3439;
+    --mark:#E0674F;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:var(--ground);
+    color:var(--text);
+    font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- pantalla: cabecera de trabajo ---------- */
+  .chrome{
+    max-width:1160px;
+    margin:0 auto;
+    padding:40px 24px 8px;
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+  }
+  .chrome .kicker{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:12px;
+    letter-spacing:.22em;
+    text-transform:uppercase;
+    color:var(--mark);
+  }
+  .chrome h1{
+    font-family:"Barlow Condensed","Arial Narrow",sans-serif;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.01em;
+    font-size:clamp(38px,6vw,64px);
+    line-height:.95;
+    margin:0;
+    text-wrap:balance;
+  }
+  .chrome p{margin:0;max-width:62ch;line-height:1.55;color:var(--muted);font-size:15px}
+  .chrome .actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .btn{
+    font:600 14px/1 "IBM Plex Sans",sans-serif;
+    padding:12px 18px;
+    border:1.5px solid var(--text);
+    background:var(--text);
+    color:var(--ground);
+    cursor:pointer;
+  }
+  .btn:hover{background:transparent;color:var(--text)}
+  .btn:focus-visible{outline:3px solid var(--mark);outline-offset:2px}
+  .hint{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:12px;
+    color:var(--muted);
+    line-height:1.6;
+  }
+  .sep{
+    max-width:1160px;
+    margin:34px auto 6px;
+    padding:0 24px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:12px;
+    letter-spacing:.2em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .sep::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  /* ---------- hoja A4 apaisada ---------- */
+  main{max-width:1160px;margin:0 auto;padding:8px 24px 64px;display:flex;flex-direction:column;gap:26px}
+  .sheet{width:100%;overflow:hidden}
+  .sign{
+    width:297mm;
+    height:210mm;
+    transform-origin:top left;
+    transform:scale(var(--scale,1));
+    background:#FFFFFF;
+    color:#191E22;
+    padding:9mm;
+    display:flex;
+    flex-direction:column;
+    gap:5mm;
+    box-shadow:0 2px 26px rgba(0,0,0,.16);
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+
+  .band{
+    background:var(--z);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    gap:7mm;
+    padding:5mm 6mm;
+  }
+  .code{
+    background:#fff;
+    color:var(--z);
+    font:700 40pt/1 "IBM Plex Mono",ui-monospace,monospace;
+    padding:3mm 5mm;
+    letter-spacing:-.01em;
+  }
+  .band-txt{display:flex;flex-direction:column;gap:2mm;min-width:0}
+  .eyebrow{
+    font:600 10.5pt/1 "IBM Plex Sans",sans-serif;
+    letter-spacing:.2em;
+    text-transform:uppercase;
+    opacity:.92;
+  }
+  .band h2{
+    margin:0;
+    font-family:"Barlow Condensed","Arial Narrow",sans-serif;
+    font-weight:700;
+    font-size:47pt;
+    line-height:.9;
+    text-transform:uppercase;
+    letter-spacing:.005em;
+    text-wrap:balance;
+  }
+
+  .lead{
+    margin:0;
+    font-size:18pt;
+    line-height:1.25;
+    font-weight:500;
+    max-width:250mm;
+  }
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:9mm;flex:1;min-height:0}
+  .col{display:flex;flex-direction:column;gap:3.5mm}
+  .col h3{
+    margin:0;
+    padding-top:3mm;
+    border-top:1.4mm solid var(--rule);
+    font:600 12pt/1 "IBM Plex Sans",sans-serif;
+    letter-spacing:.2em;
+    text-transform:uppercase;
+    color:var(--rule);
+  }
+  .col.yes{--rule:var(--z)}
+  .col.no{--rule:#98A3AA}
+  .col ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4mm}
+  .col li{
+    font-size:16.5pt;
+    line-height:1.22;
+    padding-left:9mm;
+    position:relative;
+  }
+  .col.yes li::before{
+    content:"";
+    position:absolute;
+    left:0;top:1.9mm;
+    width:4.5mm;height:4.5mm;
+    background:var(--z);
+  }
+  .col.no li::before{
+    content:"\00D7";
+    position:absolute;
+    left:.4mm;top:-1.6mm;
+    font:700 20pt/1 "IBM Plex Sans",sans-serif;
+    color:#98A3AA;
+  }
+  .col.no li{color:#4C565E}
+
+  .next{
+    background:#F1F3F0;
+    border-left:5mm solid var(--z);
+    padding:4mm 6mm;
+    display:flex;
+    flex-direction:column;
+    gap:1.5mm;
+  }
+  .next .lbl{
+    font:700 10pt/1 "IBM Plex Mono",ui-monospace,monospace;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--z);
+  }
+  .next .txt{font-size:16pt;line-height:1.22;font-weight:500}
+
+  .meta{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font:600 9pt/1 "IBM Plex Mono",ui-monospace,monospace;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:#7C868D;
+  }
+  .meta .z{color:var(--z)}
+
+  /* ---------- hoja mapa ---------- */
+  .sign.map{gap:6mm}
+  .map-head{display:flex;flex-direction:column;gap:2.5mm;border-bottom:1.4mm solid #191E22;padding-bottom:4mm}
+  .map-head .brand{
+    font:600 10.5pt/1 "IBM Plex Mono",ui-monospace,monospace;
+    letter-spacing:.28em;
+    text-transform:uppercase;
+    color:#7C868D;
+  }
+  .map-head h2{
+    margin:0;
+    font-family:"Barlow Condensed","Arial Narrow",sans-serif;
+    font-weight:700;
+    font-size:40pt;
+    line-height:.92;
+    text-transform:uppercase;
+  }
+  .map-body{display:grid;grid-template-columns:1.45fr 1fr;gap:8mm;flex:1;min-height:0}
+  .shelf{display:flex;flex-direction:column;gap:3mm}
+  .lvl{display:grid;grid-template-columns:22mm 1fr;gap:4mm;align-items:stretch;flex:1}
+  .lvl-n{
+    font:600 9.5pt/1.3 "IBM Plex Mono",ui-monospace,monospace;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:#7C868D;
+    display:flex;
+    align-items:center;
+  }
+  .slots{display:flex;gap:3mm;flex:1}
+  .slot{
+    flex:1;
+    background:var(--z,#8C979E);
+    color:#fff;
+    padding:3.5mm 4mm;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:1.5mm;
+  }
+  .slot b{font:700 15pt/1 "IBM Plex Mono",ui-monospace,monospace}
+  .slot span{font-size:11pt;line-height:1.2;font-weight:500}
+  .slot.res{background:#fff;color:#7C868D;border:1mm dashed #C6CDD1}
+  .slot.res span{color:#5B6670}
+
+  .aside{display:flex;flex-direction:column;gap:5mm}
+  .aside h3{
+    margin:0;
+    padding-top:3mm;
+    border-top:1.4mm solid #191E22;
+    font:600 11pt/1 "IBM Plex Sans",sans-serif;
+    letter-spacing:.2em;
+    text-transform:uppercase;
+  }
+  .flow{display:flex;flex-direction:column;gap:2.5mm;margin:0;padding:0;list-style:none}
+  .flow li{display:flex;gap:3.5mm;align-items:flex-start;font-size:11.5pt;line-height:1.25}
+  .chip{
+    background:var(--z);
+    color:#fff;
+    font:700 11pt/1 "IBM Plex Mono",ui-monospace,monospace;
+    padding:2mm 3mm;
+    min-width:14mm;
+    text-align:center;
+    flex:none;
+  }
+  .note{font-size:10.5pt;line-height:1.35;color:#4C565E;margin:0}
+  .note b{font-weight:600;color:#191E22}
+
+  .chrome-only{display:block}
+
+  /* ---------- impresión ---------- */
+  @page{size:A4 landscape;margin:0}
+  @media print{
+    body{background:#fff}
+    .chrome,.sep{display:none !important}
+    main{max-width:none;margin:0;padding:0;gap:0;display:block}
+    .sheet{overflow:visible;height:auto !important}
+    .sign{
+      transform:none !important;
+      box-shadow:none;
+      break-after:page;
+      page-break-after:always;
+    }
+    .sign:last-child{break-after:auto;page-break-after:auto}
+  }
+</style>
+
+<div class="chrome">
+  <div class="kicker">Grimepur · Almacén</div>
+  <h1>Carteles de la estantería central</h1>
+  <p>
+    Diez hojas A4 apaisadas, una por zona, para imprimir, plastificar y pegar en la balda que le toca.
+    Las seis primeras son las zonas acordadas; las tres últimas son propuestas opcionales, y la primera hoja
+    es el mapa general para pegar en el lateral de la estantería.
+  </p>
+  <div class="actions">
+    <button class="btn" onclick="window.print()">Imprimir todo</button>
+    <span class="hint">Tamaño real 100 % · A4 horizontal · márgenes «ninguno» · activa «gráficos de fondo»</span>
+  </div>
+</div>
+
+<main id="hojas"></main>
+
+<script>
+  const ZONAS = [
+    {
+      code:"G1", z:"#C25A00", extra:false,
+      eyebrow:"Garantías Kinetico · paso 1",
+      title:"Recepción de garantías",
+      lead:"Material que llega de Kinetico por una incidencia en garantía. Esto no es material de stock.",
+      yes:[
+        "Cajas recién llegadas de Kinetico ligadas a una incidencia o a un número de garantía",
+        "Piezas de sustitución para una avería concreta de un cliente identificado",
+        "Material aún sin abrir ni comprobar contra el albarán"
+      ],
+      no:[
+        "Pedidos de compra para stock: van a su estantería",
+        "Garantías ya revisadas y pendientes de decidir: van a G2",
+        "Cualquier caja sin nota de cliente e incidencia"
+      ],
+      next:"Abrir, comprobar contra el albarán, anotar cliente e incidencia en la caja y pasarla a G2."
+    },
+    {
+      code:"G2", z:"#96690A", extra:false,
+      eyebrow:"Garantías Kinetico · paso 2",
+      title:"En espera de decisión",
+      lead:"Garantías ya revisadas, pendientes de decidir: ¿vuelven a Kinetico o se quedan en casa?",
+      yes:[
+        "Piezas retiradas o sustituidas durante una garantía",
+        "Material sobrante de la incidencia, ya comprobado",
+        "Cajas a la espera de respuesta de Kinetico"
+      ],
+      no:[
+        "Material sin abrir ni comprobar: va a G1",
+        "Lo que ya tiene decisión tomada: va a G3 o a G4"
+      ],
+      next:"Al decidir, mover a G3 si se devuelve o a G4 si se queda, y anotar la fecha en la caja."
+    },
+    {
+      code:"G3", z:"#B3241C", extra:false,
+      eyebrow:"Garantías Kinetico · paso 3a",
+      title:"Devolver a Kinetico",
+      lead:"Zona de salida: material de garantía que hay que enviar de vuelta. Casi siempre debe estar vacía.",
+      yes:[
+        "Cajas cerradas, etiquetadas y listas para la recogida",
+        "Material con número de devolución o autorización de Kinetico"
+      ],
+      no:[
+        "Material sin decisión tomada: va a G2",
+        "Material que se queda en casa: va a G4"
+      ],
+      next:"Preparar la etiqueta, avisar al transporte y vaciar la zona. Si algo lleva aquí más de una semana, reclamar la recogida."
+    },
+    {
+      code:"G4", z:"#14705A", extra:false,
+      eyebrow:"Garantías Kinetico · paso 3b",
+      title:"Pasa a stock",
+      lead:"Garantía cerrada y el material se queda. Pendiente de darlo de alta y llevarlo a su ubicación.",
+      yes:[
+        "Piezas nuevas y en buen estado con la decisión ya tomada",
+        "Material descartado para devolución que se va a aprovechar"
+      ],
+      no:[
+        "Piezas defectuosas o sin comprobar",
+        "Material que todavía no tiene decisión: va a G2"
+      ],
+      next:"Dar de alta en inventario y llevar a su ubicación de stock. Máximo una semana en esta zona."
+    },
+    {
+      code:"C1", z:"#1B5AA6", extra:false,
+      eyebrow:"Clientes · entrega en mano",
+      title:"Entrega a clientes",
+      lead:"Material ya asignado a un cliente para entregarlo en persona o en la próxima visita.",
+      yes:[
+        "Pedidos completos con el nombre del cliente bien visible",
+        "Material que el cliente pasa a recoger por aquí"
+      ],
+      no:[
+        "Lo que sale por transporte: va a C2",
+        "Material sin cliente asignado"
+      ],
+      next:"Entregar, anotar la salida y retirar la caja de la zona el mismo día."
+    },
+    {
+      code:"C2", z:"#6A3D9B", extra:false,
+      eyebrow:"Clientes · balda inferior",
+      title:"Envíos pendientes",
+      lead:"Cajas ya preparadas que esperan a que llegue el material que falta para poder salir.",
+      yes:[
+        "Pedido en preparación, con la etiqueta del cliente puesta",
+        "Lista visible de lo que falta por llegar y desde cuándo",
+        "Ejemplo actual: el envío de Wilman"
+      ],
+      no:[
+        "Envíos completos y cerrados: esos salen hoy, no se guardan aquí",
+        "Entregas en mano: van a C1"
+      ],
+      next:"En cuanto llegue lo que falta, completar la caja, cerrarla y enviarla el mismo día."
+    },
+    {
+      code:"E0", z:"#4F5D66", extra:true,
+      eyebrow:"Propuesta · entrada",
+      title:"Sin abrir · sin registrar",
+      lead:"Todo paquete que llega aterriza aquí hasta que lo abres, lo compruebas y le das destino.",
+      yes:[
+        "Paquetes recién recibidos, de cualquier proveedor",
+        "Entregas que ha dejado el transporte cuando no estabas"
+      ],
+      no:[
+        "Nada que ya esté abierto y clasificado",
+        "Material que lleve aquí más de un día"
+      ],
+      next:"Abrir, comprobar el albarán y mover a su zona (G1, stock, C1…) en menos de 24 horas."
+    },
+    {
+      code:"C3", z:"#8A1C55", extra:true,
+      eyebrow:"Propuesta · trabajos",
+      title:"Salidas de la semana",
+      lead:"Material apartado para instalaciones y visitas ya programadas, con fecha y cliente.",
+      yes:[
+        "Un bulto por trabajo, con cliente y fecha escritos en la caja",
+        "Piezas reservadas para una visita concreta"
+      ],
+      no:[
+        "Material sin fecha de trabajo asignada",
+        "Stock general: va a su estantería"
+      ],
+      next:"Cargar en la furgoneta el día del trabajo y devolver lo sobrante a su sitio al volver."
+    },
+    {
+      code:"DOC", z:"#2E3A44", extra:true,
+      eyebrow:"Propuesta · papeles",
+      title:"Albaranes y etiquetas",
+      lead:"Un único punto para el papel del almacén: albaranes, etiquetas de envío y notas de incidencia.",
+      yes:[
+        "Albaranes de las recepciones del día",
+        "Etiquetas de devolución ya impresas",
+        "Notas de incidencias todavía abiertas"
+      ],
+      no:[
+        "Papeles ya escaneados o archivados",
+        "Documentación de clientes: va al archivo"
+      ],
+      next:"Escanear y archivar una vez por semana, y tirar lo que ya esté cerrado."
+    }
+  ];
+
+  const li = (t) => "<li>" + t + "</li>";
+
+  const cartel = (Z) => `
+    <article class="sign" style="--z:${Z.z}">
+      <div class="band">
+        <div class="code">${Z.code}</div>
+        <div class="band-txt">
+          <div class="eyebrow">${Z.eyebrow}</div>
+          <h2>${Z.title}</h2>
+        </div>
+      </div>
+      <p class="lead">${Z.lead}</p>
+      <div class="cols">
+        <section class="col yes">
+          <h3>Aquí va</h3>
+          <ul>${Z.yes.map(li).join("")}</ul>
+        </section>
+        <section class="col no">
+          <h3>Aquí no va</h3>
+          <ul>${Z.no.map(li).join("")}</ul>
+        </section>
+      </div>
+      <div class="next">
+        <span class="lbl">Siguiente paso</span>
+        <span class="txt">${Z.next}</span>
+      </div>
+      <div class="meta">
+        <span>Grimepur · Estantería central</span>
+        <span class="z">Zona ${Z.code}</span>
+      </div>
+    </article>`;
+
+  const MAPA = `
+    <article class="sign map">
+      <header class="map-head">
+        <div class="brand">Grimepur · Almacén</div>
+        <h2>Estantería central · mapa de zonas</h2>
+      </header>
+      <div class="map-body">
+        <div class="shelf">
+          <div class="lvl">
+            <div class="lvl-n">Balda 1<br>arriba</div>
+            <div class="slots">
+              <div class="slot res"><b>—</b><span>Recambios de descalcificadores · reservado</span></div>
+            </div>
+          </div>
+          <div class="lvl">
+            <div class="lvl-n">Balda 2</div>
+            <div class="slots">
+              <div class="slot" style="--z:#C25A00"><b>G1</b><span>Recepción de garantías</span></div>
+              <div class="slot" style="--z:#96690A"><b>G2</b><span>En espera de decisión</span></div>
+            </div>
+          </div>
+          <div class="lvl">
+            <div class="lvl-n">Balda 3</div>
+            <div class="slots">
+              <div class="slot" style="--z:#14705A"><b>G4</b><span>Pasa a stock</span></div>
+              <div class="slot" style="--z:#B3241C"><b>G3</b><span>Devolver a Kinetico</span></div>
+              <div class="slot" style="--z:#1B5AA6"><b>C1</b><span>Entrega a clientes</span></div>
+            </div>
+          </div>
+          <div class="lvl">
+            <div class="lvl-n">Balda 4<br>abajo</div>
+            <div class="slots">
+              <div class="slot" style="--z:#6A3D9B"><b>C2</b><span>Envíos pendientes de completar</span></div>
+            </div>
+          </div>
+        </div>
+        <aside class="aside">
+          <div>
+            <h3>Circuito de una garantía</h3>
+            <ul class="flow">
+              <li><span class="chip" style="--z:#C25A00">G1</span><span>Llega de Kinetico. Se abre y se comprueba.</span></li>
+              <li><span class="chip" style="--z:#96690A">G2</span><span>Revisada, esperando decisión.</span></li>
+              <li><span class="chip" style="--z:#B3241C">G3</span><span>Se devuelve: sale de vuelta a Kinetico.</span></li>
+              <li><span class="chip" style="--z:#14705A">G4</span><span>Se queda: alta en inventario y a stock.</span></li>
+            </ul>
+          </div>
+          <div>
+            <h3>Salidas a cliente</h3>
+            <ul class="flow">
+              <li><span class="chip" style="--z:#1B5AA6">C1</span><span>Entrega en mano o recogida del cliente.</span></li>
+              <li><span class="chip" style="--z:#6A3D9B">C2</span><span>Preparado, a la espera del material que falta.</span></li>
+            </ul>
+          </div>
+          <p class="note">
+            <b>Reglas de la casa:</b> ninguna caja sin nota con cliente, incidencia y fecha.
+            G3 debe estar vacía casi siempre. Nada se queda en G4 más de una semana.
+          </p>
+        </aside>
+      </div>
+      <div class="meta">
+        <span>Grimepur · Estantería central</span>
+        <span>Mapa general</span>
+      </div>
+    </article>`;
+
+  const main = document.getElementById("hojas");
+  const html = [];
+  html.push(MAPA);
+  html.push('<div class="sep chrome-only">Zonas acordadas</div>');
+  ZONAS.filter(z => !z.extra).forEach(z => html.push(cartel(z)));
+  html.push('<div class="sep chrome-only">Propuestas opcionales</div>');
+  ZONAS.filter(z => z.extra).forEach(z => html.push(cartel(z)));
+  main.innerHTML = html.join("");
+
+  // Cada hoja va a tamaño real (297 mm) y se escala solo para verla en pantalla.
+  document.querySelectorAll(".sign").forEach(sign => {
+    const wrap = document.createElement("div");
+    wrap.className = "sheet";
+    sign.parentNode.insertBefore(wrap, sign);
+    wrap.appendChild(sign);
+  });
+
+  const A4_W = 297 / 25.4 * 96;
+  const A4_H = 210 / 25.4 * 96;
+
+  function escalar(){
+    document.querySelectorAll(".sheet").forEach(sheet => {
+      const s = Math.min(1, sheet.clientWidth / A4_W);
+      sheet.firstElementChild.style.setProperty("--scale", s);
+      sheet.style.height = (A4_H * s) + "px";
+    });
+  }
+  escalar();
+  window.addEventListener("resize", escalar);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(escalar);
+</script>
