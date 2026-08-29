@@ -21,7 +21,6 @@ const ui = {
   campoNombre: $('campoNombre'),
   campoComentario: $('campoComentario'),
   campoArchivos: $('campoArchivos'),
-  campoOriginales: $('campoOriginales'),
   resumenArchivos: $('resumenArchivos'),
   progresoSubida: $('progresoSubida'),
   barraSubida: $('barraSubida'),
@@ -46,6 +45,7 @@ const ui = {
   btnSalirAnfitrion: $('btnSalirAnfitrion'),
   btnCancelarAnfitrion: $('btnCancelarAnfitrion'),
   toast: $('toast'),
+  estadoFondo: $('estadoFondo'),
 };
 
 const estado = {
@@ -355,7 +355,10 @@ function listaVisorAlbum() {
 }
 
 function uploadComoVisor(u) {
-  const externa = /^https?:\/\//.test(u.url);
+  // Para descargar se prefiere el original en calidad completa si ya terminó
+  // de subirse en segundo plano; si no, la versión ligera.
+  const descarga = u.originalUrl || u.url;
+  const externa = /^https?:\/\//.test(descarga);
   return {
     id: u.id,
     thumbUrl: u.isVideo ? null : u.url,
@@ -366,7 +369,7 @@ function uploadComoVisor(u) {
     contributor: u.uploader,
     dateCreated: u.uploadedAt,
     // Supabase acepta ?download para forzar la descarga; el servidor propio usa ?descargar
-    descargarHref: externa ? `${u.url}?download` : `${u.url}?descargar`,
+    descargarHref: externa ? `${descarga}?download` : `${descarga}?descargar`,
   };
 }
 
@@ -521,9 +524,11 @@ function subirArchivo(archivo, nombre, comentario, onProgreso) {
 
 // Despliegue serverless: pedimos una URL firmada, el archivo va DIRECTO a
 // Supabase (sin límite de Vercel) y después confirmamos la subida.
-// Devuelve {duplicado: true} si esa foto exacta ya estaba subida.
-async function subirArchivoFirmado(archivo, nombre, comentario, onProgreso) {
-  const hash = await huellaArchivo(archivo);
+// Si `original` viene, se piden dos URLs: la ligera se sube ya y el original
+// queda para la cola en segundo plano. Devuelve {duplicado: true} si esa foto
+// exacta ya estaba subida (la huella se calcula sobre el ORIGINAL).
+async function subirArchivoFirmado(archivo, nombre, comentario, original, onProgreso) {
+  const hash = await huellaArchivo(original || archivo);
   const prep = await fetch('/api/subida-firmada', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -534,6 +539,9 @@ async function subirArchivoFirmado(archivo, nombre, comentario, onProgreso) {
       contentType: archivo.type || 'application/octet-stream',
       size: archivo.size,
       hash,
+      original: original
+        ? { filename: original.name, contentType: original.type || 'application/octet-stream', size: original.size }
+        : null,
     }),
   });
   const datosPrep = await prep.json();
@@ -563,8 +571,69 @@ async function subirArchivoFirmado(archivo, nombre, comentario, onProgreso) {
   const datosConf = await conf.json();
   if (!conf.ok) throw new Error(datosConf.error || `Error ${conf.status}`);
   guardarMiSubida(datosPrep.id, datosPrep.clave);
+  if (original && datosPrep.originalUploadUrl) {
+    colaOriginales.push({ id: datosPrep.id, archivo: original, uploadUrl: datosPrep.originalUploadUrl });
+  }
   return datosConf;
 }
+
+// ---------------- cola de originales en segundo plano (calidad completa) ----
+const colaOriginales = [];
+let procesandoOriginales = false;
+
+async function subirOriginal(tarea) {
+  const put = await fetch(tarea.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': tarea.archivo.type || 'application/octet-stream' },
+    body: tarea.archivo,
+  });
+  if (!put.ok) throw new Error(`PUT original ${put.status}`);
+  const conf = await fetch('/api/subida-confirmar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: tarea.id, original: true }),
+  });
+  if (!conf.ok) throw new Error(`confirmación del original ${conf.status}`);
+}
+
+async function procesarOriginales() {
+  if (procesandoOriginales || !colaOriginales.length) return;
+  procesandoOriginales = true;
+  let hechos = 0;
+  let fallidos = 0;
+  while (colaOriginales.length) {
+    ui.estadoFondo.hidden = false;
+    ui.estadoFondo.textContent =
+      `⬆️ Subiendo originales en calidad completa… (${hechos + 1} de ${hechos + colaOriginales.length})`;
+    const tarea = colaOriginales[0];
+    try {
+      await subirOriginal(tarea);
+    } catch {
+      try {
+        await subirOriginal(tarea); // un reintento; la versión ligera ya está visible
+      } catch {
+        fallidos += 1;
+      }
+    }
+    colaOriginales.shift();
+    hechos += 1;
+  }
+  ui.estadoFondo.textContent = fallidos
+    ? `⚠️ ${fallidos} ${fallidos === 1 ? 'original no se pudo subir' : 'originales no se pudieron subir'} (la versión ligera sí está)`
+    : '✅ Originales en calidad completa subidos';
+  setTimeout(() => { ui.estadoFondo.hidden = true; }, fallidos ? 6000 : 3000);
+  procesandoOriginales = false;
+  await cargarUploads();
+  pintarTodo();
+}
+
+// Avisar si van a cerrar la web con originales aún subiéndose
+window.addEventListener('beforeunload', (ev) => {
+  if (colaOriginales.length) {
+    ev.preventDefault();
+    ev.returnValue = '';
+  }
+});
 
 async function enviarSubida(ev) {
   ev.preventDefault();
@@ -582,20 +651,22 @@ async function enviarSubida(ev) {
   let subidos = 0;
   let duplicados = 0;
   try {
-    const enviarOriginales = ui.campoOriginales.checked;
     for (const [i, original] of archivos.entries()) {
       ui.textoProgreso.textContent = `${i + 1} de ${archivos.length} · preparando…`;
-      const archivo = enviarOriginales ? original : await optimizarImagen(original);
+      // En Vercel: la versión ligera se sube ya y el original queda en cola para
+      // subirse en segundo plano. Con servidor propio va el original directo.
+      const ligera = estado.modo === 'vercel' ? await optimizarImagen(original) : original;
+      const originalAparte = ligera !== original ? original : null;
       ui.textoProgreso.textContent = `${i + 1} de ${archivos.length}`;
       const alProgresar = (fraccion) => {
         ui.barraSubida.value = Math.round(((i + fraccion) / archivos.length) * 100);
       };
       if (estado.modo === 'vercel') {
-        const resultado = await subirArchivoFirmado(archivo, nombre, comentario, alProgresar);
+        const resultado = await subirArchivoFirmado(ligera, nombre, comentario, originalAparte, alProgresar);
         if (resultado.duplicado) duplicados += 1;
         else subidos += 1;
       } else {
-        const respuesta = await subirArchivo(archivo, nombre, comentario, alProgresar);
+        const respuesta = await subirArchivo(ligera, nombre, comentario, alProgresar);
         for (const nueva of respuesta.subidas || []) guardarMiSubida(nueva.id, nueva.clave);
         subidos += (respuesta.subidas || []).length;
         duplicados += respuesta.duplicados || 0;
@@ -604,11 +675,13 @@ async function enviarSubida(ev) {
     ui.dlgSubir.close();
     const anfitrion = estado.album?.owner ? nombrePropio(estado.album.owner) : 'el anfitrión';
     const notaDup = duplicados ? ` (${duplicados} ya ${duplicados === 1 ? 'estaba subida' : 'estaban subidas'})` : '';
+    const notaFondo = colaOriginales.length ? ' Los originales siguen subiendo en segundo plano…' : '';
     toast(subidos === 0
       ? `Esas fotos ya estaban subidas 👍`
       : subidos === 1
-        ? `¡Foto subida!${notaDup} Ya se ve en la web; ${anfitrion} la pasará a iCloud 👍`
-        : `¡${subidos} fotos subidas!${notaDup} Ya se ven en la web; ${anfitrion} las pasará a iCloud 👍`, 4600);
+        ? `¡Foto subida!${notaDup} Ya se ve en la web; ${anfitrion} la pasará a iCloud 👍${notaFondo}`
+        : `¡${subidos} fotos subidas!${notaDup} Ya se ven en la web; ${anfitrion} las pasará a iCloud 👍${notaFondo}`, 4600);
+    procesarOriginales();
     ui.campoArchivos.value = '';
     ui.campoComentario.value = '';
     actualizarResumenArchivos();

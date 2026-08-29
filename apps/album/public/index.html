@@ -71,16 +71,16 @@
         <input type="file" id="campoArchivos" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/quicktime,video/webm" multiple />
         <span id="resumenArchivos">Tocar para elegir fotos o vídeos</span>
       </label>
-      <label class="check">
-        <input type="checkbox" id="campoOriginales" />
-        Enviar originales sin comprimir (más lento)
-      </label>
       <div id="progresoSubida" class="progreso" hidden>
         <progress id="barraSubida" max="100" value="0"></progress>
         <span id="textoProgreso"></span>
       </div>
       <p class="nota" id="notaSubida">
         Las fotos se verán aquí al momento para toda la familia y el anfitrión las añadirá al álbum de iCloud.
+      </p>
+      <p class="nota">
+        Primero se sube una versión ligera (rápida) y después el original en calidad
+        completa en segundo plano — no cierres la web hasta que avise de que terminó.
       </p>
       <div class="botonera">
         <button type="button" id="btnCancelarSubida" class="btn secundario">Cancelar</button>
@@ -128,6 +128,7 @@
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
+  <div id="estadoFondo" class="estado-fondo" hidden></div>
 
   <footer class="pie">
     <p>

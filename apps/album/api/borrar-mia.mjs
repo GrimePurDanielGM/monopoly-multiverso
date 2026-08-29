@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     if (!claveValida(String(datos.clave || ''), meta.claveBorradoHash)) {
       return json(res, 403, { error: 'Solo quien subió la foto (desde su mismo dispositivo) puede borrarla' });
     }
-    await borrarObjetos(cfg, [meta.archivo, rutaMeta(id)]);
+    await borrarObjetos(cfg, [meta.archivo, meta.originalArchivo, rutaMeta(id)].filter(Boolean));
     json(res, 200, { ok: true });
   } catch (err) {
     json(res, 502, { error: `No se pudo borrar: ${String((err && err.message) || err)}` });

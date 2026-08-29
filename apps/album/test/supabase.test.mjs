@@ -8,6 +8,7 @@ import {
   nuevoId,
   rutaArchivo,
   rutaMeta,
+  rutaOriginal,
   urlPublica,
 } from '../lib/supabase.mjs';
 
@@ -39,6 +40,7 @@ test('ids y rutas de objetos', () => {
   assert.ok(!idValido('../meta/otro'));
   assert.ok(!idValido(''));
   assert.equal(rutaArchivo('abc-12345678', '.jpg'), 'fotos/abc-12345678.jpg');
+  assert.equal(rutaOriginal('abc-12345678', '.heic'), 'originales/abc-12345678.heic');
   assert.equal(rutaMeta('abc-12345678'), 'meta/abc-12345678.json');
   const cfg = configDesdeEnv({ SUPABASE_URL: 'https://x.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'k' });
   assert.equal(

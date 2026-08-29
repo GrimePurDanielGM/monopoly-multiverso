@@ -45,7 +45,7 @@ export default async function handler(req, res) {
       return json(res, 200, { ok: true, item: meta });
     }
     if (accion === 'borrar') {
-      await borrarObjetos(cfg, [meta.archivo, rutaMeta(id)]);
+      await borrarObjetos(cfg, [meta.archivo, meta.originalArchivo, rutaMeta(id)].filter(Boolean));
       return json(res, 200, { ok: true });
     }
     json(res, 400, { error: 'Acción desconocida' });

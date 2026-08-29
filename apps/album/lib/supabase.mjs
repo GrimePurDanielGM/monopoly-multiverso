@@ -24,6 +24,10 @@ export function rutaArchivo(id, ext) {
   return `fotos/${id}${ext}`;
 }
 
+export function rutaOriginal(id, ext) {
+  return `originales/${id}${ext}`;
+}
+
 export function rutaMeta(id) {
   return `meta/${id}.json`;
 }

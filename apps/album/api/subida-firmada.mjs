@@ -14,6 +14,7 @@ import {
   nuevoId,
   rutaArchivo,
   rutaMeta,
+  rutaOriginal,
   urlPublica,
 } from '../lib/supabase.mjs';
 
@@ -50,6 +51,20 @@ export default async function handler(req, res) {
     return json(res, 413, { error: `Archivo demasiado grande (máximo ${MAX_MB} MB)` });
   }
 
+  // Original opcional: la versión ligera se sube ya y el original en segundo plano
+  let original = null;
+  if (datos.original && typeof datos.original === 'object') {
+    const tipoOrig = String(datos.original.contentType || '').toLowerCase();
+    const sizeOrig = Number(datos.original.size) || 0;
+    if (!tipoOrig.startsWith('image/') && !tipoOrig.startsWith('video/')) {
+      return json(res, 400, { error: 'El original no es una foto ni un vídeo' });
+    }
+    if (sizeOrig > MAX_MB * 1024 * 1024) {
+      return json(res, 413, { error: `El original es demasiado grande (máximo ${MAX_MB} MB)` });
+    }
+    original = { filename: String(datos.original.filename || filename), contentType: tipoOrig };
+  }
+
   const hash = /^[0-9a-f]{64}$/.test(String(datos.hash || '')) ? String(datos.hash) : null;
 
   try {
@@ -66,6 +81,8 @@ export default async function handler(req, res) {
     const clave = generarClaveBorrado();
     const archivo = rutaArchivo(id, safeExt(filename, contentType));
     const uploadUrl = await firmarSubida(cfg, archivo);
+    const originalArchivo = original ? rutaOriginal(id, safeExt(original.filename, original.contentType)) : null;
+    const originalUploadUrl = originalArchivo ? await firmarSubida(cfg, originalArchivo) : null;
     await guardarJson(cfg, rutaMeta(id), {
       id,
       archivo,
@@ -80,8 +97,9 @@ export default async function handler(req, res) {
       estado: 'subiendo',
       hash,
       claveBorradoHash: hashClave(clave),
+      ...(originalArchivo ? { originalArchivo } : {}),
     });
-    json(res, 200, { id, uploadUrl, contentType, clave });
+    json(res, 200, { id, uploadUrl, contentType, clave, originalUploadUrl });
   } catch (err) {
     json(res, 502, { error: `No se pudo preparar la subida: ${String((err && err.message) || err)}` });
   }
