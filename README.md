@@ -63,9 +63,10 @@ curl http://localhost:54321/functions/v1/healthcheck
 ## Extra: Álbum familiar (`apps/album`)
 Web independiente del juego: muestra en directo el álbum compartido de iCloud de la
 familia y permite subir fotos desde cualquier móvil (Android incluido). Sin
-dependencias; se arranca con `pnpm album` (o `node apps/album/server.mjs`).
-Ver `apps/album/README.md` para configuración y despliegue (necesita disco
-persistente, p. ej. Render o Docker; no Vercel).
+dependencias; en local se arranca con `pnpm album` (o `node apps/album/server.mjs`).
+**En producción se sirve en `/album` del mismo dominio de Vercel** (funciones en
+`api/` + subidas en Supabase Storage). Ver `apps/album/README.md` para la
+configuración (variables en Vercel) y despliegues alternativos (Render/Docker).
 
 ## Motor compartido — riesgo de despliegue a verificar (IMPORTANTE)
 El motor vive **una sola vez** en `packages/engine/src/index.ts`. Lo consumen:

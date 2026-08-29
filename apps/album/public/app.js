@@ -50,6 +50,9 @@ const estado = {
   album: null,        // respuesta de /api/album
   uploads: [],        // respuesta de /api/uploads
   adminDisponible: false,
+  modo: 'servidor',   // 'servidor' (Node propio) | 'vercel' (serverless + Supabase)
+  subidasDisponibles: true,
+  avisoConfiguracion: null,
   visorLista: [],
   visorIndice: 0,
   cargando: false,
@@ -108,6 +111,9 @@ async function cargarEstado() {
     const res = await fetch('/api/estado');
     const datos = await res.json();
     estado.adminDisponible = Boolean(datos.adminDisponible);
+    estado.modo = datos.modo === 'vercel' ? 'vercel' : 'servidor';
+    estado.subidasDisponibles = datos.subidasDisponibles !== false;
+    estado.avisoConfiguracion = datos.avisoConfiguracion || null;
     if (datos.albumUrl) {
       const enlace = document.getElementById('enlaceICloud');
       if (enlace) enlace.href = datos.albumUrl;
@@ -289,11 +295,17 @@ function pintarTodo() {
 function listaVisorAlbum() {
   return (estado.album?.photos || []).map((f) => ({
     ...f,
-    descargarHref: f.downloadChecksum ? `/api/descargar?checksum=${encodeURIComponent(f.downloadChecksum)}` : null,
+    // Con servidor propio, la descarga pasa por él (fuerza "guardar archivo");
+    // en Vercel se abre el original de iCloud en otra pestaña para guardarlo.
+    descargarHref:
+      estado.modo === 'servidor' && f.downloadChecksum
+        ? `/api/descargar?checksum=${encodeURIComponent(f.downloadChecksum)}`
+        : f.videoUrl || f.fullUrl || null,
   }));
 }
 
 function uploadComoVisor(u) {
+  const externa = /^https?:\/\//.test(u.url);
   return {
     id: u.id,
     thumbUrl: u.isVideo ? null : u.url,
@@ -303,7 +315,8 @@ function uploadComoVisor(u) {
     caption: u.caption,
     contributor: u.uploader,
     dateCreated: u.uploadedAt,
-    descargarHref: `${u.url}?descargar`,
+    // Supabase acepta ?download para forzar la descarga; el servidor propio usa ?descargar
+    descargarHref: externa ? `${u.url}?download` : `${u.url}?descargar`,
   };
 }
 
@@ -341,6 +354,14 @@ function pintarVisor() {
   ui.visorTexto.hidden = !item.caption;
   if (item.descargarHref) {
     ui.btnDescargar.href = item.descargarHref;
+    const externa = /^https?:\/\//.test(item.descargarHref) && !item.descargarHref.startsWith(location.origin);
+    if (externa) {
+      ui.btnDescargar.target = '_blank';
+      ui.btnDescargar.rel = 'noopener';
+    } else {
+      ui.btnDescargar.removeAttribute('target');
+      ui.btnDescargar.removeAttribute('rel');
+    }
     ui.btnDescargar.hidden = false;
   } else {
     ui.btnDescargar.hidden = true;
@@ -400,6 +421,48 @@ function subirArchivo(archivo, nombre, comentario, onProgreso) {
   });
 }
 
+// Despliegue serverless: pedimos una URL firmada, el archivo va DIRECTO a
+// Supabase (sin límite de Vercel) y después confirmamos la subida.
+async function subirArchivoFirmado(archivo, nombre, comentario, onProgreso) {
+  const prep = await fetch('/api/subida-firmada', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      nombre,
+      comentario,
+      filename: archivo.name,
+      contentType: archivo.type || 'application/octet-stream',
+      size: archivo.size,
+    }),
+  });
+  const datosPrep = await prep.json();
+  if (!prep.ok) throw new Error(datosPrep.error || `Error ${prep.status}`);
+
+  await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', datosPrep.uploadUrl);
+    xhr.setRequestHeader('Content-Type', archivo.type || 'application/octet-stream');
+    xhr.upload.addEventListener('progress', (ev) => {
+      if (ev.lengthComputable) onProgreso(ev.loaded / ev.total);
+    });
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`La subida a Supabase falló (${xhr.status})`));
+    });
+    xhr.addEventListener('error', () => reject(new Error('Fallo de conexión durante la subida')));
+    xhr.send(archivo);
+  });
+
+  const conf = await fetch('/api/subida-confirmar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: datosPrep.id }),
+  });
+  const datosConf = await conf.json();
+  if (!conf.ok) throw new Error(datosConf.error || `Error ${conf.status}`);
+  return datosConf;
+}
+
 async function enviarSubida(ev) {
   ev.preventDefault();
   const nombre = ui.campoNombre.value.trim();
@@ -415,9 +478,10 @@ async function enviarSubida(ev) {
 
   let subidos = 0;
   try {
+    const subir = estado.modo === 'vercel' ? subirArchivoFirmado : subirArchivo;
     for (const [i, archivo] of archivos.entries()) {
       ui.textoProgreso.textContent = `${i + 1} de ${archivos.length}`;
-      await subirArchivo(archivo, nombre, comentario, (fraccion) => {
+      await subir(archivo, nombre, comentario, (fraccion) => {
         ui.barraSubida.value = Math.round(((i + fraccion) / archivos.length) * 100);
       });
       subidos += 1;
@@ -484,6 +548,10 @@ async function entrarModoAnfitrion(ev) {
 
 // ------------------------------------------------------------------ eventos UI
 ui.btnSubir.addEventListener('click', () => {
+  if (!estado.subidasDisponibles) {
+    toast(estado.avisoConfiguracion || 'Las subidas aún no están configuradas; avisa al anfitrión.', 5000);
+    return;
+  }
   try { ui.campoNombre.value = ui.campoNombre.value || localStorage.getItem('nombreFamiliar') || ''; } catch { /* nada */ }
   ui.dlgSubir.showModal();
 });
@@ -547,7 +615,8 @@ document.addEventListener('visibilitychange', () => {
 
 // ------------------------------------------------------------------- arranque
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => { /* sin PWA, la web sigue funcionando */ });
+  // Ruta relativa: el ámbito del SW queda en "/" o en "/album/" según el despliegue
+  navigator.serviceWorker.register('./sw.js').catch(() => { /* sin PWA, la web sigue funcionando */ });
 }
 
 cargarEstado();
