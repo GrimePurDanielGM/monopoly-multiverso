@@ -26,4 +26,12 @@ export default tseslint.config(
     files: ['**/*.mjs', '**/*.config.js', 'eslint.config.js'],
     languageOptions: { sourceType: 'module', globals: { ...globals.node } },
   },
+  // Web del álbum familiar (JS plano de navegador y service worker)
+  {
+    files: ['apps/album/public/**/*.js'],
+    languageOptions: {
+      sourceType: 'module',
+      globals: { ...globals.browser, ...globals.serviceworker },
+    },
+  },
 );
