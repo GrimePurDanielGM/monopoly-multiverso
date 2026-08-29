@@ -1,7 +1,7 @@
 // GET /api/uploads — lista las fotos subidas por la familia (Supabase Storage).
 
 import { json, soloMetodo } from './_comun.mjs';
-import { configDesdeEnv, listarMetas } from '../apps/album/lib/supabase.mjs';
+import { configDesdeEnv, listarMetas } from '../lib/supabase.mjs';
 
 export default async function handler(req, res) {
   if (!soloMetodo(req, res, 'GET')) return;

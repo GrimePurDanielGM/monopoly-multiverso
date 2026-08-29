@@ -4,7 +4,7 @@
 // el tamaño de las peticiones a ~4,5 MB).
 
 import { json, leerJsonBody, soloMetodo } from './_comun.mjs';
-import { safeExt, sanitizeName } from '../apps/album/lib/store.mjs';
+import { safeExt, sanitizeName } from '../lib/store.mjs';
 import {
   asegurarBucket,
   configDesdeEnv,
@@ -14,7 +14,7 @@ import {
   rutaArchivo,
   rutaMeta,
   urlPublica,
-} from '../apps/album/lib/supabase.mjs';
+} from '../lib/supabase.mjs';
 
 const MAX_MB = Number(process.env.MAX_UPLOAD_MB) || 100;
 let bucketListo = false;

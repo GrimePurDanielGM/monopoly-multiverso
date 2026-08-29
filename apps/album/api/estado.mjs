@@ -1,8 +1,8 @@
 // GET /api/estado — capacidades del despliegue serverless del álbum.
 
 import { json, soloMetodo } from './_comun.mjs';
-import { tokenFromUrl } from '../apps/album/lib/icloud.mjs';
-import { configDesdeEnv } from '../apps/album/lib/supabase.mjs';
+import { tokenFromUrl } from '../lib/icloud.mjs';
+import { configDesdeEnv } from '../lib/supabase.mjs';
 
 const ALBUM_URL_DEFECTO = 'https://www.icloud.com/sharedalbum/#B2PGgZLKuKkNJ1h';
 

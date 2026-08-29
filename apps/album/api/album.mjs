@@ -3,7 +3,7 @@
 // de módulo cubre además las invocaciones "calientes" de la misma lambda.
 
 import { json, soloMetodo } from './_comun.mjs';
-import { SharedAlbum, fetchAlbum, tokenFromUrl } from '../apps/album/lib/icloud.mjs';
+import { SharedAlbum, fetchAlbum, tokenFromUrl } from '../lib/icloud.mjs';
 
 const ALBUM_URL_DEFECTO = 'https://www.icloud.com/sharedalbum/#B2PGgZLKuKkNJ1h';
 const TOKEN = tokenFromUrl(process.env.ALBUM_URL || process.env.ALBUM_TOKEN || ALBUM_URL_DEFECTO);

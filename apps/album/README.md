@@ -56,30 +56,36 @@ de la familia.
 
 ## Cómo publicarla en internet (gratis o casi)
 
-### Opción A — Vercel + Supabase (la que usa este repo; gratis y sin cuentas nuevas)
+### Opción A — Proyecto propio en Vercel + Supabase (gratis, con su propio enlace)
 
-El monorepo ya se despliega en Vercel: al hacer push a `main`, el álbum queda publicado
-automáticamente en **`https://<tu-dominio-de-vercel>/album`** gracias a:
+El álbum se despliega como **proyecto independiente** de Vercel (separado del juego),
+con su propia URL. Esta carpeta ya trae todo: `public/` (la web), `api/*.mjs`
+(funciones serverless que leen iCloud y gestionan las subidas) y su `vercel.json`
+(sin build: estáticos + funciones, cero dependencias).
 
-- `api/*.mjs` (raíz del repo): funciones serverless que leen iCloud y gestionan subidas.
-- `scripts/build-album-static.mjs`: copia `apps/album/public` a `apps/web/dist/album`
-  tras el build de la web del juego (ver `buildCommand` en `vercel.json`).
-- Las subidas van **directas del navegador a Supabase Storage** con URL firmada
-  (el bucket `album-familiar` se crea solo, público, la primera vez), porque las
-  funciones de Vercel limitan las peticiones a ~4,5 MB.
+**Crear el proyecto (una sola vez, desde el panel de Vercel):**
 
-Para activar las **subidas** hay que darle a Vercel la clave de Supabase
-(hasta entonces la web funciona en modo solo-ver). En el panel de Vercel →
-proyecto → *Settings → Environment Variables*, añadir:
+1. [vercel.com/new](https://vercel.com/new) → *Import* del repositorio
+   `monopoly-multiverso` (ya conectado a la cuenta).
+2. **Project Name**: el que quieras — será la URL (`<nombre>.vercel.app`),
+   p. ej. `album-familiar`.
+3. **Root Directory**: `apps/album` (botón *Edit* → elegir la carpeta). El resto de
+   ajustes se dejan como estén: los fija `apps/album/vercel.json`.
+4. En *Environment Variables*, añadir antes de desplegar:
 
-| Variable | Valor |
-|---|---|
-| `SUPABASE_SERVICE_ROLE_KEY` | La clave `service_role` (Supabase → *Project Settings → API*) |
-| `ADMIN_PIN` | El PIN del modo anfitrión |
-| `SUPABASE_URL` | Solo si no existe ya `VITE_SUPABASE_URL` (se reutiliza) |
+   | Variable | Valor |
+   |---|---|
+   | `SUPABASE_URL` | La *Project URL* de Supabase (`https://….supabase.co`) |
+   | `SUPABASE_SERVICE_ROLE_KEY` | La clave `service_role` (Supabase → *Project Settings → API*) |
+   | `ADMIN_PIN` | El PIN del modo anfitrión |
 
-y redeplegar. La clave `service_role` nunca llega al navegador: solo la usan las
-funciones serverless.
+5. *Deploy*. A partir de ahí, cada push a `main` redespliega el álbum solo.
+
+Sin las variables de Supabase la web funciona en modo **solo-ver** (el aviso de
+`/api/estado` dice qué falta). Las subidas van **directas del navegador a Supabase
+Storage** con URL firmada (el bucket `album-familiar` se crea solo, público, la
+primera vez), porque las funciones de Vercel limitan las peticiones a ~4,5 MB.
+La clave `service_role` nunca llega al navegador: solo la usan las funciones.
 
 ### Opción B — Render.com (servidor Node propio, con disco)
 

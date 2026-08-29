@@ -1,17 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm --filter @multiverso/web build && node scripts/build-album-static.mjs",
+  "buildCommand": "pnpm --filter @multiverso/web build",
   "outputDirectory": "apps/web/dist",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": "vite",
-  "functions": {
-    "api/*.mjs": { "maxDuration": 30 }
-  },
-  "redirects": [
-    { "source": "/album", "destination": "/album/", "permanent": false }
-  ],
   "rewrites": [
-    { "source": "/album/", "destination": "/album/index.html" },
-    { "source": "/((?!api/|album(?:/|$)|assets/|.*\\.[a-zA-Z0-9]+$).*)", "destination": "/index.html" }
+    { "source": "/((?!assets/|.*\\.[a-zA-Z0-9]+$).*)", "destination": "/index.html" }
   ]
 }

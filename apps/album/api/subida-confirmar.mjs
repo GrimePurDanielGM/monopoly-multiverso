@@ -9,7 +9,7 @@ import {
   leerJson,
   rutaMeta,
   tamanoObjeto,
-} from '../apps/album/lib/supabase.mjs';
+} from '../lib/supabase.mjs';
 
 export default async function handler(req, res) {
   if (!soloMetodo(req, res, 'POST')) return;
