@@ -10,6 +10,10 @@ export default function handler(req, res) {
   if (!soloMetodo(req, res, 'GET')) return;
   const token = tokenFromUrl(process.env.ALBUM_URL || process.env.ALBUM_TOKEN || ALBUM_URL_DEFECTO);
   const cfg = configDesdeEnv();
+  const faltan = [
+    !cfg.url && 'SUPABASE_URL (o VITE_SUPABASE_URL)',
+    !cfg.serviceKey && 'SUPABASE_SERVICE_ROLE_KEY',
+  ].filter(Boolean);
   json(res, 200, {
     ok: true,
     modo: 'vercel',
@@ -18,6 +22,6 @@ export default function handler(req, res) {
     albumUrl: `https://www.icloud.com/sharedalbum/#${token}`,
     avisoConfiguracion: cfg.disponible
       ? null
-      : 'Faltan SUPABASE_URL (o VITE_SUPABASE_URL) y SUPABASE_SERVICE_ROLE_KEY en Vercel para activar las subidas.',
+      : `Para activar las subidas falta configurar en Vercel: ${faltan.join(' y ')}.`,
   });
 }
