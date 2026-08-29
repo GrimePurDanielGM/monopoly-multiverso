@@ -18,6 +18,7 @@ export default function handler(req, res) {
     ok: true,
     modo: 'vercel',
     subidasDisponibles: cfg.disponible,
+    maxSubidaMB: Number(process.env.MAX_UPLOAD_MB) || 100,
     adminDisponible: Boolean(process.env.ADMIN_PIN),
     albumUrl: `https://www.icloud.com/sharedalbum/#${token}`,
     avisoConfiguracion: cfg.disponible

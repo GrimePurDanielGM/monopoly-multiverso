@@ -62,6 +62,7 @@ const estado = {
   adminDisponible: false,
   modo: 'servidor',   // 'servidor' (Node propio) | 'vercel' (serverless + Supabase)
   subidasDisponibles: true,
+  maxSubidaMB: 50,
   avisoConfiguracion: null,
   visorLista: [],
   visorIndice: 0,
@@ -152,6 +153,7 @@ async function cargarEstado() {
     estado.adminDisponible = Boolean(datos.adminDisponible);
     estado.modo = datos.modo === 'vercel' ? 'vercel' : 'servidor';
     estado.subidasDisponibles = datos.subidasDisponibles !== false;
+    estado.maxSubidaMB = Number(datos.maxSubidaMB) || estado.maxSubidaMB;
     estado.avisoConfiguracion = datos.avisoConfiguracion || null;
     if (datos.albumUrl) {
       const enlace = document.getElementById('enlaceICloud');
@@ -797,13 +799,22 @@ async function enviarSubida(ev) {
 
   let subidos = 0;
   let duplicados = 0;
+  const rechazados = [];
   try {
+    const maxBytes = estado.maxSubidaMB * 1024 * 1024;
     for (const [i, original] of archivos.entries()) {
       ui.textoProgreso.textContent = `${i + 1} de ${archivos.length} · preparando…`;
       // En Vercel: la versión ligera se sube ya y el original queda en cola para
       // subirse en segundo plano. Con servidor propio va el original directo.
       const ligera = estado.modo === 'vercel' ? await optimizarImagen(original) : original;
-      const originalAparte = ligera !== original ? original : null;
+      // Un vídeo (o cualquier archivo que no se pueda comprimir) por encima del
+      // límite se salta con aviso, SIN frenar el resto de la tanda.
+      if (ligera.size > maxBytes) {
+        rechazados.push(`«${original.name}» (${(original.size / 1048576).toFixed(0)} MB)`);
+        continue;
+      }
+      // Foto cuyo original excede el límite: se publica la versión ligera igualmente
+      const originalAparte = ligera !== original && original.size <= maxBytes ? original : null;
       ui.textoProgreso.textContent = `${i + 1} de ${archivos.length}`;
       const alProgresar = (fraccion) => {
         ui.barraSubida.value = Math.round(((i + fraccion) / archivos.length) * 100);
@@ -823,11 +834,18 @@ async function enviarSubida(ev) {
     const anfitrion = estado.album?.owner ? nombrePropio(estado.album.owner) : 'el anfitrión';
     const notaDup = duplicados ? ` (${duplicados} ya ${duplicados === 1 ? 'estaba subida' : 'estaban subidas'})` : '';
     const notaFondo = colaOriginales.length ? ' Los originales siguen subiendo en segundo plano…' : '';
-    toast(subidos === 0
-      ? `Esas fotos ya estaban subidas 👍`
-      : subidos === 1
-        ? `¡Foto subida!${notaDup} Ya se ve en la web; ${anfitrion} la pasará a iCloud 👍${notaFondo}`
-        : `¡${subidos} fotos subidas!${notaDup} Ya se ven en la web; ${anfitrion} las pasará a iCloud 👍${notaFondo}`, 4600);
+    if (rechazados.length) {
+      const lista = rechazados.slice(0, 2).join(' y ') + (rechazados.length > 2 ? ` y ${rechazados.length - 2} más` : '');
+      const resto = subidos === 0 ? '' : subidos === 1 ? 'La otra sí se subió 👍' : `Las otras ${subidos} sí se subieron 👍`;
+      toast(`⚠️ ${lista} supera${rechazados.length === 1 ? '' : 'n'} el límite de ${estado.maxSubidaMB} MB. ` +
+        `Recórtalo o bájale la calidad desde tu galería. ${resto}`, 8000);
+    } else {
+      toast(subidos === 0
+        ? `Esas fotos ya estaban subidas 👍`
+        : subidos === 1
+          ? `¡Foto subida!${notaDup} Ya se ve en la web; ${anfitrion} la pasará a iCloud 👍${notaFondo}`
+          : `¡${subidos} fotos subidas!${notaDup} Ya se ven en la web; ${anfitrion} las pasará a iCloud 👍${notaFondo}`, 4600);
+    }
     procesarOriginales();
     ui.campoArchivos.value = '';
     ui.campoComentario.value = '';
@@ -891,6 +909,12 @@ ui.btnSubir.addEventListener('click', () => {
     return;
   }
   try { ui.campoNombre.value = ui.campoNombre.value || localStorage.getItem('nombreFamiliar') || ''; } catch { /* nada */ }
+  const notaLimite = document.getElementById('notaLimite');
+  if (notaLimite) {
+    notaLimite.textContent =
+      `🎬 Vídeos: máximo ${estado.maxSubidaMB} MB (≈ 40 s de vídeo de móvil). Los más largos, ` +
+      `recórtalos en la galería antes — o que alguien con iPhone los suba directo al álbum de iCloud.`;
+  }
   ui.dlgSubir.showModal();
 });
 ui.btnCancelarSubida.addEventListener('click', () => ui.dlgSubir.close());
