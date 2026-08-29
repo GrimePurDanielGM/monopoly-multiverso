@@ -25,6 +25,7 @@
       <p id="subtitulo" class="subtitulo">Conectando con iCloud…</p>
     </div>
     <div class="cabecera-botones">
+      <button id="btnSeleccionar" class="btn-icono" title="Seleccionar fotos" aria-label="Seleccionar fotos">☑</button>
       <button id="btnRefrescar" class="btn-icono" title="Actualizar" aria-label="Actualizar">⟳</button>
       <button id="btnAnfitrion" class="btn-icono" title="Modo anfitrión" aria-label="Modo anfitrión">☰</button>
     </div>
@@ -54,6 +55,14 @@
   </main>
 
   <button id="btnSubir" class="fab">＋ Subir fotos</button>
+
+  <!-- Barra del modo selección (descarga en lote) -->
+  <div id="barraSeleccion" class="barra-seleccion" hidden>
+    <span id="textoSeleccion">0 seleccionadas</span>
+    <button id="btnSeleccionarTodas" class="btn secundario">Todas</button>
+    <button id="btnDescargarLote" class="btn primario">⬇ Descargar</button>
+    <button id="btnCancelarSeleccion" class="btn secundario" title="Salir de la selección">✕</button>
+  </div>
 
   <!-- Diálogo de subida -->
   <dialog id="dlgSubir">

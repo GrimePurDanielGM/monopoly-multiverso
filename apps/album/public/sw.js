@@ -1,12 +1,13 @@
 // Service worker del álbum familiar: permite instalar la web como app
 // (Android/iPhone) y abrirla sin conexión con lo último que se vio.
 
-const VERSION = 'album-v4';
+const VERSION = 'album-v5';
 // Rutas relativas al ámbito del SW: funcionan en la raíz y bajo /album
 const SHELL = [
   './',
   './styles.css',
   './app.js',
+  './zip.js',
   './manifest.webmanifest',
   './favicon.svg',
   './icons/icon-192.png',
