@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 import { SharedAlbum, fetchAlbum, tokenFromUrl } from './lib/icloud.mjs';
 import { boundaryFromContentType, parseMultipart } from './lib/multipart.mjs';
-import { UploadStore } from './lib/store.mjs';
+import { UploadStore, claveValida, hashContenido } from './lib/store.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -157,22 +157,47 @@ async function rutaSubir(req, res) {
   if (archivos.length > 20) return jsonRes(res, 400, { error: 'Máximo 20 archivos por subida' });
 
   const subidas = [];
+  let duplicados = 0;
   for (const f of archivos) {
     const tipo = String(f.contentType || '').toLowerCase();
     if (!tipo.startsWith('image/') && !tipo.startsWith('video/')) {
       return jsonRes(res, 400, { error: `"${f.filename}" no es una foto ni un vídeo` });
     }
     if (!f.data.length) continue;
-    subidas.push(uploadParaCliente(await store.add({
+    // La misma foto subida dos veces (reintentos por lentitud) no se duplica
+    if (store.findByHash(hashContenido(f.data))) {
+      duplicados += 1;
+      continue;
+    }
+    const { item, clave } = await store.add({
       data: f.data,
       filename: f.filename,
       contentType: tipo,
       uploader,
       caption,
-    })));
+    });
+    subidas.push({ ...uploadParaCliente(item), clave });
   }
-  if (!subidas.length) return jsonRes(res, 400, { error: 'Los archivos llegaron vacíos' });
-  jsonRes(res, 201, { ok: true, subidas });
+  if (!subidas.length && !duplicados) return jsonRes(res, 400, { error: 'Los archivos llegaron vacíos' });
+  jsonRes(res, 201, { ok: true, subidas, duplicados });
+}
+
+// Quien subió una foto puede borrarla sin PIN: su navegador guarda la clave
+// que le dimos al subirla y aquí solo comparamos su hash.
+async function rutaBorrarMia(req, res) {
+  let datos;
+  try {
+    datos = JSON.parse((await leerCuerpo(req, 64 * 1024)).toString('utf8'));
+  } catch {
+    return jsonRes(res, 400, { error: 'Cuerpo JSON no válido' });
+  }
+  const item = store.get(String(datos.id || ''));
+  if (!item) return jsonRes(res, 404, { error: 'No existe esa foto' });
+  if (!claveValida(String(datos.clave || ''), item.claveBorradoHash)) {
+    return jsonRes(res, 403, { error: 'Solo quien subió la foto (desde su mismo dispositivo) puede borrarla' });
+  }
+  await store.remove(item.id);
+  jsonRes(res, 200, { ok: true });
 }
 
 async function rutaAdmin(req, res) {
@@ -316,6 +341,7 @@ const server = http.createServer((req, res) => {
         return jsonRes(res, 200, { uploads: store.list().map(uploadParaCliente) });
       }
       if (req.method === 'POST' && ruta === '/api/upload') return rutaSubir(req, res);
+      if (req.method === 'POST' && ruta === '/api/borrar-mia') return rutaBorrarMia(req, res);
       if (req.method === 'POST' && ruta === '/api/admin') return rutaAdmin(req, res);
       if (req.method === 'GET' && ruta === '/api/descargar') return rutaDescargar(req, res, url);
       if (req.method === 'GET' && ruta === '/api/estado') {

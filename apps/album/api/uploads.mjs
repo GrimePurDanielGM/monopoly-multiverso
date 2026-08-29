@@ -13,7 +13,20 @@ export default async function handler(req, res) {
     const uploads = metas
       // 'subiendo' = quedó a medias (p. ej. el navegador se cerró): no se muestra
       .filter((m) => m.estado === 'pendiente' || m.estado === 'en_icloud')
-      .sort((a, b) => String(b.uploadedAt).localeCompare(String(a.uploadedAt)));
+      .sort((a, b) => String(b.uploadedAt).localeCompare(String(a.uploadedAt)))
+      // lista blanca: los campos internos (hashes, ruta) no van al navegador
+      .map((m) => ({
+        id: m.id,
+        url: m.url,
+        originalName: m.originalName,
+        contentType: m.contentType,
+        isVideo: m.isVideo,
+        size: m.size,
+        uploader: m.uploader,
+        caption: m.caption,
+        uploadedAt: m.uploadedAt,
+        estado: m.estado,
+      }));
     json(res, 200, { uploads });
   } catch (err) {
     json(res, 502, { error: `No se pudieron listar las subidas: ${String((err && err.message) || err)}` });

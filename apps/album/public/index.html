@@ -71,6 +71,10 @@
         <input type="file" id="campoArchivos" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/quicktime,video/webm" multiple />
         <span id="resumenArchivos">Tocar para elegir fotos o vídeos</span>
       </label>
+      <label class="check">
+        <input type="checkbox" id="campoOriginales" />
+        Enviar originales sin comprimir (más lento)
+      </label>
       <div id="progresoSubida" class="progreso" hidden>
         <progress id="barraSubida" max="100" value="0"></progress>
         <span id="textoProgreso"></span>
@@ -97,7 +101,10 @@
         <span id="visorFecha"></span>
         <span id="visorTexto"></span>
       </div>
-      <a id="btnDescargar" class="btn secundario" download>Descargar</a>
+      <div class="visor-botones">
+        <button id="btnEliminarVisor" class="btn peligro" hidden>🗑 Eliminar</button>
+        <a id="btnDescargar" class="btn secundario" download>Descargar</a>
+      </div>
     </div>
   </dialog>
 

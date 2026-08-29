@@ -36,6 +36,27 @@ export function sanitizeName(name) {
     .slice(0, 120);
 }
 
+/** Clave secreta que se lleva quien sube la foto: le permite borrarla sin PIN. */
+export function generarClaveBorrado() {
+  return crypto.randomBytes(16).toString('hex');
+}
+
+/** En los metadatos solo se guarda el hash de la clave (los metadatos pueden ser públicos). */
+export function hashClave(clave) {
+  return crypto.createHash('sha256').update(String(clave || '')).digest('hex');
+}
+
+export function claveValida(clave, claveBorradoHash) {
+  if (!clave || !claveBorradoHash) return false;
+  const a = Buffer.from(hashClave(clave));
+  const b = Buffer.from(String(claveBorradoHash));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+export function hashContenido(data) {
+  return crypto.createHash('sha256').update(data).digest('hex');
+}
+
 export class UploadStore {
   constructor(dataDir) {
     this.dataDir = dataDir;
@@ -79,6 +100,7 @@ export class UploadStore {
   async add({ data, filename, contentType, uploader, caption }) {
     const id = `${Date.now().toString(36)}-${crypto.randomBytes(4).toString('hex')}`;
     const storedName = `${id}${safeExt(filename, contentType)}`;
+    const clave = generarClaveBorrado();
     await fsp.writeFile(path.join(this.uploadsDir, storedName), data);
     const item = {
       id,
@@ -90,10 +112,16 @@ export class UploadStore {
       caption: String(caption || '').trim().slice(0, 300),
       uploadedAt: new Date().toISOString(),
       estado: 'pendiente', // pendiente | en_icloud
+      hash: hashContenido(data),
+      claveBorradoHash: hashClave(clave),
     };
     this.items.push(item);
     await this.persist();
-    return item;
+    return { item, clave };
+  }
+
+  findByHash(hash) {
+    return (hash && this.items.find((i) => i.hash === hash)) || null;
   }
 
   async setEstado(id, estado) {
