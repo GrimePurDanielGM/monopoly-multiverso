@@ -276,6 +276,8 @@ function entrarSeleccion() {
   estado.seleccion.clear();
   ui.barraSeleccion.hidden = false;
   ui.btnSubir.hidden = true;
+  ui.btnSeleccionar.textContent = '✕ Cancelar';
+  ui.btnSeleccionar.classList.add('activo');
   actualizarBarraSeleccion();
   pintarTodo();
 }
@@ -285,6 +287,8 @@ function salirSeleccion() {
   estado.seleccion.clear();
   ui.barraSeleccion.hidden = true;
   ui.btnSubir.hidden = false;
+  ui.btnSeleccionar.textContent = '☑ Seleccionar';
+  ui.btnSeleccionar.classList.remove('activo');
   pintarTodo();
 }
 

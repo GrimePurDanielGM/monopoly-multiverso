@@ -17,6 +17,10 @@
 
 * { box-sizing: border-box; }
 
+/* El atributo hidden manda SIEMPRE, aunque el elemento tenga display propio
+   (sin esto, .barra-seleccion o .progreso con display:flex se quedaban visibles) */
+[hidden] { display: none !important; }
+
 html, body { margin: 0; padding: 0; }
 
 body {
@@ -70,6 +74,19 @@ body {
 }
 .btn-icono:active { transform: scale(0.94); }
 .btn-icono.girando { animation: girar 0.9s linear infinite; }
+
+.btn-seleccionar {
+  width: auto;
+  padding: 0 13px;
+  font-size: 0.85rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.btn-seleccionar.activo {
+  background: linear-gradient(135deg, var(--acento), var(--acento-2));
+  border-color: transparent;
+  color: #fff;
+}
 @keyframes girar { to { transform: rotate(360deg); } }
 
 .aviso {
