@@ -321,6 +321,8 @@ const server = http.createServer((req, res) => {
       if (req.method === 'GET' && ruta === '/api/estado') {
         return jsonRes(res, 200, {
           ok: true,
+          modo: 'servidor',
+          subidasDisponibles: true,
           adminDisponible: Boolean(ADMIN_PIN),
           albumUrl: `https://www.icloud.com/sharedalbum/#${TOKEN}`,
         });

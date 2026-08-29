@@ -6,10 +6,17 @@
   <title>Álbum familiar</title>
   <meta name="description" content="Las fotos del álbum compartido de la familia: míralas y sube las tuyas desde cualquier móvil." />
   <meta name="theme-color" content="#0f1115" />
-  <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-  <link rel="stylesheet" href="/styles.css" />
+  <!-- Rutas relativas: la misma web funciona en la raíz (servidor propio) y en /album (Vercel).
+       Guardián: si llega sin barra final (/album), las relativas resolverían mal → redirigimos. -->
+  <script>
+    if (/\/album$/.test(location.pathname)) {
+      location.replace(location.pathname + '/' + location.search + location.hash);
+    }
+  </script>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <header class="cabecera">
@@ -123,6 +130,6 @@
     </p>
   </footer>
 
-  <script type="module" src="/app.js"></script>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>

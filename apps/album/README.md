@@ -56,10 +56,32 @@ de la familia.
 
 ## Cómo publicarla en internet (gratis o casi)
 
-Necesita un servidor Node con **disco persistente** para las fotos subidas, por eso no
-sirve Vercel (que es donde vive el resto de este monorepo).
+### Opción A — Vercel + Supabase (la que usa este repo; gratis y sin cuentas nuevas)
 
-### Opción A — Render.com (fácil, con disco)
+El monorepo ya se despliega en Vercel: al hacer push a `main`, el álbum queda publicado
+automáticamente en **`https://<tu-dominio-de-vercel>/album`** gracias a:
+
+- `api/*.mjs` (raíz del repo): funciones serverless que leen iCloud y gestionan subidas.
+- `scripts/build-album-static.mjs`: copia `apps/album/public` a `apps/web/dist/album`
+  tras el build de la web del juego (ver `buildCommand` en `vercel.json`).
+- Las subidas van **directas del navegador a Supabase Storage** con URL firmada
+  (el bucket `album-familiar` se crea solo, público, la primera vez), porque las
+  funciones de Vercel limitan las peticiones a ~4,5 MB.
+
+Para activar las **subidas** hay que darle a Vercel la clave de Supabase
+(hasta entonces la web funciona en modo solo-ver). En el panel de Vercel →
+proyecto → *Settings → Environment Variables*, añadir:
+
+| Variable | Valor |
+|---|---|
+| `SUPABASE_SERVICE_ROLE_KEY` | La clave `service_role` (Supabase → *Project Settings → API*) |
+| `ADMIN_PIN` | El PIN del modo anfitrión |
+| `SUPABASE_URL` | Solo si no existe ya `VITE_SUPABASE_URL` (se reutiliza) |
+
+y redeplegar. La clave `service_role` nunca llega al navegador: solo la usan las
+funciones serverless.
+
+### Opción B — Render.com (servidor Node propio, con disco)
 
 1. En [render.com](https://render.com): **New → Web Service**, conecta este repositorio.
 2. Ajustes:
@@ -69,7 +91,7 @@ sirve Vercel (que es donde vive el resto de este monorepo).
 4. **Environment**: `DATA_DIR=/data`, `ADMIN_PIN=<tu-pin>`, y si cambias de álbum, `ALBUM_URL=…`.
 5. Comparte la URL que te da Render (`https://….onrender.com`) con la familia por WhatsApp.
 
-### Opción B — Docker (NAS, Raspberry Pi, cualquier VPS)
+### Opción C — Docker (NAS, Raspberry Pi, cualquier VPS)
 
 ```bash
 cd apps/album
@@ -78,7 +100,7 @@ docker run -d --name album -p 8787:8787 -v album-datos:/data \
   -e ADMIN_PIN=1234 album-familiar
 ```
 
-### Opción C — Node directo
+### Opción D — Node directo
 
 ```bash
 ADMIN_PIN=1234 node server.mjs
