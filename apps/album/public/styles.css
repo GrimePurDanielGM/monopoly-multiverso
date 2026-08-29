@@ -279,7 +279,19 @@ dialog input:focus { outline: 2px solid var(--acento); outline-offset: 0; border
 }
 .btn.primario { background: linear-gradient(135deg, var(--acento), var(--acento-2)); color: #fff; }
 .btn.secundario { background: var(--fondo-3); color: var(--texto); border: 1px solid var(--borde); }
+.btn.peligro { background: #7f1d1d; color: #fff; border: 1px solid #b91c1c; }
 .btn:disabled { opacity: 0.55; cursor: default; }
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 10px 0 4px;
+  font-size: 0.8rem;
+  color: var(--texto-2);
+  cursor: pointer;
+}
+.check input { width: 18px; height: 18px; accent-color: var(--acento); margin: 0; }
 
 /* ------------------------------------------------------------------- visor */
 .visor {
@@ -355,6 +367,7 @@ dialog input:focus { outline: 2px solid var(--acento); outline-offset: 0; border
 .visor-info { display: flex; flex-direction: column; font-size: 0.8rem; color: #d5dae3; min-width: 0; }
 .visor-info strong { font-size: 0.9rem; color: #fff; }
 .visor-info span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.visor-botones { display: flex; gap: 8px; flex-shrink: 0; }
 
 /* ------------------------------------------------------------------- otros */
 .toast {

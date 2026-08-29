@@ -3,7 +3,15 @@ import assert from 'node:assert/strict';
 import os from 'node:os';
 import path from 'node:path';
 import { promises as fsp } from 'node:fs';
-import { UploadStore, safeExt, sanitizeName } from '../lib/store.mjs';
+import {
+  UploadStore,
+  claveValida,
+  generarClaveBorrado,
+  hashClave,
+  hashContenido,
+  safeExt,
+  sanitizeName,
+} from '../lib/store.mjs';
 
 async function storeTemporal() {
   const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'album-test-'));
@@ -27,7 +35,7 @@ test('sanea nombres de archivo', () => {
 
 test('añade, lista, cambia de estado y borra subidas', async () => {
   const { dir, store } = await storeTemporal();
-  const item = await store.add({
+  const { item, clave } = await store.add({
     data: Buffer.from('imagen-falsa'),
     filename: 'playa.jpg',
     contentType: 'image/jpeg',
@@ -37,6 +45,18 @@ test('añade, lista, cambia de estado y borra subidas', async () => {
   assert.equal(item.estado, 'pendiente');
   assert.equal(item.uploader, 'María');
   assert.ok(item.storedName.endsWith('.jpg'));
+
+  // clave de borrado: la de verdad valida, otra no; solo se guarda su hash
+  assert.match(clave, /^[0-9a-f]{32}$/);
+  assert.equal(item.claveBorradoHash, hashClave(clave));
+  assert.ok(claveValida(clave, item.claveBorradoHash));
+  assert.ok(!claveValida('otra-clave', item.claveBorradoHash));
+  assert.ok(!claveValida('', item.claveBorradoHash));
+
+  // huella del contenido para detectar duplicados
+  assert.equal(item.hash, hashContenido(Buffer.from('imagen-falsa')));
+  assert.equal(store.findByHash(item.hash), item);
+  assert.equal(store.findByHash('no-existe'), null);
 
   // el archivo existe de verdad
   const contenido = await fsp.readFile(path.join(dir, 'uploads', item.storedName), 'utf8');
@@ -55,9 +75,13 @@ test('añade, lista, cambia de estado y borra subidas', async () => {
   await assert.rejects(fsp.stat(path.join(dir, 'uploads', item.storedName)));
 });
 
+test('claves de borrado distintas en cada subida', () => {
+  assert.notEqual(generarClaveBorrado(), generarClaveBorrado());
+});
+
 test('filePath rechaza rutas peligrosas o desconocidas', async () => {
   const { store } = await storeTemporal();
-  const item = await store.add({
+  const { item } = await store.add({
     data: Buffer.from('x'),
     filename: 'a.png',
     contentType: 'image/png',

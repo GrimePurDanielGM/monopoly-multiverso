@@ -4,12 +4,13 @@
 // el tamaño de las peticiones a ~4,5 MB).
 
 import { json, leerJsonBody, soloMetodo } from './_comun.mjs';
-import { safeExt, sanitizeName } from '../lib/store.mjs';
+import { generarClaveBorrado, hashClave, safeExt, sanitizeName } from '../lib/store.mjs';
 import {
   asegurarBucket,
   configDesdeEnv,
   firmarSubida,
   guardarJson,
+  listarMetas,
   nuevoId,
   rutaArchivo,
   rutaMeta,
@@ -49,12 +50,20 @@ export default async function handler(req, res) {
     return json(res, 413, { error: `Archivo demasiado grande (máximo ${MAX_MB} MB)` });
   }
 
+  const hash = /^[0-9a-f]{64}$/.test(String(datos.hash || '')) ? String(datos.hash) : null;
+
   try {
     if (!bucketListo) {
       await asegurarBucket(cfg);
       bucketListo = true;
     }
+    // La misma foto subida dos veces (reintentos por lentitud) no se duplica
+    if (hash) {
+      const repetida = (await listarMetas(cfg)).find((m) => m.hash === hash && m.estado !== 'subiendo');
+      if (repetida) return json(res, 200, { duplicado: true, id: repetida.id });
+    }
     const id = nuevoId();
+    const clave = generarClaveBorrado();
     const archivo = rutaArchivo(id, safeExt(filename, contentType));
     const uploadUrl = await firmarSubida(cfg, archivo);
     await guardarJson(cfg, rutaMeta(id), {
@@ -69,8 +78,10 @@ export default async function handler(req, res) {
       caption,
       uploadedAt: new Date().toISOString(),
       estado: 'subiendo',
+      hash,
+      claveBorradoHash: hashClave(clave),
     });
-    json(res, 200, { id, uploadUrl, contentType });
+    json(res, 200, { id, uploadUrl, contentType, clave });
   } catch (err) {
     json(res, 502, { error: `No se pudo preparar la subida: ${String((err && err.message) || err)}` });
   }

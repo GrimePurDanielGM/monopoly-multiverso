@@ -21,6 +21,7 @@ const ui = {
   campoNombre: $('campoNombre'),
   campoComentario: $('campoComentario'),
   campoArchivos: $('campoArchivos'),
+  campoOriginales: $('campoOriginales'),
   resumenArchivos: $('resumenArchivos'),
   progresoSubida: $('progresoSubida'),
   barraSubida: $('barraSubida'),
@@ -34,6 +35,7 @@ const ui = {
   visorFecha: $('visorFecha'),
   visorTexto: $('visorTexto'),
   btnDescargar: $('btnDescargar'),
+  btnEliminarVisor: $('btnEliminarVisor'),
   btnCerrarVisor: $('btnCerrarVisor'),
   btnAnterior: $('btnAnterior'),
   btnSiguiente: $('btnSiguiente'),
@@ -71,6 +73,33 @@ function pinGuardado() {
 }
 
 function esAnfitrion() { return Boolean(pinGuardado()); }
+
+// Cada subida devuelve una clave secreta: guardándola en este dispositivo,
+// quien subió la foto puede borrarla luego sin necesitar el PIN del anfitrión.
+function misSubidas() {
+  try { return JSON.parse(localStorage.getItem('misSubidas') || '{}'); } catch { return {}; }
+}
+
+function guardarMiSubida(id, clave) {
+  if (!id || !clave) return;
+  try {
+    const mias = misSubidas();
+    mias[id] = clave;
+    const ids = Object.keys(mias);
+    for (const viejo of ids.slice(0, Math.max(0, ids.length - 200))) delete mias[viejo];
+    localStorage.setItem('misSubidas', JSON.stringify(mias));
+  } catch { /* modo privado */ }
+}
+
+function claveDe(id) { return misSubidas()[id] || null; }
+
+function olvidarMiSubida(id) {
+  try {
+    const mias = misSubidas();
+    delete mias[id];
+    localStorage.setItem('misSubidas', JSON.stringify(mias));
+  } catch { /* nada */ }
+}
 
 function haceTiempo(ms) {
   const seg = Math.max(0, Math.round((Date.now() - ms) / 1000));
@@ -236,10 +265,11 @@ function celdaPendiente(upload) {
   });
   celda.classList.add('celda-pendiente');
 
-  if (esAnfitrion()) {
+  const esMia = Boolean(claveDe(upload.id));
+  if (esAnfitrion() || esMia) {
     const acciones = document.createElement('span');
     acciones.className = 'acciones-anfitrion';
-    if (upload.estado === 'pendiente') {
+    if (esAnfitrion() && upload.estado === 'pendiente') {
       const ok = document.createElement('button');
       ok.className = 'ok';
       ok.title = 'Marcar como ya añadida a iCloud';
@@ -253,13 +283,33 @@ function celdaPendiente(upload) {
     borrar.addEventListener('click', (ev) => {
       ev.stopPropagation();
       if (confirm(`¿Borrar la foto subida por ${upload.uploader || 'alguien'}?`)) {
-        accionAnfitrion(upload.id, 'borrar');
+        if (esMia && !esAnfitrion()) borrarMiSubida(upload.id);
+        else accionAnfitrion(upload.id, 'borrar');
       }
     });
     acciones.appendChild(borrar);
     celda.appendChild(acciones);
   }
   return celda;
+}
+
+// Borrado sin PIN de una subida hecha desde este mismo dispositivo
+async function borrarMiSubida(id) {
+  try {
+    const res = await fetch('/api/borrar-mia', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, clave: claveDe(id) }),
+    });
+    const datos = await res.json();
+    if (!res.ok) throw new Error(datos.error || `Error ${res.status}`);
+    olvidarMiSubida(id);
+    toast('Foto borrada 🗑');
+    await cargarUploads();
+    pintarTodo();
+  } catch (err) {
+    toast(`⚠️ ${err.message}`, 4500);
+  }
 }
 
 function pintarPendientes() {
@@ -367,6 +417,10 @@ function pintarVisor() {
     ui.btnDescargar.hidden = true;
   }
 
+  // Eliminar: solo para subidas de la web (tienen id), si son mías o soy anfitrión
+  const esSubida = Boolean(item.id);
+  ui.btnEliminarVisor.hidden = !(esSubida && (claveDe(item.id) || esAnfitrion()));
+
   const varios = estado.visorLista.length > 1;
   ui.btnAnterior.hidden = !varios;
   ui.btnSiguiente.hidden = !varios;
@@ -400,6 +454,50 @@ function actualizarResumenArchivos() {
   selector.classList.add('con-archivos');
 }
 
+// Reduce la foto a 2048 px de lado y JPEG antes de subir: pasa de varios MB a
+// menos de 1, la subida vuela y para el álbum es calidad de sobra (es la misma
+// resolución que sirve iCloud en su web). Si algo falla, se envía el original.
+async function optimizarImagen(archivo) {
+  const tipo = archivo.type || '';
+  if (!tipo.startsWith('image/') || tipo === 'image/gif') return archivo;
+  if (archivo.size < 1.2 * 1024 * 1024) return archivo;
+  let url = null;
+  try {
+    url = URL.createObjectURL(archivo);
+    const img = await new Promise((resolver, rechazar) => {
+      const i = new Image();
+      i.onload = () => resolver(i);
+      i.onerror = rechazar;
+      i.src = url;
+    });
+    const LADO_MAX = 2048;
+    const escala = Math.min(1, LADO_MAX / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * escala));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * escala));
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((resolver) => canvas.toBlob(resolver, 'image/jpeg', 0.85));
+    if (!blob || blob.size >= archivo.size) return archivo;
+    const nombre = archivo.name.replace(/\.[^.]+$/, '') + '.jpg';
+    return new File([blob], nombre, { type: 'image/jpeg' });
+  } catch {
+    return archivo;
+  } finally {
+    if (url) URL.revokeObjectURL(url);
+  }
+}
+
+// Huella del contenido: el servidor la usa para no guardar la misma foto dos veces
+async function huellaArchivo(archivo) {
+  try {
+    const datos = await archivo.arrayBuffer();
+    const hash = await crypto.subtle.digest('SHA-256', datos);
+    return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  } catch {
+    return null;
+  }
+}
+
 function subirArchivo(archivo, nombre, comentario, onProgreso) {
   return new Promise((resolve, reject) => {
     const datos = new FormData();
@@ -423,7 +521,9 @@ function subirArchivo(archivo, nombre, comentario, onProgreso) {
 
 // Despliegue serverless: pedimos una URL firmada, el archivo va DIRECTO a
 // Supabase (sin límite de Vercel) y después confirmamos la subida.
+// Devuelve {duplicado: true} si esa foto exacta ya estaba subida.
 async function subirArchivoFirmado(archivo, nombre, comentario, onProgreso) {
+  const hash = await huellaArchivo(archivo);
   const prep = await fetch('/api/subida-firmada', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -433,10 +533,12 @@ async function subirArchivoFirmado(archivo, nombre, comentario, onProgreso) {
       filename: archivo.name,
       contentType: archivo.type || 'application/octet-stream',
       size: archivo.size,
+      hash,
     }),
   });
   const datosPrep = await prep.json();
   if (!prep.ok) throw new Error(datosPrep.error || `Error ${prep.status}`);
+  if (datosPrep.duplicado) return { duplicado: true };
 
   await new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -460,6 +562,7 @@ async function subirArchivoFirmado(archivo, nombre, comentario, onProgreso) {
   });
   const datosConf = await conf.json();
   if (!conf.ok) throw new Error(datosConf.error || `Error ${conf.status}`);
+  guardarMiSubida(datosPrep.id, datosPrep.clave);
   return datosConf;
 }
 
@@ -477,20 +580,35 @@ async function enviarSubida(ev) {
   ui.progresoSubida.hidden = false;
 
   let subidos = 0;
+  let duplicados = 0;
   try {
-    const subir = estado.modo === 'vercel' ? subirArchivoFirmado : subirArchivo;
-    for (const [i, archivo] of archivos.entries()) {
+    const enviarOriginales = ui.campoOriginales.checked;
+    for (const [i, original] of archivos.entries()) {
+      ui.textoProgreso.textContent = `${i + 1} de ${archivos.length} · preparando…`;
+      const archivo = enviarOriginales ? original : await optimizarImagen(original);
       ui.textoProgreso.textContent = `${i + 1} de ${archivos.length}`;
-      await subir(archivo, nombre, comentario, (fraccion) => {
+      const alProgresar = (fraccion) => {
         ui.barraSubida.value = Math.round(((i + fraccion) / archivos.length) * 100);
-      });
-      subidos += 1;
+      };
+      if (estado.modo === 'vercel') {
+        const resultado = await subirArchivoFirmado(archivo, nombre, comentario, alProgresar);
+        if (resultado.duplicado) duplicados += 1;
+        else subidos += 1;
+      } else {
+        const respuesta = await subirArchivo(archivo, nombre, comentario, alProgresar);
+        for (const nueva of respuesta.subidas || []) guardarMiSubida(nueva.id, nueva.clave);
+        subidos += (respuesta.subidas || []).length;
+        duplicados += respuesta.duplicados || 0;
+      }
     }
     ui.dlgSubir.close();
     const anfitrion = estado.album?.owner ? nombrePropio(estado.album.owner) : 'el anfitrión';
-    toast(subidos === 1
-      ? `¡Foto subida! Ya se ve en la web; ${anfitrion} la pasará a iCloud 👍`
-      : `¡${subidos} fotos subidas! Ya se ven en la web; ${anfitrion} las pasará a iCloud 👍`, 4200);
+    const notaDup = duplicados ? ` (${duplicados} ya ${duplicados === 1 ? 'estaba subida' : 'estaban subidas'})` : '';
+    toast(subidos === 0
+      ? `Esas fotos ya estaban subidas 👍`
+      : subidos === 1
+        ? `¡Foto subida!${notaDup} Ya se ve en la web; ${anfitrion} la pasará a iCloud 👍`
+        : `¡${subidos} fotos subidas!${notaDup} Ya se ven en la web; ${anfitrion} las pasará a iCloud 👍`, 4600);
     ui.campoArchivos.value = '';
     ui.campoComentario.value = '';
     actualizarResumenArchivos();
@@ -582,6 +700,14 @@ ui.btnSalirAnfitrion.addEventListener('click', () => {
 ui.formAnfitrion.addEventListener('submit', entrarModoAnfitrion);
 
 ui.btnCerrarVisor.addEventListener('click', () => ui.dlgVisor.close());
+ui.btnEliminarVisor.addEventListener('click', async () => {
+  const item = estado.visorLista[estado.visorIndice];
+  if (!item?.id) return;
+  if (!confirm(`¿Borrar la foto subida por ${item.contributor || 'alguien'}?`)) return;
+  ui.dlgVisor.close();
+  if (claveDe(item.id)) await borrarMiSubida(item.id);
+  else await accionAnfitrion(item.id, 'borrar');
+});
 ui.btnAnterior.addEventListener('click', () => moverVisor(-1));
 ui.btnSiguiente.addEventListener('click', () => moverVisor(1));
 ui.dlgVisor.addEventListener('close', () => ui.visorContenido.replaceChildren());
