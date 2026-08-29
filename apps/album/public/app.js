@@ -1,5 +1,7 @@
 // Álbum familiar — lógica de la web (sin dependencias)
 
+import { crearZip } from './zip.js';
+
 const $ = (id) => document.getElementById(id);
 
 const ui = {
@@ -15,6 +17,12 @@ const ui = {
   estadoAlbum: $('estadoAlbum'),
   btnRefrescar: $('btnRefrescar'),
   btnAnfitrion: $('btnAnfitrion'),
+  btnSeleccionar: $('btnSeleccionar'),
+  barraSeleccion: $('barraSeleccion'),
+  textoSeleccion: $('textoSeleccion'),
+  btnSeleccionarTodas: $('btnSeleccionarTodas'),
+  btnDescargarLote: $('btnDescargarLote'),
+  btnCancelarSeleccion: $('btnCancelarSeleccion'),
   btnSubir: $('btnSubir'),
   dlgSubir: $('dlgSubir'),
   formSubir: $('formSubir'),
@@ -58,6 +66,8 @@ const estado = {
   visorLista: [],
   visorIndice: 0,
   cargando: false,
+  seleccionando: false,
+  seleccion: new Map(), // clave → descriptor de descarga
 };
 
 // ------------------------------------------------------------------ utilidades
@@ -181,11 +191,14 @@ async function cargarTodo(forzar = false) {
 }
 
 // ---------------------------------------------------------------------- pintar
-function celdaMiniatura(item, onAbrir) {
+function celdaMiniatura(item, onAbrir, descSeleccion) {
   const celda = document.createElement('button');
   celda.type = 'button';
   celda.className = 'celda';
-  celda.addEventListener('click', onAbrir);
+  celda.addEventListener('click', () => {
+    if (estado.seleccionando && descSeleccion) toggleSeleccion(descSeleccion);
+    else onAbrir();
+  });
 
   if (item.thumbUrl) {
     const img = document.createElement('img');
@@ -215,7 +228,135 @@ function celdaMiniatura(item, onAbrir) {
     autor.textContent = item.contributor;
     celda.appendChild(autor);
   }
+  if (estado.seleccionando && descSeleccion) {
+    const marca = document.createElement('span');
+    marca.className = 'marca-sel';
+    marca.textContent = '✓';
+    celda.appendChild(marca);
+    if (estado.seleccion.has(descSeleccion.clave)) celda.classList.add('seleccionada');
+  }
   return celda;
+}
+
+// ----------------------------------------------- selección y descarga en lote
+function descAlbum(foto) {
+  return {
+    clave: `a:${foto.guid}`,
+    nombre: foto.filename || `foto-${String(foto.downloadChecksum || foto.guid).slice(0, 8)}.jpg`,
+    tipo: 'icloud',
+    checksum: foto.downloadChecksum,
+    esVideo: foto.isVideo,
+  };
+}
+
+function descUpload(u) {
+  return {
+    clave: `u:${u.id}`,
+    nombre: u.originalName || `${u.id}.jpg`,
+    tipo: 'upload',
+    url: u.originalUrl || u.url,
+    esVideo: u.isVideo,
+  };
+}
+
+function actualizarBarraSeleccion() {
+  const n = estado.seleccion.size;
+  ui.textoSeleccion.textContent = n === 1 ? '1 seleccionada' : `${n} seleccionadas`;
+}
+
+function toggleSeleccion(desc) {
+  if (estado.seleccion.has(desc.clave)) estado.seleccion.delete(desc.clave);
+  else estado.seleccion.set(desc.clave, desc);
+  actualizarBarraSeleccion();
+  pintarTodo();
+}
+
+function entrarSeleccion() {
+  estado.seleccionando = true;
+  estado.seleccion.clear();
+  ui.barraSeleccion.hidden = false;
+  ui.btnSubir.hidden = true;
+  actualizarBarraSeleccion();
+  pintarTodo();
+}
+
+function salirSeleccion() {
+  estado.seleccionando = false;
+  estado.seleccion.clear();
+  ui.barraSeleccion.hidden = true;
+  ui.btnSubir.hidden = false;
+  pintarTodo();
+}
+
+function seleccionarTodas() {
+  for (const foto of estado.album?.photos || []) {
+    const d = descAlbum(foto);
+    estado.seleccion.set(d.clave, d);
+  }
+  for (const u of estado.uploads) {
+    const d = descUpload(u);
+    estado.seleccion.set(d.clave, d);
+  }
+  actualizarBarraSeleccion();
+  pintarTodo();
+}
+
+async function descargarLote() {
+  const items = [...estado.seleccion.values()];
+  if (!items.length) return toast('Toca las fotos que quieras descargar');
+  if (items.length > 60) return toast('Máximo 60 por descarga: hazlo en un par de tandas 🙏', 5000);
+
+  // Los vídeos de iCloud no caben por el proxy: se descargan individualmente
+  const videosICloud = items.filter((i) => i.tipo === 'icloud' && i.esVideo);
+  const descargables = items.filter((i) => !(i.tipo === 'icloud' && i.esVideo));
+
+  ui.btnDescargarLote.disabled = true;
+  const entradas = [];
+  const nombresUsados = new Set();
+  let fallos = 0;
+  try {
+    for (const [n, it] of descargables.entries()) {
+      ui.estadoFondo.hidden = false;
+      ui.estadoFondo.textContent = `⬇️ Descargando ${n + 1} de ${descargables.length}…`;
+      try {
+        const url = it.tipo === 'icloud'
+          ? `/api/descargar?checksum=${encodeURIComponent(it.checksum)}`
+          : it.url;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(String(res.status));
+        const datos = new Uint8Array(await res.arrayBuffer());
+        let nombre = String(it.nombre || 'foto.jpg').trim() || 'foto.jpg';
+        if (nombresUsados.has(nombre.toLowerCase())) nombre = `${String(n + 1).padStart(2, '0')}-${nombre}`;
+        nombresUsados.add(nombre.toLowerCase());
+        entradas.push({ nombre, datos });
+      } catch {
+        fallos += 1;
+      }
+    }
+    if (!entradas.length) {
+      toast('⚠️ No se pudo descargar ninguna foto; inténtalo de nuevo', 5000);
+      return;
+    }
+    ui.estadoFondo.textContent = '📦 Empaquetando ZIP…';
+    const zip = crearZip(entradas);
+    const blob = new Blob([zip], { type: 'application/zip' });
+    const enlace = document.createElement('a');
+    enlace.href = URL.createObjectURL(blob);
+    enlace.download = `album-${new Date().toISOString().slice(0, 10)}.zip`;
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    setTimeout(() => URL.revokeObjectURL(enlace.href), 60000);
+
+    const avisos = [];
+    if (fallos) avisos.push(`${fallos} fallaron`);
+    if (videosICloud.length) avisos.push(`${videosICloud.length} vídeo${videosICloud.length === 1 ? '' : 's'} de iCloud fuera del ZIP (descárgalos de uno en uno)`);
+    toast(`ZIP con ${entradas.length} ${entradas.length === 1 ? 'foto' : 'fotos'} listo ✅${avisos.length ? ' · ' + avisos.join(' · ') : ''}`, 5500);
+    salirSeleccion();
+  } finally {
+    ui.btnDescargarLote.disabled = false;
+    ui.estadoFondo.hidden = true;
+  }
 }
 
 function pintarAlbum() {
@@ -252,7 +393,7 @@ function pintarAlbum() {
       ui.gridAlbum.appendChild(titulo);
       diaAnterior = dia;
     }
-    ui.gridAlbum.appendChild(celdaMiniatura(foto, () => abrirVisor(listaVisorAlbum(), i)));
+    ui.gridAlbum.appendChild(celdaMiniatura(foto, () => abrirVisor(listaVisorAlbum(), i), descAlbum(foto)));
   });
 }
 
@@ -262,11 +403,11 @@ function celdaPendiente(upload) {
     const lista = estado.uploads.filter((u) => u.estado === upload.estado).map(uploadComoVisor);
     const indice = lista.findIndex((v) => v.id === upload.id);
     abrirVisor(lista, Math.max(0, indice));
-  });
+  }, descUpload(upload));
   celda.classList.add('celda-pendiente');
 
   const esMia = Boolean(claveDe(upload.id));
-  if (esAnfitrion() || esMia) {
+  if (!estado.seleccionando && (esAnfitrion() || esMia)) {
     const acciones = document.createElement('span');
     acciones.className = 'acciones-anfitrion';
     if (esAnfitrion() && upload.estado === 'pendiente') {
@@ -345,12 +486,14 @@ function pintarTodo() {
 function listaVisorAlbum() {
   return (estado.album?.photos || []).map((f) => ({
     ...f,
-    // Con servidor propio, la descarga pasa por él (fuerza "guardar archivo");
-    // en Vercel se abre el original de iCloud en otra pestaña para guardarlo.
+    // Las fotos se descargan a través del servidor (fuerza "guardar archivo");
+    // los vídeos de iCloud en Vercel van directos (demasiado grandes para la función).
     descargarHref:
-      estado.modo === 'servidor' && f.downloadChecksum
-        ? `/api/descargar?checksum=${encodeURIComponent(f.downloadChecksum)}`
-        : f.videoUrl || f.fullUrl || null,
+      f.isVideo && estado.modo === 'vercel'
+        ? f.videoUrl || f.fullUrl || null
+        : f.downloadChecksum
+          ? `/api/descargar?checksum=${encodeURIComponent(f.downloadChecksum)}`
+          : f.fullUrl || null,
   }));
 }
 
@@ -751,6 +894,14 @@ ui.campoArchivos.addEventListener('change', actualizarResumenArchivos);
 ui.formSubir.addEventListener('submit', enviarSubida);
 
 ui.btnRefrescar.addEventListener('click', () => cargarTodo(true));
+
+ui.btnSeleccionar.addEventListener('click', () => {
+  if (estado.seleccionando) salirSeleccion();
+  else entrarSeleccion();
+});
+ui.btnCancelarSeleccion.addEventListener('click', salirSeleccion);
+ui.btnSeleccionarTodas.addEventListener('click', seleccionarTodas);
+ui.btnDescargarLote.addEventListener('click', descargarLote);
 
 ui.btnAnfitrion.addEventListener('click', () => {
   if (!estado.adminDisponible) {

@@ -176,6 +176,25 @@ h2 {
 
 .celda-pendiente { outline: 2px solid color-mix(in srgb, var(--aviso) 55%, transparent); outline-offset: -2px; }
 
+/* modo selección para descargar en lote */
+.celda .marca-sel {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  background: rgba(0, 0, 0, 0.35);
+  color: transparent;
+  font-size: 0.85rem;
+  line-height: 20px;
+  text-align: center;
+}
+.celda.seleccionada { outline: 3px solid var(--acento); outline-offset: -3px; }
+.celda.seleccionada .marca-sel { background: var(--acento); border-color: var(--acento); color: #fff; }
+.celda.seleccionada img, .celda.seleccionada video { opacity: 0.75; }
+
 .acciones-anfitrion {
   position: absolute;
   inset: auto 4px 4px auto;
@@ -281,6 +300,25 @@ dialog input:focus { outline: 2px solid var(--acento); outline-offset: 0; border
 .btn.secundario { background: var(--fondo-3); color: var(--texto); border: 1px solid var(--borde); }
 .btn.peligro { background: #7f1d1d; color: #fff; border: 1px solid #b91c1c; }
 .btn:disabled { opacity: 0.55; cursor: default; }
+
+.barra-seleccion {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--fondo-2);
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  padding: 8px 10px 8px 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  max-width: calc(100vw - 24px);
+}
+.barra-seleccion span { font-size: 0.82rem; color: var(--texto-2); white-space: nowrap; }
+.barra-seleccion .btn { padding: 9px 13px; font-size: 0.85rem; }
 
 .estado-fondo {
   position: fixed;
