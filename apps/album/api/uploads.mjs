@@ -26,6 +26,8 @@ export default async function handler(req, res) {
         caption: m.caption,
         uploadedAt: m.uploadedAt,
         estado: m.estado,
+        originalUrl: m.originalUrl,
+        originalSize: m.originalSize,
       }));
     json(res, 200, { uploads });
   } catch (err) {

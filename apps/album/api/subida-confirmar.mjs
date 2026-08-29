@@ -9,6 +9,7 @@ import {
   leerJson,
   rutaMeta,
   tamanoObjeto,
+  urlPublica,
 } from '../lib/supabase.mjs';
 
 export default async function handler(req, res) {
@@ -28,6 +29,18 @@ export default async function handler(req, res) {
   try {
     const meta = await leerJson(cfg, rutaMeta(id));
     if (!meta) return json(res, 404, { error: 'No existe esa subida' });
+
+    if (datos.original === true) {
+      // Confirmación del ORIGINAL subido en segundo plano
+      if (!meta.originalArchivo) return json(res, 400, { error: 'Esta subida no esperaba original' });
+      const bytesOrig = await tamanoObjeto(cfg, meta.originalArchivo);
+      if (bytesOrig === null) return json(res, 409, { error: 'El original aún no ha llegado a Supabase' });
+      meta.originalUrl = urlPublica(cfg, meta.originalArchivo);
+      meta.originalSize = bytesOrig;
+      await guardarJson(cfg, rutaMeta(id), meta);
+      return json(res, 200, { ok: true });
+    }
+
     const bytes = await tamanoObjeto(cfg, meta.archivo);
     if (bytes === null) return json(res, 409, { error: 'El archivo aún no ha llegado a Supabase' });
     meta.size = bytes || meta.size;
