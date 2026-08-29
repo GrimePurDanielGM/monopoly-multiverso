@@ -61,8 +61,10 @@ async function api(cfg, metodo, ruta, { body, json, extraHeaders } = {}) {
 export async function asegurarBucket(cfg) {
   const existe = await api(cfg, 'GET', `/bucket/${cfg.bucket}`);
   if (existe.ok) return true;
+  // Sin file_size_limit: un límite por bucket mayor que el global del plan
+  // (50 MB en el gratuito) hace que Supabase rechace la creación con 400.
   const creado = await api(cfg, 'POST', '/bucket', {
-    json: { id: cfg.bucket, name: cfg.bucket, public: true, file_size_limit: 104857600 },
+    json: { id: cfg.bucket, name: cfg.bucket, public: true },
   });
   if (creado.ok) return true;
   // Carrera entre dos peticiones simultáneas: si ya existe, vale igual.

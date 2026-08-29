@@ -87,6 +87,11 @@ Storage** con URL firmada (el bucket `album-familiar` se crea solo, público, la
 primera vez), porque las funciones de Vercel limitan las peticiones a ~4,5 MB.
 La clave `service_role` nunca llega al navegador: solo la usan las funciones.
 
+Notas del plan gratuito de Supabase: el tamaño máximo real por archivo es 50 MB
+(pon `MAX_UPLOAD_MB=50` en Vercel para que el aviso al usuario sea claro), y los
+proyectos se pausan tras ~7 días sin actividad — por eso `vercel.json` trae un
+cron diario que toca `/api/uploads` y mantiene el proyecto despierto.
+
 ### Opción B — Render.com (servidor Node propio, con disco)
 
 1. En [render.com](https://render.com): **New → Web Service**, conecta este repositorio.

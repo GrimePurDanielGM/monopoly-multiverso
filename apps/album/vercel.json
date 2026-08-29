@@ -6,5 +6,8 @@
   "outputDirectory": "public",
   "functions": {
     "api/*.mjs": { "maxDuration": 30 }
-  }
+  },
+  "crons": [
+    { "path": "/api/uploads", "schedule": "0 8 * * *" }
+  ]
 }
