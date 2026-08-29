@@ -349,6 +349,7 @@ const server = http.createServer((req, res) => {
           ok: true,
           modo: 'servidor',
           subidasDisponibles: true,
+          maxSubidaMB: MAX_UPLOAD_MB,
           adminDisponible: Boolean(ADMIN_PIN),
           albumUrl: `https://www.icloud.com/sharedalbum/#${TOKEN}`,
         });
