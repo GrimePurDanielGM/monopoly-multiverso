@@ -40,9 +40,6 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: 'index.html',
-        // El álbum familiar (/album) y el API viven fuera de la SPA del juego:
-        // el SW del juego no debe responder esas navegaciones con su index.html.
-        navigateFallbackDenylist: [/^\/album/, /^\/api\//],
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         cleanupOutdatedCaches: true,
       },
