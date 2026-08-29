@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Álbum familiar</title>
+  <meta name="description" content="Las fotos del álbum compartido de la familia: míralas y sube las tuyas desde cualquier móvil." />
+  <meta name="theme-color" content="#0f1115" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="cabecera">
+    <div class="cabecera-texto">
+      <h1 id="nombreAlbum">Álbum familiar</h1>
+      <p id="subtitulo" class="subtitulo">Conectando con iCloud…</p>
+    </div>
+    <div class="cabecera-botones">
+      <button id="btnRefrescar" class="btn-icono" title="Actualizar" aria-label="Actualizar">⟳</button>
+      <button id="btnAnfitrion" class="btn-icono" title="Modo anfitrión" aria-label="Modo anfitrión">☰</button>
+    </div>
+  </header>
+
+  <div id="avisoConexion" class="aviso" hidden></div>
+
+  <main>
+    <section id="seccionPendientes" hidden>
+      <h2>🆕 Subidas desde la web <span class="chip chip-pendiente">todavía no en iCloud</span></h2>
+      <p class="ayuda" id="ayudaPendientes">
+        Estas fotos las ha subido la familia desde esta web y ya las puede ver todo el mundo aquí.
+        El anfitrión las pasará al álbum de iCloud desde su iPhone.
+      </p>
+      <div id="gridPendientes" class="grid"></div>
+      <details id="detalleEnICloud" hidden>
+        <summary></summary>
+        <div id="gridEnICloud" class="grid"></div>
+      </details>
+    </section>
+
+    <section id="seccionAlbum">
+      <h2 id="tituloAlbum">☁️ En el álbum de iCloud</h2>
+      <div id="gridAlbum" class="grid"></div>
+      <p id="estadoAlbum" class="estado">Cargando fotos…</p>
+    </section>
+  </main>
+
+  <button id="btnSubir" class="fab">＋ Subir fotos</button>
+
+  <!-- Diálogo de subida -->
+  <dialog id="dlgSubir">
+    <form id="formSubir" method="dialog">
+      <h3>Subir fotos o vídeos</h3>
+      <label>
+        Tu nombre
+        <input type="text" id="campoNombre" name="nombre" placeholder="Ej.: María" maxlength="60" required />
+      </label>
+      <label>
+        Comentario <span class="opcional">(opcional)</span>
+        <input type="text" id="campoComentario" name="comentario" placeholder="Ej.: En la montaña rusa 🎢" maxlength="300" />
+      </label>
+      <label class="selector-archivos">
+        <input type="file" id="campoArchivos" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/quicktime,video/webm" multiple />
+        <span id="resumenArchivos">Tocar para elegir fotos o vídeos</span>
+      </label>
+      <div id="progresoSubida" class="progreso" hidden>
+        <progress id="barraSubida" max="100" value="0"></progress>
+        <span id="textoProgreso"></span>
+      </div>
+      <p class="nota" id="notaSubida">
+        Las fotos se verán aquí al momento para toda la familia y el anfitrión las añadirá al álbum de iCloud.
+      </p>
+      <div class="botonera">
+        <button type="button" id="btnCancelarSubida" class="btn secundario">Cancelar</button>
+        <button type="submit" id="btnEnviarSubida" class="btn primario">Subir</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Visor a pantalla completa -->
+  <dialog id="dlgVisor" class="visor">
+    <button id="btnCerrarVisor" class="visor-cerrar" aria-label="Cerrar">✕</button>
+    <button id="btnAnterior" class="visor-flecha visor-anterior" aria-label="Anterior">‹</button>
+    <div id="visorContenido" class="visor-contenido"></div>
+    <button id="btnSiguiente" class="visor-flecha visor-siguiente" aria-label="Siguiente">›</button>
+    <div class="visor-pie">
+      <div class="visor-info">
+        <strong id="visorAutor"></strong>
+        <span id="visorFecha"></span>
+        <span id="visorTexto"></span>
+      </div>
+      <a id="btnDescargar" class="btn secundario" download>Descargar</a>
+    </div>
+  </dialog>
+
+  <!-- Diálogo del modo anfitrión -->
+  <dialog id="dlgAnfitrion">
+    <form id="formAnfitrion" method="dialog">
+      <h3>Modo anfitrión</h3>
+      <p class="nota" id="notaAnfitrion">
+        Con el PIN del anfitrión puedes marcar las fotos subidas como «ya en iCloud» o borrarlas.
+      </p>
+      <label>
+        PIN
+        <input type="password" id="campoPin" inputmode="numeric" autocomplete="off" placeholder="····" />
+      </label>
+      <div class="botonera">
+        <button type="button" id="btnSalirAnfitrion" class="btn secundario" hidden>Salir del modo anfitrión</button>
+        <button type="button" id="btnCancelarAnfitrion" class="btn secundario">Cancelar</button>
+        <button type="submit" class="btn primario">Entrar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <footer class="pie">
+    <p>
+      Se sincroniza en directo con el
+      <a id="enlaceICloud" href="https://www.icloud.com/sharedalbum/#B2PGgZLKuKkNJ1h" target="_blank" rel="noopener">álbum compartido de iCloud</a>.
+      En Android puedes instalarla: menú de Chrome → «Añadir a pantalla de inicio».
+    </p>
+  </footer>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

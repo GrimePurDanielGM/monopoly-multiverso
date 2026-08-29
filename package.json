@@ -17,7 +17,8 @@
     "test": "pnpm -r --parallel test:run",
     "test:engine": "pnpm --filter @multiverso/engine test:run",
     "e2e": "playwright test",
-    "verify:engine": "node scripts/verify-shared-engine.mjs"
+    "verify:engine": "node scripts/verify-shared-engine.mjs",
+    "album": "node apps/album/server.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.47.2",

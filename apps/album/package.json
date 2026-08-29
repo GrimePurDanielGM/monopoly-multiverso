@@ -1,0 +1,16 @@
+{
+  "name": "@multiverso/album",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Web del álbum compartido de iCloud: ver las fotos en directo y subir nuevas desde cualquier móvil (Android incluido)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs",
+    "test:run": "node --test",
+    "icons": "node scripts/make-icons.mjs"
+  }
+}
